@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { emitEvent } from "@/lib/socket-emit";
 
 /**
  * PATCH: Toggles the isActive status of a role.
@@ -43,6 +44,9 @@ export async function PATCH(
         }
       }
     });
+
+    // 🔔 Real-time broadcast: status toggled
+    await emitEvent("ROLES_CHANGED", { action: "toggled", roleId: id, isActive: updatedRole.isActive })
 
     return NextResponse.json(updatedRole);
   } catch (error) {

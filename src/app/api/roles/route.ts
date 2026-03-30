@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { slugify } from "@/lib/utils";
+import { emitEvent } from "@/lib/socket-emit";
 
 /**
  * GET: Handles paginated list and search functionality for roles.
@@ -93,6 +94,9 @@ export async function POST(req: Request) {
         }
       }
     });
+
+    // 🔔 Notify all connected clients of the change
+    await emitEvent("ROLES_CHANGED", { action: "created", roleId: role.id })
 
     return NextResponse.json(role);
   } catch (error) {

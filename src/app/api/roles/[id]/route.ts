@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { emitEvent } from "@/lib/socket-emit";
 
 /**
  * GET: Fetches a single role by ID.
@@ -73,6 +74,9 @@ export async function PATCH(
       }
     });
 
+    // 🔔 Real-time broadcast: update
+    await emitEvent("ROLES_CHANGED", { action: "updated", roleId: id })
+
     return NextResponse.json(role);
   } catch (error) {
     console.error("[ROLE_PATCH]", error);
@@ -102,6 +106,9 @@ export async function DELETE(
     await (prisma as any).role.delete({
       where: { id },
     });
+
+    // 🔔 Real-time broadcast: delete
+    await emitEvent("ROLES_CHANGED", { action: "deleted", roleId: id })
 
     return NextResponse.json({ message: "Role deleted permanently" });
   } catch (error) {

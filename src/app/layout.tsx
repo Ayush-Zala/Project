@@ -14,6 +14,7 @@ const geistMono = Geist_Mono({
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { SocketProvider } from "@/providers/socket-provider";
 
 export default function RootLayout({
   children,
@@ -34,7 +35,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            {children}
+            <SocketProvider>
+              {children}
+            </SocketProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

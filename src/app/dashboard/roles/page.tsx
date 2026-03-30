@@ -37,6 +37,17 @@ import { RoleDialog } from "@/components/roles/role-dialog"
 import { DeleteRoleDialog } from "@/components/roles/delete-role-dialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
+import { useSocket } from "@/providers/socket-provider"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 
 export default function RolesPage() {
   const [roles, setRoles] = React.useState<any[]>([])
@@ -64,6 +75,12 @@ export default function RolesPage() {
       setIsLoading(false)
     }
   }, [pagination.limit, search])
+
+  // 🔌 Real-time WebSocket sync — auto-reload when any user mutates roles data
+  const { useEvent } = useSocket()
+  useEvent("ROLES_CHANGED", React.useCallback(() => {
+    fetchRoles(pagination.page, search)
+  }, [fetchRoles, pagination.page, search]))
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -93,7 +110,28 @@ export default function RolesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
+    <>
+      {/* ── Sidebar header bar ─────────────────────────── */}
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>Role Management</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </header>
+
+      {/* ── Page content ───────────────────────────────── */}
+      <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
       {/* Header & Search */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
@@ -317,5 +355,6 @@ export default function RolesPage() {
         onSuccess={() => fetchRoles(1)}
       />
     </div>
+    </>
   )
 }
