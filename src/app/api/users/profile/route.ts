@@ -3,11 +3,18 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
+import * as z from "zod";
+
+const nameSchema = z.string()
+  .min(2, "Name must be at least 2 characters")
+  .max(50, "Name must not exceed 50 characters")
+  .regex(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces");
 
 /**
  * GET: Fetch the current user's profile details.
  */
 export async function GET(req: Request) {
+// ...
   const session = await auth.api.getSession({ headers: await headers() });
   
   if (!session) {
@@ -48,16 +55,19 @@ export async function PATCH(req: Request) {
   }
 
   try {
-    const { name } = await req.json();
+    const body = await req.json();
+    const result = nameSchema.safeParse(body.name);
 
-    if (!name || name.trim().length < 2) {
-      return NextResponse.json({ error: "Valid name is required" }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
+
+    const name = result.data.trim();
 
     const updatedUser = await (prisma as any).user.update({
       where: { id: Number(session.user.id) },
       data: { 
-        name: name.trim(),
+        name,
         updatedAt: BigInt(Date.now())
       },
     });

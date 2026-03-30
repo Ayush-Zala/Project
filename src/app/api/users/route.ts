@@ -4,6 +4,21 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { emitEvent } from "@/lib/socket-emit";
+import * as z from "zod";
+
+const userCreateSchema = z.object({
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name too long"),
+  email: z.string().email("Invalid industrial email address"),
+  roleId: z.union([z.string(), z.number()]).transform(v => Number(v)),
+  password: z.string()
+    .min(8, "Security Protocol: 8+ chars required")
+    .regex(/[A-Z]/, "Security Protocol: Uppercase missing")
+    .regex(/[a-z]/, "Security Protocol: Lowercase missing")
+    .regex(/[0-9]/, "Security Protocol: Number missing")
+    .regex(/[^A-Za-z0-9]/, "Security Protocol: Special character missing"),
+});
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/users  — Paginated list with assigned role
@@ -89,15 +104,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, email, password, roleId } = body;
+    const result = userCreateSchema.safeParse(body);
 
-    // ── Validation ────────────────────────────────────────────
-    if (!name || !email || !password) {
-      return NextResponse.json(
-        { error: "Name, email, and password are required" },
-        { status: 400 }
-      );
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
+
+    const { name, email, password, roleId } = result.data;
 
     // ── Unique-email guard ────────────────────────────────────
     const existing = await (prisma as any).user.findUnique({ where: { email } });

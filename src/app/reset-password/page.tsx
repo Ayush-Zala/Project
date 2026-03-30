@@ -1,25 +1,42 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowRight, ShieldCheck } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ShieldCheck, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+// ── Industrial Reset Schema ──────────────────────────────
+const resetSchema = z.object({
+  password: z.string()
+    .min(8, "Security protocol requires 8+ characters")
+    .regex(/[A-Z]/, "Include one uppercase letter")
+    .regex(/[a-z]/, "Include one lowercase letter")
+    .regex(/[0-9]/, "Include one numeric digit")
+    .regex(/[^A-Za-z0-9]/, "Include one special character (@$!%*?&)"),
+  confirmPassword: z.string().min(1, "Confirmation is required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Security mismatch: Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type ResetValues = z.infer<typeof resetSchema>;
 
 export default function ResetPasswordPage() {
   const [token, setToken] = useState<string | null>(null);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -27,23 +44,34 @@ export default function ResetPasswordPage() {
     setToken(t);
   }, []);
 
+  const form = useForm<ResetValues>({
+    resolver: zodResolver(resetSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const watchPassword = form.watch("password");
+
+  // Strength Visual Logic
   const passwordStrength = useMemo(() => {
-    if (!newPassword) return 0;
+    if (!watchPassword) return 0;
     let score = 0;
-    if (newPassword.length >= 8) score += 1;
-    if (/[A-Z]/.test(newPassword)) score += 1;
-    if (/[0-9]/.test(newPassword)) score += 1;
-    if (/[^A-Za-z0-9]/.test(newPassword)) score += 1;
+    if (watchPassword.length >= 8) score += 1;
+    if (/[A-Z]/.test(watchPassword)) score += 1;
+    if (/[0-9]/.test(watchPassword)) score += 1;
+    if (/[^A-Za-z0-9]/.test(watchPassword)) score += 1;
     return score;
-  }, [newPassword]);
+  }, [watchPassword]);
 
   const strengthLabel = useMemo(() => {
     switch (passwordStrength) {
-      case 0: return "Too Weak";
+      case 0: return "Insufficient";
       case 1: return "Weak";
       case 2: return "Medium";
       case 3: return "Strong";
-      case 4: return "Premium";
+      case 4: return "Industrial Elite";
       default: return "";
     }
   }, [passwordStrength]);
@@ -59,41 +87,28 @@ export default function ResetPasswordPage() {
     }
   }, [passwordStrength]);
 
-  const handleReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleReset = async (values: ResetValues) => {
     if (!token) {
-        setError("Invalid or missing session token.");
-        return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-    if (passwordStrength < 2) {
-      setError("Please choose a stronger password.");
+      toast.error("Invalid or missing session token. Please request a new link.");
       return;
     }
 
     setIsLoading(true);
-    setError(null);
 
     const { error } = await authClient.resetPassword({
-      newPassword,
+      newPassword: values.password,
       token,
     });
 
     setIsLoading(false);
 
     if (error) {
-      setError(error.message || "Failed to update password");
+      toast.error(error.message || "Failed to update security credentials");
     } else {
       setIsSuccess(true);
+      toast.success("Security credentials synchronized successfully");
     }
   };
-
-  if (!token && typeof window !== "undefined") {
-    // Optionally handle missing token visually
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12 sm:px-6 lg:px-8 relative">
@@ -127,100 +142,119 @@ export default function ResetPasswordPage() {
                 </p>
               </div>
 
-              <Card className="noir-card border-border/40 backdrop-blur-sm">
-                <form onSubmit={handleReset}>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Set New Password</CardTitle>
-                    <CardDescription>
-                      Ensure it&apos;s unique and strong.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="password">New Password</Label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
-                        <Input
-                          id="password"
-                          type={showPassword ? "text" : "password"}
-                          required
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          className="pl-10 pr-10"
-                          autoComplete="new-password"
-                        />
-                         <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            {showPassword ? <EyeOff className="h-4 w-4 stroke-[1.5px]" /> : <Eye className="h-4 w-4 stroke-[1.5px]" />}
-                        </button>
-                      </div>
-                      
-                      {/* Password Strength Indicator */}
-                      <div className="space-y-2 pt-1">
-                        <div className="flex justify-between text-[10px] uppercase tracking-widest font-bold">
-                           <span className={cn(passwordStrength > 0 ? "text-primary" : "text-muted-foreground")}>Strength</span>
-                           <span className={cn(passwordStrength > 0 ? "text-primary" : "text-muted-foreground")}>{strengthLabel}</span>
-                        </div>
-                        <div className="flex gap-1.5 h-1">
-                           {[1, 2, 3, 4].map((step) => (
-                             <div 
-                                key={step}
-                                className={cn(
-                                    "flex-1 rounded-full transition-all duration-500",
-                                    passwordStrength >= step ? strengthColor : "bg-muted/30"
-                                )}
-                             />
-                           ))}
-                        </div>
-                      </div>
-                    </div>
+              <Card className="noir-card border-border/40 backdrop-blur-sm shadow-2xl">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleReset)}>
+                    <CardHeader>
+                      <CardTitle className="text-xl">Set New Password</CardTitle>
+                      <CardDescription>
+                        Ensure it&apos;s unique and strong.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <FormField
+                        control={form.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>New Secure Password</FormLabel>
+                            <FormControl>
+                              <div className="relative group text-left">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  className="pl-10 pr-10 h-11 rounded-xl bg-muted/20"
+                                  placeholder="••••••••"
+                                  {...field}
+                                  autoComplete="new-password"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  {showPassword ? (
+                                    <EyeOff className="h-4 w-4 stroke-[1.5px]" />
+                                  ) : (
+                                    <Eye className="h-4 w-4 stroke-[1.5px]" />
+                                  )}
+                                </button>
+                              </div>
+                            </FormControl>
+                            
+                            {/* Strength Visual Logic Integration */}
+                            <div className="space-y-2 pt-1">
+                              <div className="flex justify-between text-[10px] uppercase tracking-widest font-extrabold">
+                                <span className={cn(passwordStrength > 0 ? "text-primary" : "text-muted-foreground")}>Security level</span>
+                                <span className={cn(passwordStrength > 0 ? "text-primary" : "text-muted-foreground")}>{strengthLabel}</span>
+                              </div>
+                              <div className="flex gap-1.5 h-1">
+                                {[1, 2, 3, 4].map((step) => (
+                                  <div 
+                                    key={step}
+                                    className={cn(
+                                      "flex-1 rounded-full transition-all duration-500",
+                                      passwordStrength >= step ? strengthColor : "bg-muted/10"
+                                    )}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                            <FormMessage className="text-[10px] font-bold" />
+                          </FormItem>
+                        )}
+                      />
 
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
-                      <div className="relative group">
-                        <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
-                        <Input
-                          id="confirm-password"
-                          type={showPassword ? "text" : "password"}
-                          required
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="pl-10 pr-10"
-                          autoComplete="new-password"
-                        />
-                      </div>
-                    </div>
-
-                    {error && (
-                      <div className="text-sm text-destructive font-medium border border-destructive/20 bg-destructive/5 p-3 rounded-lg flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                        {error}
-                      </div>
-                    )}
-                  </CardContent>
-                  <CardFooter>
-                    {!token ? (
-                        <div className="w-full text-center text-sm p-4 bg-destructive/5 rounded-lg border border-destructive/20 text-destructive">
-                             No secure token found. Please request a new link.
-                             <div className="mt-2">
-                                <Link href="/forgot-password" className="font-bold underline">Resend Link</Link>
-                             </div>
+                      <FormField
+                        control={form.control}
+                        name="confirmPassword"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Confirm Password</FormLabel>
+                            <FormControl>
+                              <div className="relative group text-left">
+                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
+                                <Input
+                                  type={showPassword ? "text" : "password"}
+                                  className="pl-10 h-11 rounded-xl bg-muted/20"
+                                  placeholder="••••••••"
+                                  {...field}
+                                  autoComplete="new-password"
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-[10px] font-bold" />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                    <CardFooter>
+                      {!token ? (
+                        <div className="w-full text-center text-sm p-4 bg-destructive/5 rounded-2xl border border-destructive/20 text-destructive font-bold">
+                           ACCESS DENIED: No secure token found.
+                           <div className="mt-2 text-xs font-normal">
+                              <Link href="/forgot-password" title="Request link" className="underline underline-offset-4 hover:text-destructive/80">Re-authenticate here</Link>
+                           </div>
                         </div>
-                    ) : (
+                      ) : (
                         <Button
-                            type="submit"
-                            className="w-full group"
-                            loading={isLoading}
+                          type="submit"
+                          className="w-full group h-11 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                          disabled={isLoading}
                         >
-                            Update Password
-                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
+                          {isLoading ? (
+                            <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <>
+                              Update Password
+                              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
+                            </>
+                          )}
                         </Button>
-                    )}
-                  </CardFooter>
-                </form>
+                      )}
+                    </CardFooter>
+                  </form>
+                </Form>
               </Card>
             </motion.div>
           ) : (
@@ -230,7 +264,7 @@ export default function ResetPasswordPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center"
             >
-              <Card className="noir-card border-primary/20 bg-primary/5 py-8">
+              <Card className="noir-card border-primary/20 bg-primary/5 py-8 rounded-2xl">
                 <CardContent className="flex flex-col items-center gap-4">
                   <div className="h-16 w-16 bg-primary/20 rounded-full flex items-center justify-center mb-2">
                     <ShieldCheck className="h-10 w-10 text-primary stroke-[1.5px]" />
@@ -239,7 +273,7 @@ export default function ResetPasswordPage() {
                   <CardDescription className="max-w-[280px]">
                     Your password has been successfully updated. You can now use your new credentials to log in.
                   </CardDescription>
-                  <Button className="mt-4 w-full" asChild>
+                  <Button className="mt-4 w-full h-11 rounded-xl shadow-lg shadow-primary/20" asChild>
                     <Link href="/login">Return to Login</Link>
                   </Button>
                 </CardContent>

@@ -1,43 +1,59 @@
 "use client";
 
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogIn, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { LogIn, Mail, Lock, ArrowRight, Eye, EyeOff, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { toast } from "sonner";
+
+// ── Industrial Login Schema ──────────────────────────────
+const loginSchema = z.object({
+  email: z.string().email("Please enter a valid command email"),
+  password: z.string().min(1, "Password is required for authentication"),
+});
+
+type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const handleLogin = async (values: LoginValues) => {
     setIsLoading(true);
-    setError(null);
 
     const { data, error } = await authClient.signIn.email({
-      email,
-      password,
+      email: values.email,
+      password: values.password,
       callbackURL: "/dashboard",
     });
 
-    setIsLoading(false);
+    setIsLoading(true); // Keep loading while redirecting
 
     if (error) {
+      setIsLoading(false);
       if (error.status === 403) {
-        setError("Please verify your email address before logging in.");
+        toast.error("Access Forbidden: Please verify your email first.");
       } else {
-        setError(error.message || "Invalid credentials");
+        toast.error(error.message || "Invalid credentials provided");
       }
     }
   };
@@ -71,88 +87,106 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <Card className="noir-card border-border/40 backdrop-blur-sm">
+        <Card className="noir-card border-border/40 backdrop-blur-sm shadow-2xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Login</CardTitle>
             <CardDescription>
-              Enter your email and password to access your dashboard
+              Enter your credentials to access the command center
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleLogin}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
-                <div className="relative group">
-                  <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
-                  <Input
-                    id="email"
-                    placeholder="name@example.com"
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  <button
-                    type="button"
-                    onClick={handleForgotPassword}
-                    className="text-xs text-primary hover:underline underline-offset-4 cursor-pointer relative z-30"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-                <div className="relative group">
-                  <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 pr-10"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4 stroke-[1.5px]" /> : <Eye className="h-4 w-4 stroke-[1.5px]" />}
-                  </button>
-                </div>
-              </div>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleLogin)}>
+              <CardContent className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
+                          <Input
+                            placeholder="name@example.com"
+                            className="pl-10 h-11 rounded-xl bg-muted/20"
+                            {...field}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-              {error && (
-                <div className="text-sm text-destructive font-medium border border-destructive/20 bg-destructive/5 p-3 rounded-lg flex items-center gap-2">
-                   <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                   {error}
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button
-                type="submit"
-                className="w-full group"
-                loading={isLoading}
-              >
-                Log In
-                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
-              </Button>
-              <div className="text-sm text-center text-muted-foreground">
-                Don&apos;t have an account?{" "}
-                <Link
-                  href="/signup"
-                  className="text-primary font-medium hover:underline transition-all underline-offset-4"
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Password</FormLabel>
+                        <button
+                          type="button"
+                          onClick={handleForgotPassword}
+                          className="text-xs text-primary hover:underline underline-offset-4 cursor-pointer relative z-30"
+                        >
+                          Forgot password?
+                        </button>
+                      </div>
+                      <FormControl>
+                        <div className="relative group text-left">
+                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            className="pl-10 pr-10 h-11 rounded-xl bg-muted/20"
+                            placeholder="••••••••"
+                            {...field}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showPassword ? (
+                              <EyeOff className="h-4 w-4 stroke-[1.5px]" />
+                            ) : (
+                              <Eye className="h-4 w-4 stroke-[1.5px]" />
+                            )}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                <Button
+                  type="submit"
+                  className="w-full group h-11 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                  disabled={isLoading}
                 >
-                  Create Account
-                </Link>
-              </div>
-            </CardFooter>
-          </form>
+                  {isLoading ? (
+                    <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      Log In
+                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
+                    </>
+                  )}
+                </Button>
+                <div className="text-sm text-center text-muted-foreground">
+                  Don&apos;t have an account?{" "}
+                  <Link
+                    href="/signup"
+                    className="text-primary font-medium hover:underline transition-all underline-offset-4"
+                  >
+                    Create Account
+                  </Link>
+                </div>
+              </CardFooter>
+            </form>
+          </Form>
         </Card>
       </motion.div>
     </div>

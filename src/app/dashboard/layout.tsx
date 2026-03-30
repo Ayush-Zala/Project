@@ -31,10 +31,11 @@ export default function DashboardLayout({
   const { useEvent } = useSocket()
 
   // 🔌 Real-time Session Sync
-  // When 'USERS_CHANGED' is emitted (e.g. by our profile update API),
-  // we check if it's our profile and refetch if needed.
+  // When 'USERS_CHANGED' is emitted, we check if it's OUR profile and refetch if needed.
   useEvent("USERS_CHANGED", React.useCallback((data: any) => {
-    if (data.userId === Number(session?.user?.id)) {
+    // Better Auth session IDs might be strings, Prisma IDs might be numbers.
+    // Use loose equality or explicit coercion for comparison.
+    if (String(data.userId) === String(session?.user?.id) && data.action === "profile_updated") {
       refetch()
     }
   }, [session?.user?.id, refetch]))

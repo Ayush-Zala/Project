@@ -4,6 +4,20 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { emitEvent } from "@/lib/socket-emit";
+import * as z from "zod";
+
+const passwordResetSchema = z.object({
+  password: z.string()
+    .min(8, "Security Protocol: 8+ chars required")
+    .regex(/[A-Z]/, "Security Protocol: Uppercase missing")
+    .regex(/[a-z]/, "Security Protocol: Lowercase missing")
+    .regex(/[0-9]/, "Security Protocol: Number missing")
+    .regex(/[^A-Za-z0-9]/, "Security Protocol: Special character missing"),
+  confirmPassword: z.string().min(1, "Confirmation required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Security Mismatch: Passwords do not match",
+  path: ["confirmPassword"],
+});
 
 /**
  * PATCH: Changes a user's password (admin action).
@@ -24,15 +38,14 @@ export async function PATCH(
   }
 
   try {
-    const { password, confirmPassword } = await req.json();
+    const body = await req.json();
+    const result = passwordResetSchema.safeParse(body);
 
-    if (!password || !confirmPassword) {
-      return NextResponse.json({ error: "Password and Confirm Password are required" }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    if (password !== confirmPassword) {
-      return NextResponse.json({ error: "Passwords do not match" }, { status: 400 });
-    }
+    const { password } = result.data;
 
     // ── Hash password ───────────────
     const passwordHash = await bcrypt.hash(password, 10);

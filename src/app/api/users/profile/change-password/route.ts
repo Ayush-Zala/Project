@@ -1,11 +1,27 @@
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import * as z from "zod";
+
+const passwordProtocol = z.object({
+  currentPassword: z.string().min(1, "Current password required"),
+  newPassword: z.string()
+    .min(8, "Command level security requires 8+ characters")
+    .regex(/[A-Z]/, "Uppercase missing")
+    .regex(/[a-z]/, "Lowercase missing")
+    .regex(/[0-9]/, "Number missing")
+    .regex(/[^A-Za-z0-9]/, "Special character required"),
+  confirmPassword: z.string()
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Confirmation mismatch",
+  path: ["confirmPassword"]
+});
 
 /**
  * POST: Change the current user's password (requires current password).
  */
 export async function POST(req: Request) {
+// ...
   const session = await auth.api.getSession({ headers: await headers() });
   
   if (!session) {
@@ -13,15 +29,14 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { currentPassword, newPassword, confirmPassword } = await req.json();
+    const body = await req.json();
+    const result = passwordProtocol.safeParse(body);
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-       return NextResponse.json({ error: "All password fields are required" }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    if (newPassword !== confirmPassword) {
-       return NextResponse.json({ error: "New passwords do not match" }, { status: 400 });
-    }
+    const { currentPassword, newPassword } = result.data;
 
     // 🔥 Better-auth changePassword logic
     // This will verify the current password using our custom bcryptjs logic

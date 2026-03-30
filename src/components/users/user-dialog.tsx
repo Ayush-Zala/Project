@@ -35,16 +35,19 @@ import { Loader2Icon, ShieldIcon, UserIcon, EyeIcon, EyeOffIcon } from "lucide-r
 
 // Schema varies based on creation vs editing
 const userSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  roleId: z.string().min(1, "Please assign a role"),
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name too long"),
+  email: z.string().email("Invalid industrial email address"),
+  roleId: z.string().min(1, "Access role assignment required"),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
 }).refine((data) => {
-  // If no user exists (creation mode), password is required
-  return true; // Simple check, refinement happens inside the component for context
+  // If no password is provided (editing), it's fine. 
+  // Custom validation inside onSubmit handles the complexity for creation.
+  return true;
 }, {
-  message: "Passwords must match",
+  message: "Security mismatch: Passwords do not match",
   path: ["confirmPassword"],
 })
 

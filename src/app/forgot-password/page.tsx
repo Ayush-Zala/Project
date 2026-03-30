@@ -1,38 +1,66 @@
 "use client";
 
 import React, { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, ArrowRight, CheckCircle2, KeyRound } from "lucide-react";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Mail, ArrowRight, CheckCircle2, KeyRound, RefreshCwIcon } from "lucide-react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { toast } from "sonner";
+
+// ── Industrial Forgot Password Schema ──────────────────────
+const passwordSchema = z.object({
+  password: z.string()
+    .min(8, "Security Protocol: Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Security Protocol: Missing uppercase letter")
+    .regex(/[a-z]/, "Security Protocol: Missing lowercase letter")
+    .regex(/[0-9]/, "Security Protocol: Missing numeric digit")
+    .regex(/[^A-Za-z0-9]/, "Security Protocol: Missing special character"),
+  confirmPassword: z.string().min(1, "Confirmation required"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Security Mismatch: Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email("Please enter a valid command email"),
+});
+
+type ForgotPasswordValues = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleRequestReset = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const form = useForm<ForgotPasswordValues>({
+    resolver: zodResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
+
+  const handleRequestReset = async (values: ForgotPasswordValues) => {
     setIsLoading(true);
-    setError(null);
 
     const { error } = await authClient.requestPasswordReset({
-      email,
+      email: values.email,
       redirectTo: "/reset-password",
     });
 
     setIsLoading(false);
 
     if (error) {
-      setError(error.message || "Failed to send reset link");
+      toast.error(error.message || "Failed to initiate security reset link");
     } else {
       setIsSent(true);
+      toast.success("Security reset link dispatched to your inbox");
     }
   };
 
@@ -75,62 +103,63 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
 
-              <Card className="noir-card border-border/40 backdrop-blur-sm">
-                <form onSubmit={handleRequestReset}>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Reset Request</CardTitle>
-                    <CardDescription>
-                      Enter your account email to receive a secure link.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <div className="relative group">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
-                        <Input
-                          id="email"
-                          placeholder="name@example.com"
-                          type="email"
-                          required
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10"
-                          autoComplete="email"
-                        />
+              <Card className="noir-card border-border/40 backdrop-blur-sm shadow-2xl">
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleRequestReset)}>
+                    <CardHeader>
+                      <CardTitle className="text-xl">Reset Request</CardTitle>
+                      <CardDescription>
+                        Enter your account email to receive a secure link.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Email Address</FormLabel>
+                            <FormControl>
+                              <div className="relative group">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors stroke-[1.5px]" />
+                                <Input
+                                  placeholder="name@example.com"
+                                  className="pl-10 h-11 rounded-xl bg-muted/20"
+                                  {...field}
+                                />
+                              </div>
+                            </FormControl>
+                            <FormMessage className="text-[10px] font-bold" />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                    <CardFooter className="flex flex-col gap-4">
+                      <Button
+                        type="submit"
+                        className="w-full group h-11 rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <>
+                            Send Reset Link
+                            <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
+                          </>
+                        )}
+                      </Button>
+                      <div className="text-sm text-center">
+                        <Link
+                          href="/login"
+                          className="text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                        >
+                          Back to Login
+                        </Link>
                       </div>
-                    </div>
-
-                    {error && (
-                      <motion.div 
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        className="text-sm text-destructive font-medium border border-destructive/20 bg-destructive/5 p-3 rounded-lg flex items-center gap-2"
-                      >
-                         <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
-                         {error}
-                      </motion.div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="flex flex-col gap-4">
-                    <Button
-                      type="submit"
-                      className="w-full group"
-                      loading={isLoading}
-                    >
-                      Send Reset Link
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1 stroke-[1.5px]" />
-                    </Button>
-                    <div className="text-sm text-center">
-                      <Link
-                        href="/login"
-                        className="text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
-                      >
-                        Back to Login
-                      </Link>
-                    </div>
-                  </CardFooter>
-                </form>
+                    </CardFooter>
+                  </form>
+                </Form>
               </Card>
             </motion.div>
           ) : (
@@ -140,18 +169,18 @@ export default function ForgotPasswordPage() {
               animate={{ opacity: 1, scale: 1 }}
               className="text-center"
             >
-              <Card className="noir-card border-primary/20 bg-primary/5 py-8">
+              <Card className="noir-card border-primary/20 bg-primary/5 py-8 rounded-2xl">
                 <CardContent className="flex flex-col items-center gap-4">
                   <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-2">
                     <CheckCircle2 className="h-10 w-10 text-primary stroke-[1.5px]" />
                   </div>
                   <CardTitle className="text-2xl">Email Sent</CardTitle>
                   <CardDescription className="max-w-[280px]">
-                    We&apos;ve sent a password reset link to <strong>{email}</strong>.
+                    We&apos;ve sent a password reset link to <strong>{form.getValues("email")}</strong>.
                     Please check your inbox.
                   </CardDescription>
                   <div className="flex flex-col gap-3 w-full mt-4">
-                    <Button variant="outline" className="w-full border-primary/30" asChild>
+                    <Button variant="outline" className="w-full border-primary/30 rounded-xl" asChild>
                       <Link href="/login">Return to Login</Link>
                     </Button>
                     <button 

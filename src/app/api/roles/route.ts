@@ -4,6 +4,19 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { slugify } from "@/lib/utils";
 import { emitEvent } from "@/lib/socket-emit";
+import * as z from "zod";
+
+const roleCreateSchema = z.object({
+  name: z.string()
+    .min(3, "Role Manifest: Name must be at least 3 characters")
+    .max(40, "Role Manifest: Name must not exceed 40 characters")
+    .regex(/^[a-zA-Z0-9\s-]+$/, "Role Manifest: Special characters are forbidden"),
+  description: z.string().max(200, "Description too long").optional().nullable(),
+  colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Invalid color-hex protocol"),
+  parentId: z.union([z.string(), z.number(), z.null()]).optional().transform(v => 
+    (v === null || v === "none" || v === "") ? null : Number(v)
+  ),
+});
 
 /**
  * GET: Handles paginated list and search functionality for roles.
@@ -65,11 +78,13 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const { name, description, colorCode, parentId } = body;
+    const result = roleCreateSchema.safeParse(body);
 
-    if (!name) {
-      return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    if (!result.success) {
+      return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
+
+    const { name, description, colorCode, parentId } = result.data;
 
     const slug = slugify(name);
 
@@ -85,7 +100,7 @@ export async function POST(req: Request) {
         slug,
         description,
         colorCode,
-        parentId: parentId ? parseInt(parentId) : null,
+        parentId,
         createdBy: Number(session.user.id),
       },
       include: {

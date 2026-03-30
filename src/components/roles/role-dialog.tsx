@@ -35,9 +35,12 @@ import { toast } from "sonner"
 import { Loader2Icon } from "lucide-react"
 
 const roleSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  description: z.string().optional().nullable(),
-  colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Invalid hex color"),
+  name: z.string()
+    .min(3, "Role Manifest: Name must be at least 3 characters")
+    .max(40, "Role Manifest: Name must not exceed 40 characters")
+    .regex(/^[a-zA-Z0-9\s-]+$/, "Role Manifest: Special characters are forbidden"),
+  description: z.string().max(200, "Description too long").optional().nullable(),
+  colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Invalid color-hex protocol"),
   parentId: z.string().optional().nullable(),
 })
 

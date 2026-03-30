@@ -26,10 +26,15 @@ import { toast } from "sonner"
 import { Loader2Icon, KeyIcon, EyeIcon, EyeOffIcon } from "lucide-react"
 
 const passwordSchema = z.object({
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Confirmation must be at least 6 characters"),
+  password: z.string()
+    .min(8, "Security Protocol: Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Security Protocol: Missing uppercase letter")
+    .regex(/[a-z]/, "Security Protocol: Missing lowercase letter")
+    .regex(/[0-9]/, "Security Protocol: Missing numeric digit")
+    .regex(/[^A-Za-z0-9]/, "Security Protocol: Missing special character"),
+  confirmPassword: z.string().min(1, "Confirmation required"),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords do not match",
+  message: "Security Mismatch: Passwords do not match",
   path: ["confirmPassword"],
 })
 

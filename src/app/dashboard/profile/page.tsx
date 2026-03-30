@@ -1,6 +1,9 @@
 "use client"
 
 import * as React from "react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
 import { 
   UserCircleIcon, 
   MailIcon, 
@@ -9,11 +12,20 @@ import {
   EyeIcon,
   EyeOffIcon,
   SaveIcon,
-  RefreshCwIcon
+  RefreshCwIcon,
+  AlertCircleIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -25,16 +37,53 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 
+// ── Industrial Validation Schemas ────────────────────────────────
+const profileSchema = z.object({
+  name: z.string()
+    .min(2, "Name must be at least 2 characters")
+    .max(50, "Name must not exceed 50 characters")
+    .regex(/^[a-zA-Z\s]*$/, "Name can only contain letters and spaces"),
+})
+
+const passwordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string()
+    .min(8, "Security protocol requires at least 8 characters")
+    .regex(/[A-Z]/, "Must include at least one uppercase letter")
+    .regex(/[a-z]/, "Must include at least one lowercase letter")
+    .regex(/[0-9]/, "Must include at least one numeric digit")
+    .regex(/[^A-Za-z0-9]/, "Must include at least one special character (@$!%*?&)"),
+  confirmPassword: z.string().min(1, "Password confirmation is required"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Security mismatch: Passwords do not match",
+  path: ["confirmPassword"],
+})
+
 export default function ProfilePage() {
   const [profile, setProfile] = React.useState<any>(null)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdatingProfile, setIsUpdatingProfile] = React.useState(false)
   const [isChangingPassword, setIsChangingPassword] = React.useState(false)
   
-  // Password form states
   const [showCurrent, setShowCurrent] = React.useState(false)
   const [showNew, setShowNew] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
+
+  // 1. Identity Form
+  const profileForm = useForm<z.infer<typeof profileSchema>>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: { name: "" },
+  })
+
+  // 2. Security Form
+  const passwordForm = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  })
 
   const fetchProfile = React.useCallback(async () => {
     setIsLoading(true)
@@ -43,34 +92,31 @@ export default function ProfilePage() {
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       setProfile(data)
+      profileForm.reset({ name: data.name })
     } catch (error: any) {
       toast.error(error.message || "Failed to load profile")
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [profileForm])
 
   React.useEffect(() => {
     fetchProfile()
   }, [fetchProfile])
 
-  const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const name = formData.get("name") as string
-
+  async function onProfileSubmit(values: z.infer<typeof profileSchema>) {
     setIsUpdatingProfile(true)
     try {
       const res = await fetch("/api/users/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name })
+        body: JSON.stringify(values)
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       
       setProfile((prev: any) => ({ ...prev, name: data.user.name }))
-      toast.success("Identity updated successfully")
+      toast.success("Identity Manifest Updated")
     } catch (error: any) {
       toast.error(error.message)
     } finally {
@@ -78,29 +124,19 @@ export default function ProfilePage() {
     }
   }
 
-  const handleChangePassword = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const currentPassword = formData.get("currentPassword") as string
-    const newPassword = formData.get("newPassword") as string
-    const confirmPassword = formData.get("confirmPassword") as string
-
-    if (newPassword !== confirmPassword) {
-      return toast.error("New passwords do not match")
-    }
-
+  async function onPasswordSubmit(values: z.infer<typeof passwordSchema>) {
     setIsChangingPassword(true)
     try {
       const res = await fetch("/api/users/profile/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword, confirmPassword })
+        body: JSON.stringify(values)
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
       
-      toast.success("Security credentials updated")
-      e.currentTarget.reset()
+      toast.success("Security Credentials Synchronized")
+      passwordForm.reset()
     } catch (error: any) {
       toast.error(error.message)
     } finally {
@@ -149,7 +185,7 @@ export default function ProfilePage() {
              </div>
              <div>
                 <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Command Profile</h1>
-                <p className="text-muted-foreground">Manage your identity and authentication settings.</p>
+                <p className="text-muted-foreground">Manage your identity and high-security authentication settings.</p>
              </div>
           </div>
         </div>
@@ -162,54 +198,61 @@ export default function ProfilePage() {
                <span className="font-bold uppercase tracking-widest text-xs">Personal Access Manifest</span>
             </div>
             
-            <form onSubmit={handleUpdateProfile} className="p-8 flex flex-col gap-6">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Account Display Name</label>
-                <div className="relative group">
-                  <UserCircleIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    id="profile-name-input"
-                    name="name"
-                    value={profile?.name || ""}
-                    onChange={(e) => setProfile((prev: any) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter your command name..." 
-                    className="pl-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-12"
-                    required
-                  />
-                </div>
-              </div>
+            <Form {...profileForm}>
+              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="p-8 flex flex-col gap-6">
+                <FormField
+                  control={profileForm.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Account Display Name</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <UserCircleIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
+                          <Input 
+                            {...field}
+                            placeholder="Enter your command name..." 
+                            className="pl-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-12"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Registered Email (Readonly)</label>
-                <div className="relative group opacity-60">
-                  <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                  <Input 
-                    value={profile?.email}
-                    readOnly
-                    className="pl-10 bg-muted/10 border-border/20 rounded-xl h-12 cursor-not-allowed"
-                  />
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Registered Email (Readonly)</label>
+                  <div className="relative group opacity-60">
+                    <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                    <Input 
+                      value={profile?.email}
+                      readOnly
+                      className="pl-10 bg-muted/10 border-border/20 rounded-xl h-12 cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground italic ml-1 mt-1">Identity validation is tied to this permanent email manifest.</p>
                 </div>
-                <p className="text-[10px] text-muted-foreground italic ml-1 mt-1">Identity validation is tied to this permanent email manifest.</p>
-              </div>
 
-              <Button 
-                type="submit" 
-                disabled={isUpdatingProfile}
-                className="mt-4 bg-primary text-primary-foreground font-bold rounded-xl h-12 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
-              >
-                {isUpdatingProfile ? (
-                  <>
-                    <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
-                    UPDATING MANIFEST...
-                  </>
-                ) : (
-                  <>
-                    <SaveIcon className="mr-2 h-4 w-4" />
-                    UPDATE IDENTITY
-                  </>
-                )}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  disabled={isUpdatingProfile || !profileForm.formState.isDirty}
+                  className="mt-4 bg-primary text-primary-foreground font-bold rounded-xl h-12 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
+                >
+                  {isUpdatingProfile ? (
+                    <>
+                      <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
+                      UPDATING MANIFEST...
+                    </>
+                  ) : (
+                    <>
+                      <SaveIcon className="mr-2 h-4 w-4" />
+                      UPDATE IDENTITY
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
           </div>
 
           {/* Security Card */}
@@ -219,89 +262,115 @@ export default function ProfilePage() {
                <span className="font-bold uppercase tracking-widest text-xs">Security Protocol Access</span>
             </div>
             
-            <form onSubmit={handleChangePassword} className="p-8 flex flex-col gap-5">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Current Password</label>
-                <div className="relative group">
-                  <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    type={showCurrent ? "text" : "password"}
-                    name="currentPassword"
-                    placeholder="••••••••" 
-                    className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowCurrent(!showCurrent)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showCurrent ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+            <Form {...passwordForm}>
+              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="p-8 flex flex-col gap-5">
+                <FormField
+                  control={passwordForm.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Current Password</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
+                          <Input 
+                            type={showCurrent ? "text" : "password"}
+                            {...field}
+                            placeholder="••••••••" 
+                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrent(!showCurrent)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showCurrent ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">New Secure Password</label>
-                <div className="relative group">
-                  <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    type={showNew ? "text" : "password"}
-                    name="newPassword"
-                    placeholder="••••••••" 
-                    className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowNew(!showNew)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showNew ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">New Secure Password</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
+                          <Input 
+                            type={showNew ? "text" : "password"}
+                            {...field}
+                            placeholder="••••••••" 
+                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowNew(!showNew)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showNew ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm New Password</label>
-                <div className="relative group">
-                  <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                  <Input 
-                    type={showConfirm ? "text" : "password"}
-                    name="confirmPassword"
-                    placeholder="••••••••" 
-                    className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirm(!showConfirm)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {showConfirm ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                  </button>
-                </div>
-              </div>
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm New Password</FormLabel>
+                      <FormControl>
+                        <div className="relative group">
+                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
+                          <Input 
+                            type={showConfirm ? "text" : "password"}
+                            {...field}
+                            placeholder="••••••••" 
+                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirm(!showConfirm)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showConfirm ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-              <Button 
-                type="submit" 
-                disabled={isChangingPassword}
-                variant="outline"
-                className="mt-2 border-border/40 hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/50 font-bold rounded-xl h-12 active:scale-[0.98] transition-all"
-              >
-                {isChangingPassword ? (
-                  <>
-                    <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
-                    RE-HASHING CREDENTIALS...
-                  </>
-                ) : (
-                  <>
-                    <ShieldCheckIcon className="mr-2 h-4 w-4" />
-                    CHANGE PASSWORD
-                  </>
-                )}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  disabled={isChangingPassword}
+                  variant="outline"
+                  className="mt-2 border-border/40 hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/50 font-bold rounded-xl h-12 active:scale-[0.98] transition-all"
+                >
+                  {isChangingPassword ? (
+                    <>
+                      <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
+                      RE-HASHING CREDENTIALS...
+                    </>
+                  ) : (
+                    <>
+                      <ShieldCheckIcon className="mr-2 h-4 w-4" />
+                      CHANGE PASSWORD
+                    </>
+                  )}
+                </Button>
+              </form>
+            </Form>
           </div>
         </div>
       </div>
