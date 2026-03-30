@@ -27,7 +27,11 @@ const data = {
       title: "Dashboard",
       url: "/dashboard",
       icon: <LayoutDashboardIcon />,
-      isActive: true,
+    },
+    {
+      title: "Roles",
+      url: "/dashboard/roles",
+      icon: <ShieldCheckIcon />,
     },
     {
       title: "Settings",
