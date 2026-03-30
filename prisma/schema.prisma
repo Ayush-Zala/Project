@@ -7,40 +7,74 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── AUTH ────────────────────────────────────────────────
+
 model User {
-  id            Int       @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   name          String
-  email         String    @unique
-  emailVerified Boolean
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  isActive      Boolean  @default(true)
   image         String?
-  createdAt     DateTime
-  updatedAt     DateTime
-  sessions      Session[]
-  accounts      Account[]
+  createdBy     Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Self-relation: admin who created this user
+  createdByUser   User?  @relation("UserCreatedBy", fields: [createdBy], references: [id])
+  createdUsers    User[] @relation("UserCreatedBy")
+
+  // Auth
+  sessions        Session[]
+  accounts        Account[]
+
+  // RBAC
+  userRoles           UserRole[]         @relation("UserToUserRole")
+  userPermissions     UserPermission[]   @relation("UserToUserPermission")
+
+  // Audit trail (who performed the action)
+  auditLogs           AuditLog[]         @relation("AuditLogActor")
+
+  // Activity log
+  activityLogs        ActivityLog[]
+
+  // Junction table audit (who granted the role/permission)
+  grantedUserRoles        UserRole[]       @relation("UserRoleGrantedBy")
+  grantedUserPermissions  UserPermission[] @relation("UserPermissionGrantedBy")
+  grantedRolePermissions  RolePermission[] @relation("RolePermissionGrantedBy")
+
+  // RBAC entity audit trails
+  createdRoles        Role[]       @relation("RoleCreatedBy")
+  updatedRoles        Role[]       @relation("RoleUpdatedBy")
+  createdPermissions  Permission[] @relation("PermissionCreatedBy")
+  updatedPermissions  Permission[] @relation("PermissionUpdatedBy")
+
+  // AuditLog createdBy
+  auditLogsCreated    AuditLog[]   @relation("AuditLogCreatedBy")
 
   @@map("user")
 }
 
 model Session {
   id        Int      @id @default(autoincrement())
-  expiresAt DateTime
+  userId    Int
   token     String   @unique
-  createdAt DateTime
-  updatedAt DateTime
   ipAddress String?
   userAgent String?
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
 }
 
 model Account {
   id                    Int       @id @default(autoincrement())
-  accountId             String
-  providerId            String
   userId                Int
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId            String
+  accountId             String
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -48,8 +82,10 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime
-  updatedAt             DateTime
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -59,8 +95,182 @@ model Verification {
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime?
-  updatedAt  DateTime?
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
 
   @@map("verification")
+}
+
+// ─── RBAC CORE ───────────────────────────────────────────
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  colorCode   String?
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Self-relation: role inheritance
+  parentId    Int?
+  parent      Role?  @relation("RoleInheritance", fields: [parentId], references: [id])
+  children    Role[] @relation("RoleInheritance")
+
+  // Audit
+  createdByUser User? @relation("RoleCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("RoleUpdatedBy", fields: [updatedBy], references: [id])
+
+  // Junctions
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@map("role")
+}
+
+model Permission {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  slug        String   @unique // e.g. users:create
+  resource    String   // e.g. users, roles, reports
+  action      String   // create|read|update|delete|manage
+  description String?
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Audit
+  createdByUser User? @relation("PermissionCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("PermissionUpdatedBy", fields: [updatedBy], references: [id])
+
+  // Junctions
+  userPermissions UserPermission[]
+  rolePermissions RolePermission[]
+
+  @@map("permission")
+}
+
+// ─── JUNCTION TABLES ─────────────────────────────────────
+
+model UserRole {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  roleId    Int
+  isActive  Boolean  @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User  @relation("UserToUserRole", fields: [userId], references: [id], onDelete: Cascade)
+  role          Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("UserRoleGrantedBy", fields: [createdBy], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("user_role")
+}
+
+model UserPermission {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  permissionId Int
+  isActive     Boolean  @default(true)
+  createdBy    Int?
+  updatedBy    Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user          User       @relation("UserToUserPermission", fields: [userId], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdByUser User?      @relation("UserPermissionGrantedBy", fields: [createdBy], references: [id])
+
+  @@unique([userId, permissionId])
+  @@map("user_permission")
+}
+
+model RolePermission {
+  id           Int      @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  isActive     Boolean  @default(true)
+  createdBy    Int?
+  updatedBy    Int?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  role          Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  createdByUser User?      @relation("RolePermissionGrantedBy", fields: [createdBy], references: [id])
+
+  @@unique([roleId, permissionId])
+  @@map("role_permission")
+}
+
+// ─── AUDIT & LOGS ─────────────────────────────────────────
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  action    AuditAction
+  resource  AuditResource
+  metaData  Json     // stores before & after snapshot with entity ID
+  ipAddress String?
+  userAgent String?
+  status    AuditStatus
+  reason    String?  // failure reason
+  createdBy Int?
+  createdAt DateTime @default(now())
+
+  user          User  @relation("AuditLogActor", fields: [userId], references: [id])
+  createdByUser User? @relation("AuditLogCreatedBy", fields: [createdBy], references: [id])
+
+  @@map("audit_log")
+}
+
+model ActivityLog {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  eventTime   DateTime      @default(now())
+  eventType   ActivityEvent
+  description String?
+  ipAddress   String?
+  userAgent   String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("activity_log")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  ASSIGN_ROLE
+  ASSIGN_PERMISSION
+  TOGGLE_STATUS
+  ROLE_PERMISSION
+}
+
+enum AuditResource {
+  USER
+  ROLE
+  PERMISSION
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+}
+
+enum ActivityEvent {
+  LOGIN
+  LOGOUT
+  PERMISSION_DENIED
 }
