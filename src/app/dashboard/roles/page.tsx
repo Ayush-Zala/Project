@@ -153,9 +153,19 @@ export default function RolesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by name, slug..." 
-              className="pl-10 w-full md:w-[300px] bg-background/50 border-border/40 focus:border-primary/50 transition-all rounded-xl"
+              className="pl-10 w-full md:w-[280px] bg-background/50 border-border/40 focus:border-primary/50 transition-all rounded-xl"
             />
           </div>
+          <Button 
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="border-border/40 hover:bg-muted/50 rounded-xl h-10 w-10 text-muted-foreground hover:text-primary transition-all active:scale-95"
+            title="Sync Manifest"
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
           <Button 
             onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"

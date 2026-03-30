@@ -179,6 +179,16 @@ export default function UsersPage() {
               />
             </div>
             <Button 
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="border-border/40 hover:bg-muted/50 rounded-xl h-10 w-10 text-muted-foreground hover:text-primary transition-all active:scale-95"
+              title="Sync Manifest"
+            >
+              <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button 
               onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
             >
@@ -220,7 +230,7 @@ export default function UsersPage() {
                 users.map((user, index) => (
                   <TableRow key={user.id} className="border-border/40 hover:bg-muted/20 transition-colors group">
                     <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                       #{(pagination.page - 1) * pagination.limit + index + 1}
+                       #{((pagination?.page || 1) - 1) * (pagination?.limit || 10) + index + 1}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -350,20 +360,6 @@ export default function UsersPage() {
                 </Button>
              </div>
           </div>
-        </div>
-
-        {/* Utility help footer */}
-        <div className="flex items-center justify-center gap-4 py-4">
-           <Button 
-             variant="ghost" 
-             size="sm" 
-             className="text-[11px] uppercase tracking-widest font-bold text-muted-foreground hover:text-primary transition-all flex gap-2 active:scale-95"
-             onClick={handleRefresh}
-             disabled={isRefreshing}
-           >
-              <RefreshCwIcon className={`h-3 w-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Sync Manifest
-           </Button>
         </div>
       </div>
 
