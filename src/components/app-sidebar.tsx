@@ -17,7 +17,8 @@ import {
 import {
   Settings2Icon,
   LayoutDashboardIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  UsersIcon
 } from "lucide-react"
 
 // Simplified navigation data
@@ -32,6 +33,11 @@ const data = {
       title: "Roles",
       url: "/dashboard/roles",
       icon: <ShieldCheckIcon />,
+    },
+    {
+      title: "Users",
+      url: "/dashboard/users",
+      icon: <UsersIcon />,
     },
     {
       title: "Settings",
