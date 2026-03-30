@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState } from "react";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/Button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -102,7 +102,7 @@ export default function VerifyEmailPage() {
             )}
             {status === "error" && (
               <div className="flex flex-col gap-4 w-full">
-                <Button asChild variant="noir" className="w-full">
+                <Button asChild className="w-full">
                   <Link href="/signup">Create a new account</Link>
                 </Button>
                 <Link
