@@ -21,8 +21,13 @@ import { motion } from "framer-motion"
 
 export default function DashboardPage() {
   const { data: session, isPending } = authClient.useSession()
+  const [mounted, setMounted] = React.useState(false)
 
-  if (isPending) {
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (isPending || !mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <motion.div
@@ -80,11 +85,11 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground mt-1">Premium Protected</p>
              </div>
              <div className="aspect-video rounded-2xl bg-muted/30 border border-border/40 flex flex-col items-center justify-center p-6 text-center group hover:border-primary/50 transition-colors">
-                 <div className="w-12 h-12 rounded-xl bg-primary/10 mb-4 flex items-center justify-center text-primary font-bold">
-                    {new Date().getDate()}
-                 </div>
-                 <h3 className="font-semibold">Last Login</h3>
-                 <p className="text-sm text-muted-foreground mt-1">Today, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 mb-4 flex items-center justify-center text-primary font-bold">
+                     {new Date().getDate()}
+                  </div>
+                  <h3 className="font-semibold">Last Login</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Today, {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
              </div>
              <div className="aspect-video rounded-2xl bg-muted/30 border border-border/40 flex flex-col items-center justify-center p-6 text-center group hover:border-primary/50 transition-colors">
                 <div className="w-12 h-12 rounded-xl bg-primary/10 mb-4 flex items-center justify-center">

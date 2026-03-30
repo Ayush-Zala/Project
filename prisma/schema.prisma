@@ -17,8 +17,8 @@ model User {
   isActive      Boolean  @default(true)
   image         String?
   createdBy     Int?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt     BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   // Self-relation: admin who created this user
   createdByUser   User?  @relation("UserCreatedBy", fields: [createdBy], references: [id])
@@ -61,9 +61,9 @@ model Session {
   token     String   @unique
   ipAddress String?
   userAgent String?
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt BigInt
+  createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -78,12 +78,12 @@ model Account {
   accessToken           String?
   refreshToken          String?
   idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
+  accessTokenExpiresAt  BigInt?
+  refreshTokenExpiresAt BigInt?
   scope                 String?
   password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
+  createdAt             BigInt    @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt             BigInt    @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -94,9 +94,9 @@ model Verification {
   id         Int       @id @default(autoincrement())
   identifier String
   value      String
-  expiresAt  DateTime
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
+  expiresAt  BigInt
+  createdAt  BigInt?   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt  BigInt?   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   @@map("verification")
 }
@@ -112,8 +112,8 @@ model Role {
   isActive    Boolean  @default(true)
   createdBy   Int?
   updatedBy   Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   // Self-relation: role inheritance
   parentId    Int?
@@ -141,8 +141,8 @@ model Permission {
   isActive    Boolean  @default(true)
   createdBy   Int?
   updatedBy   Int?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   // Audit
   createdByUser User? @relation("PermissionCreatedBy", fields: [createdBy], references: [id])
@@ -164,8 +164,8 @@ model UserRole {
   isActive  Boolean  @default(true)
   createdBy Int?
   updatedBy Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   user          User  @relation("UserToUserRole", fields: [userId], references: [id], onDelete: Cascade)
   role          Role  @relation(fields: [roleId], references: [id], onDelete: Cascade)
@@ -182,8 +182,8 @@ model UserPermission {
   isActive     Boolean  @default(true)
   createdBy    Int?
   updatedBy    Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   user          User       @relation("UserToUserPermission", fields: [userId], references: [id], onDelete: Cascade)
   permission    Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
@@ -200,8 +200,8 @@ model RolePermission {
   isActive     Boolean  @default(true)
   createdBy    Int?
   updatedBy    Int?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   role          Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission    Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
@@ -224,7 +224,7 @@ model AuditLog {
   status    AuditStatus
   reason    String?  // failure reason
   createdBy Int?
-  createdAt DateTime @default(now())
+  createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
   user          User  @relation("AuditLogActor", fields: [userId], references: [id])
   createdByUser User? @relation("AuditLogCreatedBy", fields: [createdBy], references: [id])
@@ -235,7 +235,7 @@ model AuditLog {
 model ActivityLog {
   id          Int           @id @default(autoincrement())
   userId      Int
-  eventTime   DateTime      @default(now())
+  eventTime   BigInt        @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
   eventType   ActivityEvent
   description String?
   ipAddress   String?
