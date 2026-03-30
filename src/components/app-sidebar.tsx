@@ -15,10 +15,10 @@ import {
   SidebarGroupLabel, // Added SidebarGroupLabel import
 } from "@/components/ui/sidebar"
 import {
-  Settings2Icon,
   LayoutDashboardIcon,
   ShieldCheckIcon,
-  UsersIcon
+  UsersIcon,
+  UserCircleIcon
 } from "lucide-react"
 
 // Simplified navigation data
@@ -40,23 +40,9 @@ const data = {
       icon: <UsersIcon />,
     },
     {
-      title: "Settings",
-      url: "#",
-      icon: <Settings2Icon />,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Account",
-          url: "#",
-        },
-        {
-          title: "Security",
-          url: "#",
-        },
-      ],
+      title: "Profile",
+      url: "/dashboard/profile",
+      icon: <UserCircleIcon />,
     },
   ],
 }

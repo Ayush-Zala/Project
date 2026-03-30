@@ -19,14 +19,25 @@ import { authClient } from "@/lib/auth-client"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { motion } from "framer-motion"
+import { useSocket } from "@/providers/socket-provider"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { data: session, isPending } = authClient.useSession()
+  const { data: session, isPending, refetch } = authClient.useSession()
   const [mounted, setMounted] = React.useState(false)
+  const { useEvent } = useSocket()
+
+  // 🔌 Real-time Session Sync
+  // When 'USERS_CHANGED' is emitted (e.g. by our profile update API),
+  // we check if it's our profile and refetch if needed.
+  useEvent("USERS_CHANGED", React.useCallback((data: any) => {
+    if (data.userId === Number(session?.user?.id)) {
+      refetch()
+    }
+  }, [session?.user?.id, refetch]))
 
   React.useEffect(() => {
     setMounted(true)
