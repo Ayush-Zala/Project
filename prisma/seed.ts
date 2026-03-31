@@ -10,30 +10,18 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("Industrial Seed: Provisioning Core System Assets...");
+  console.log("Industrial Seed: Provisioning Simplified RBAC Manifest...");
 
   const epochNow = BigInt(Date.now());
 
-  // 1. Roles
+  // 1. Roles (Single source of truth: Super Admin only)
   const roles = [
     {
       name: "Super Admin",
       slug: "super-admin",
       description: "Highest-level role with complete control over system operations.",
       colorCode: "#DC2626",
-    },
-    {
-      name: "Admin",
-      slug: "admin",
-      description: "System administration with limited sensitive access.",
-      colorCode: "#2563EB",
-    },
-    {
-      name: "Manager",
-      slug: "manager",
-      description: "Operational management within specific departments.",
-      colorCode: "#059669",
-    },
+    }
   ];
 
   const roleIDs: Record<string, number> = {};
@@ -52,24 +40,48 @@ async function main() {
     roleIDs[r.slug] = role.id;
   }
 
-  // 2. Permissions
+  // 2. Permission Matrix (Users, Roles, Permissions)
   const resources = ["users", "roles", "permissions"];
   const actions = ["create", "read", "update", "delete", "toggle", "assign_permission", "assign_role"];
 
   for (const resource of resources) {
     for (const action of actions) {
+      // Filter out invalid combinations if any
       if (resource === "permissions" && (action === "assign_permission" || action === "assign_role")) continue;
 
       const slug = `${resource}:${action}`;
-      const name = `${action.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')} ${resource}`;
       
+      // 🏷️ Human-readable label & description mapping
+      let name = "";
+      let description = "";
+      const actionLabel = action.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      const resourceLabel = resource.charAt(0).toUpperCase() + resource.slice(1, -1); // Singularize (Users -> User)
+
+      if (action === "assign_permission") {
+        name = `Assign Permissions to ${resource === "users" ? "User" : "Role"}`;
+        description = `Grants the ability to manage granular capability assignments for individual ${resource}.`;
+      } else if (action === "assign_role") {
+        name = resource === "users" ? "Assign Role to User" : "Manage Role Hierarchy";
+        description = `Allows ${resource === "users" ? "binding users to specific security roles" : "configuring parent-child relationships between roles"}.`;
+      } else if (action === "toggle") {
+        name = `Toggle ${resourceLabel} Status`;
+        description = `Provides the capability to suspend or activate ${resource} without deleting data.`;
+      } else if (action === "read") {
+        name = `View ${resourceLabel} Manifest`;
+        description = `Full read-only access to browse and search the ${resource} registry.`;
+      } else {
+        name = `${actionLabel} ${resourceLabel}`;
+        description = `Grants authorization to ${action} ${resource} within the industrial dashboard.`;
+      }
+
       const permission = await prisma.permission.upsert({
         where: { slug },
-        update: { name }, // Ensure name is pretty
+        update: { name, description },
         create: {
           name,
           slug,
           resource,
+          description,
           action,
           isActive: true,
           createdAt: epochNow,
@@ -77,7 +89,7 @@ async function main() {
         },
       });
 
-      // 3. Assign to Roles (Super Admin gets all)
+      // 3. Absolute Authorization: Grant everything to Super Admin
       await prisma.rolePermission.upsert({
         where: { roleId_permissionId: { roleId: roleIDs["super-admin"], permissionId: permission.id } },
         update: {},
@@ -89,40 +101,10 @@ async function main() {
           updatedAt: epochNow,
         },
       });
-
-      // 4. Admin Permissions (Most except permissions management and roles:delete)
-      if (resource !== "permissions" && !(resource === "roles" && action === "delete")) {
-          await prisma.rolePermission.upsert({
-            where: { roleId_permissionId: { roleId: roleIDs["admin"], permissionId: permission.id } },
-            update: {},
-            create: {
-              roleId: roleIDs["admin"],
-              permissionId: permission.id,
-              isActive: true,
-              createdAt: epochNow,
-              updatedAt: epochNow,
-            },
-          });
-      }
-
-      // 5. Manager Permissions (Read-only + simple user updates)
-      if (action === "read" || (resource === "users" && (action === "update" || action === "toggle"))) {
-          await prisma.rolePermission.upsert({
-            where: { roleId_permissionId: { roleId: roleIDs["manager"], permissionId: permission.id } },
-            update: {},
-            create: {
-              roleId: roleIDs["manager"],
-              permissionId: permission.id,
-              isActive: true,
-              createdAt: epochNow,
-              updatedAt: epochNow,
-            },
-          });
-      }
     }
   }
 
-  // 6. Assign Super Admin to the first user found (Bootstrap)
+  // 4. Boostrap: Auto-elevate first user
   const firstUser = await prisma.user.findFirst();
   if (firstUser) {
     await prisma.userRole.upsert({
@@ -136,13 +118,10 @@ async function main() {
         updatedAt: epochNow,
       },
     });
-    console.log(`BOOTSTRAP: Assigned Super Admin role to ${firstUser.email}`);
-  } else {
-    console.log("BOOTSTRAP: No users found. Please sign up then run seed again.");
+    console.log(`BOOTSTRAP: Elevated ${firstUser.email} to Super Admin.`);
   }
 
-  console.log("Super Admin Manifested & Permissions Primed.");
-  console.log("Seeding Protocol Complete.");
+  console.log("RBAC Manifest Deployed Successfully.");
 }
 
 main()
