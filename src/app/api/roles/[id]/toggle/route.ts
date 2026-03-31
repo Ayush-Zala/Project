@@ -25,11 +25,22 @@ export async function PATCH(
   try {
     const role = await (prisma as any).role.findUnique({
       where: { id },
-      select: { isActive: true }
+      select: { 
+        isActive: true,
+        slug: true
+      }
     });
 
     if (!role) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
+    }
+
+    // 🛡️ SECURITY GUARD: Prevent deactivation of Super Admin
+    if (role.slug === 'super-admin' && role.isActive) {
+      return NextResponse.json(
+        { error: "The Super Admin role is protected and cannot be deactivated." }, 
+        { status: 403 }
+      );
     }
 
     const updatedRole = await (prisma as any).role.update({

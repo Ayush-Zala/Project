@@ -1,11 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { 
-  UserPlusIcon, 
-  SearchIcon, 
-  PencilIcon, 
-  Trash2Icon, 
+import {
+  UserPlusIcon,
+  SearchIcon,
+  PencilIcon,
+  Trash2Icon,
   KeyIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -124,7 +124,7 @@ export default function UsersPage() {
         const error = await res.json()
         throw new Error(error.error || "Failed to toggle status")
       }
-      
+
       const updated = await res.json()
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, isActive: updated.isActive } : u))
       toast.success(`${user.name} is now ${updated.isActive ? 'active' : 'inactive'}`)
@@ -157,13 +157,13 @@ export default function UsersPage() {
         {/* Header & Search */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-          
+
           <div className="flex flex-col gap-2 relative z-10">
             <div className="flex items-center gap-3">
-               <div className="p-2 bg-primary/10 rounded-lg">
-                  <UserIcon className="h-6 w-6 text-primary" />
-               </div>
-               <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Accounts</h1>
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <UserIcon className="h-6 w-6 text-primary" />
+              </div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Accounts</h1>
             </div>
             <p className="text-muted-foreground ml-11">Provision and manage administrative and employee accounts.</p>
           </div>
@@ -171,14 +171,14 @@ export default function UsersPage() {
           <div className="flex items-center gap-3 relative z-10">
             <div className="relative group">
               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input 
+              <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Name or email..." 
+                placeholder="Name or email..."
                 className="pl-10 w-full md:w-[280px] bg-background/50 border-border/40 focus:border-primary/50 transition-all rounded-xl"
               />
             </div>
-            <Button 
+            <Button
               variant="outline"
               size="icon"
               onClick={handleRefresh}
@@ -188,7 +188,7 @@ export default function UsersPage() {
             >
               <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button 
+            <Button
               onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
             >
@@ -203,8 +203,8 @@ export default function UsersPage() {
           {isLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
-                 <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
-                 <span className="text-sm font-medium tracking-widest uppercase">Syncing Users</span>
+                <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
+                <span className="text-sm font-medium tracking-widest uppercase">Syncing Users</span>
               </div>
             </div>
           )}
@@ -230,30 +230,30 @@ export default function UsersPage() {
                 users.map((user, index) => (
                   <TableRow key={user.id} className="border-border/40 hover:bg-muted/20 transition-colors group">
                     <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                       #{((pagination?.page || 1) - 1) * (pagination?.limit || 10) + index + 1}
+                      #{((pagination?.page || 1) - 1) * (pagination?.limit || 10) + index + 1}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                         <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden shrink-0">
-                            {user.image ? (
-                              <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <span className="text-sm font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
-                            )}
-                         </div>
-                         <div className="flex flex-col">
-                            <span className="font-bold text-sm text-foreground">{user.name}</span>
-                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                               <MailIcon className="h-3 w-3" />
-                               {user.email}
-                            </div>
-                         </div>
+                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden shrink-0">
+                          {user.image ? (
+                            <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-sm font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-foreground">{user.name}</span>
+                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                            <MailIcon className="h-3 w-3" />
+                            {user.email}
+                          </div>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       {user.role ? (
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="rounded-lg px-2 py-0.5 border-primary/20 bg-primary/5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit"
                           style={{ borderColor: `${user.role.colorCode}40`, color: user.role.colorCode, backgroundColor: `${user.role.colorCode}10` }}
                         >
@@ -266,8 +266,9 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell className="text-center">
                       <div className="flex items-center justify-center gap-3">
-                        <Switch 
-                          checked={user.isActive} 
+                        <Switch
+                          checked={user.isActive}
+                          disabled={user.role?.slug === 'super-admin'}
                           onCheckedChange={() => handleToggleStatus(user)}
                         />
                         <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
@@ -290,21 +291,21 @@ export default function UsersPage() {
                               Account Control
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40" />
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
                               onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
                             >
                               <PencilIcon className="h-3.5 w-3.5" />
                               <span>Edit Details</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
                               onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
                             >
                               <ShieldIcon className="h-3.5 w-3.5" />
                               <span>Change Role</span>
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
                               onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
                             >
@@ -314,7 +315,7 @@ export default function UsersPage() {
                           </DropdownMenuGroup>
                           <DropdownMenuSeparator className="bg-border/40" />
                           <DropdownMenuGroup>
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
                               onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
                             >
@@ -333,57 +334,57 @@ export default function UsersPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between gap-4 px-6 py-4 bg-muted/10 border-t border-border/40">
-             <p className="text-xs text-muted-foreground italic">
-                Showing <span className="font-bold text-foreground">{users.length}</span> of <span className="font-bold text-foreground">{pagination.total}</span> accounts
-             </p>
-             <div className="flex items-center gap-2">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg border-border/40"
-                  disabled={pagination.page <= 1 || isLoading}
-                  onClick={() => fetchUsers(pagination.page - 1)}
-                >
-                  <ChevronLeftIcon className="h-4 w-4" />
-                </Button>
-                <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                   {pagination.page}
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className="h-8 w-8 rounded-lg border-border/40"
-                  disabled={pagination.page >= pagination.totalPages || isLoading}
-                  onClick={() => fetchUsers(pagination.page + 1)}
-                >
-                  <ChevronRightIcon className="h-4 w-4" />
-                </Button>
-             </div>
+            <p className="text-xs text-muted-foreground italic">
+              Showing <span className="font-bold text-foreground">{users.length}</span> of <span className="font-bold text-foreground">{pagination.total}</span> accounts
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg border-border/40"
+                disabled={pagination.page <= 1 || isLoading}
+                onClick={() => fetchUsers(pagination.page - 1)}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                {pagination.page}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg border-border/40"
+                disabled={pagination.page >= pagination.totalPages || isLoading}
+                onClick={() => fetchUsers(pagination.page + 1)}
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Dialogs */}
-      <UserDialog 
+      <UserDialog
         open={isUserDialogOpen}
         onOpenChange={setIsUserDialogOpen}
         user={selectedUser}
         roles={availableRoles}
         onSuccess={() => fetchUsers(pagination.page)}
       />
-      <DeleteUserDialog 
+      <DeleteUserDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         user={selectedUser}
         onSuccess={() => fetchUsers(pagination.page)}
       />
-      <ChangePasswordDialog 
+      <ChangePasswordDialog
         open={isPasswordDialogOpen}
         onOpenChange={setIsPasswordDialogOpen}
         user={selectedUser}
         onSuccess={() => fetchUsers(pagination.page)}
       />
-      <AssignRoleDialog 
+      <AssignRoleDialog
         open={isRoleDialogOpen}
         onOpenChange={setIsRoleDialogOpen}
         user={selectedUser}
