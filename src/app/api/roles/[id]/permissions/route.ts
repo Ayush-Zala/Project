@@ -24,7 +24,10 @@ export async function GET(
   const roleId = parseInt(idStr);
   if (isNaN(roleId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  const allowed = await hasPermission(Number(session.user.id), "roles:read");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "roles:read") || 
+                  await hasPermission(userId, "roles:assign_permission");
+  
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

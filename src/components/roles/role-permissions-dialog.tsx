@@ -37,14 +37,24 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
       // 1. Fetch all active permissions
       const allRes = await fetch("/api/permissions/search")
       const allData = await allRes.json()
-      setAllPermissions(allData.filter((p: any) => p.isActive))
+      
+      if (Array.isArray(allData)) {
+        setAllPermissions(allData.filter((p: any) => p.isActive))
+      } else {
+        throw new Error(allData.error || "Failed to load complete permission manifest")
+      }
 
       // 2. Fetch current permissions for this role
       const roleRes = await fetch(`/api/roles/${role.id}/permissions`)
       const roleData = await roleRes.json()
-      setSelectedIds(roleData.map((rp: any) => rp.permissionId))
-    } catch (error) {
-      toast.error("Failed to load permissions manifest")
+
+      if (Array.isArray(roleData)) {
+        setSelectedIds(roleData.map((rp: any) => rp.permissionId))
+      } else {
+        throw new Error(roleData.error || "Failed to load role assignments")
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load permissions manifest")
     } finally {
       setIsLoading(false)
     }

@@ -11,7 +11,10 @@ export async function GET(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const allowed = await hasPermission(Number(session.user.id), "permissions:read");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "permissions:read") || 
+                  await hasPermission(userId, "roles:assign_permission");
+  
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
@@ -25,7 +28,7 @@ export async function GET(req: Request) {
           { slug: { contains: query, mode: "insensitive" } },
         ]
       } : {},
-      take: 20,
+      take: 1000,
       orderBy: { slug: "asc" },
       select: {
         id: true,
