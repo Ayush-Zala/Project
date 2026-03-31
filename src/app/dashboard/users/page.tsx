@@ -281,11 +281,11 @@ export default function UsersPage() {
                       <div className="flex items-center justify-center gap-3">
                         <Switch
                           checked={user.isActive}
-                          disabled={user.role?.slug === 'super-admin' || !canToggle}
+                          disabled={!user.isToggleable || !canToggle}
                           onCheckedChange={() => handleToggleStatus(user)}
                         />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : (canToggle ? 'text-red-500' : 'text-muted-foreground')}`}>
-                          {user.isActive ? 'Active' : (canToggle ? 'Suspended' : 'Locked')}
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : (!user.isToggleable ? 'text-muted-foreground' : (canToggle ? 'text-red-500' : 'text-muted-foreground'))}`}>
+                          {user.isActive ? 'Active' : (!user.isToggleable ? 'Protected' : (canToggle ? 'Suspended' : 'Locked'))}
                         </span>
                       </div>
                     </TableCell>
@@ -300,14 +300,16 @@ export default function UsersPage() {
                         />
                         <DropdownMenuContent align="end" className="w-[180px] bg-popover border-border/40">
                           <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5">
-                              Account Control
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
+                               Account Control
+                               {!user.isToggleable && <Badge variant="outline" className="bg-muted px-1.5 py-0 text-[8px] border-none text-muted-foreground">LOCKED</Badge>}
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40" />
                             
                             {canUpdate && (
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                disabled={!user.isToggleable}
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
                               >
                                 <PencilIcon className="h-3.5 w-3.5" />
@@ -317,7 +319,8 @@ export default function UsersPage() {
 
                             {canAssignRole && (
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                disabled={!user.isToggleable}
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
                               >
                                 <ShieldIcon className="h-3.5 w-3.5" />
@@ -327,7 +330,8 @@ export default function UsersPage() {
 
                             {canUpdate && (
                               <DropdownMenuItem
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                disabled={!user.isToggleable}
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                 onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
                               >
                                 <KeyIcon className="h-3.5 w-3.5" />
@@ -351,7 +355,8 @@ export default function UsersPage() {
                               <DropdownMenuSeparator className="bg-border/40" />
                               <DropdownMenuGroup>
                                 <DropdownMenuItem
-                                  className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
+                                  disabled={!user.isToggleable}
+                                  className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                   onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
                                 >
                                   <Trash2Icon className="h-3.5 w-3.5" />

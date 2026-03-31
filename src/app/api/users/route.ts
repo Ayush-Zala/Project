@@ -21,9 +21,11 @@ const userCreateSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "Security Protocol: Special character missing"),
 });
 
-// ─────────────────────────────────────────────────────────────
-// GET /api/users  — Paginated list with assigned role
-// ─────────────────────────────────────────────────────────────
+import { isRoleAssignableBy, isUserToggleableBy } from "@/lib/hierarchy";
+
+/**
+ * GET: Handles paginated list and search functionality for users.
+ */
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
 
@@ -32,7 +34,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "users:read");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "users:read");
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden: You do not have users:read access" }, { status: 403 });
   }
@@ -82,11 +85,13 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    const normalized = users.map((u: any) => ({
+    // 🛡️ Hierarchy Check: Determine toggleability for the current user
+    const normalized = await Promise.all(users.map(async (u: any) => ({
       ...u,
       role: u.userRoles[0]?.role ?? null,
       userRoles: undefined,
-    }));
+      isToggleable: await isUserToggleableBy(u.id, userId)
+    })));
 
     return NextResponse.json({
       users: normalized,
@@ -102,8 +107,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-
-import { isRoleAssignableBy } from "@/lib/hierarchy";
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/users  — Create a new user 

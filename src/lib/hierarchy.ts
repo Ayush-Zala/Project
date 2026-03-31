@@ -136,3 +136,54 @@ export async function isRoleAssignableBy(targetRoleId: number, currentUserId: nu
 
   return true;
 }
+
+/**
+ * Determine if a user is allowed to toggle the status (Active/Inactive) of another user.
+ * 
+ * Rule:
+ * - Cannot toggle a user who has the SAME role as you.
+ * - Cannot toggle a user who has a PARENT role of yours.
+ * - This prevents an Admin from deactivating another Admin or a Super Admin.
+ */
+export async function isUserToggleableBy(targetUserId: number, currentUserId: number): Promise<boolean> {
+  if (targetUserId === currentUserId) return false; 
+
+  const [currentUser, targetUser] = await Promise.all([
+    (prisma as any).user.findUnique({
+      where: { id: currentUserId },
+      include: { userRoles: { where: { isActive: true }, include: { role: true } } }
+    }),
+    (prisma as any).user.findUnique({
+      where: { id: targetUserId },
+      include: { userRoles: { where: { isActive: true }, include: { role: true } } }
+    })
+  ]);
+
+  if (!currentUser || !targetUser || !currentUser.isActive) return false;
+
+  const currentUserRoles = currentUser.userRoles.map((ur: any) => ur.role);
+  const targetUserRoles = targetUser.userRoles.map((ur: any) => ur.role);
+
+  const isSuperAdmin = currentUserRoles.some((r: any) => r.slug === 'super-admin');
+  if (isSuperAdmin) return true;
+
+  // 1. Peer-Protection: Cannot toggle if target has any of your roles
+  const currentUserRoleIds = currentUserRoles.map((r: any) => r.id);
+  const hasSameRole = targetUserRoles.some((tr: any) => currentUserRoleIds.includes(tr.id));
+  if (hasSameRole) return false;
+
+  // 2. Hierarchy-Protection: Cannot toggle if target has a parent role of yours
+  for (const uRole of currentUserRoles) {
+    let currentParentId = uRole.parentId;
+    while (currentParentId) {
+       if (targetUserRoles.some((tr: any) => tr.id === currentParentId)) return false; 
+       const p = await (prisma as any).role.findUnique({ 
+         where: { id: currentParentId }, 
+         select: { parentId: true } 
+       });
+       currentParentId = p?.parentId;
+    }
+  }
+
+  return true;
+}

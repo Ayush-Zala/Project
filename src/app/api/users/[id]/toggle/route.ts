@@ -5,6 +5,8 @@ import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
 import { hasPermission } from "@/lib/rbac";
 
+import { isUserToggleableBy } from "@/lib/hierarchy";
+
 /**
  * PATCH: Toggles the isActive status of a user.
  */
@@ -18,7 +20,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "users:toggle");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "users:toggle");
   if (!allowed) return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
 
   const id = parseInt(idStr);
@@ -26,8 +29,14 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
   }
 
+  // 🛡️ Hierarchy Check: Cannot toggle if target is Peer or Superior
+  const canToggle = await isUserToggleableBy(id, userId);
+  if (!canToggle) {
+     return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot toggle status for your peers or superiors." }, { status: 403 });
+  }
+
   // Prevent self-toggle
-  if (Number(session.user.id) === id) {
+  if (userId === id) {
     return NextResponse.json({ error: "You cannot deactivate your own account" }, { status: 400 });
   }
 
