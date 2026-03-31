@@ -103,6 +103,8 @@ export async function GET(req: Request) {
   }
 }
 
+import { isRoleAssignableBy } from "@/lib/hierarchy";
+
 // ─────────────────────────────────────────────────────────────
 // POST /api/users  — Create a new user 
 // ─────────────────────────────────────────────────────────────
@@ -112,7 +114,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "users:create");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "users:create");
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
   }
@@ -126,6 +129,12 @@ export async function POST(req: Request) {
     }
 
     const { name, email, password, roleId } = result.data;
+
+    // 🛡️ Hierarchy Check: Cannot assign parent roles
+    const canAssign = await isRoleAssignableBy(Number(roleId), userId);
+    if (!canAssign) {
+       return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
+    }
 
     // Unique-email guard
     const existing = await (prisma as any).user.findUnique({ where: { email } });
@@ -148,7 +157,7 @@ export async function POST(req: Request) {
           email,
           emailVerified: true,
           isActive: true,
-          createdBy: Number(session.user.id),
+          createdBy: userId,
         },
       });
 

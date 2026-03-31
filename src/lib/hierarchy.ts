@@ -95,3 +95,44 @@ export async function getUserCapabilities(userId: number): Promise<string[]> {
   
   return Array.from(new Set([...rolePerms, ...directPerms]));
 }
+
+/**
+ * Determine if a user is allowed to assign a specific role to someone else.
+ * 
+ * Rule: 
+ * - Cannot assign a role that is a parent/ancestor of your own roles.
+ * - This prevents an Admin from creating a Super Admin.
+ */
+export async function isRoleAssignableBy(targetRoleId: number, currentUserId: number): Promise<boolean> {
+  const user = await (prisma as any).user.findUnique({
+    where: { id: currentUserId },
+    include: {
+      userRoles: {
+        where: { isActive: true },
+        include: { role: true }
+      }
+    }
+  });
+
+  if (!user || !user.isActive) return false;
+
+  const userRoles = user.userRoles.map((ur: any) => ur.role);
+  const isSuperAdmin = userRoles.some((r: any) => r.slug === 'super-admin');
+  
+  if (isSuperAdmin) return true;
+
+  // Check if target is an ancestor of any of user's roles
+  for (const uRole of userRoles) {
+    let currentParentId = uRole.parentId;
+    while (currentParentId) {
+       if (currentParentId === targetRoleId) return false; // Target is an ancestor!
+       const p = await (prisma as any).role.findUnique({ 
+         where: { id: currentParentId }, 
+         select: { parentId: true } 
+       });
+       currentParentId = p?.parentId;
+    }
+  }
+
+  return true;
+}

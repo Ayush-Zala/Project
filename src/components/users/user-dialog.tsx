@@ -57,7 +57,7 @@ interface UserDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user?: any // Selected user for editing
-  roles: { id: number; name: string }[]
+  roles: { id: number; name: string; isAssignable?: boolean }[]
   onSuccess: () => void
 }
 
@@ -212,13 +212,15 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                           <SelectValue placeholder="Assign a security role" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-popover border-border/40">
-                        {roles.map((r) => (
-                          <SelectItem key={r.id} value={r.id.toString()}>
-                            {r.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                        <SelectContent className="bg-popover border-border/40 max-h-[300px]">
+                          {roles
+                            .filter((r) => r.isAssignable !== false)
+                            .map((r) => (
+                              <SelectItem key={r.id} value={r.id.toString()}>
+                                {r.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
                     </Select>
                     <FormDescription className="text-[10px]">Determines baseline access permissions</FormDescription>
                     <FormMessage />

@@ -19,7 +19,7 @@ const roleCreateSchema = z.object({
   ),
 });
 
-import { isRoleManagedBy } from "@/lib/hierarchy";
+import { isRoleManagedBy, isRoleAssignableBy } from "@/lib/hierarchy";
 
 /**
  * GET: Handles paginated list and search functionality for roles.
@@ -67,10 +67,11 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    // 🛡️ Hierarchy Check: Determine manageability for the current user
+    // 🛡️ Hierarchy Check: Determine manageability and assignability for the current user
     const enrichedRoles = await Promise.all(roles.map(async (role: any) => ({
       ...role,
-      isManageable: await isRoleManagedBy(role.id, userId)
+      isManageable: await isRoleManagedBy(role.id, userId),
+      isAssignable: await isRoleAssignableBy(role.id, userId)
     })));
 
     return NextResponse.json({

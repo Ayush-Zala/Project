@@ -50,6 +50,8 @@ export async function GET(
   return NextResponse.json(user);
 }
 
+import { isRoleAssignableBy } from "@/lib/hierarchy";
+
 // ─────────────────────────────────────────────────────────────
 // PATCH /api/users/[id]  — Update name / email
 // ─────────────────────────────────────────────────────────────
@@ -61,15 +63,24 @@ export async function PATCH(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const allowed = await hasPermission(Number(session.user.id), "users:update");
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
+  const userId = Number(session.user.id);
   const id = parseInt(idStr);
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const allowed = await hasPermission(userId, "users:update");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const body = await req.json();
     const { name, email, roleId } = body;
+
+    // 🛡️ Hierarchy Check: Cannot assign parent roles
+    if (roleId) {
+       const canAssign = await isRoleAssignableBy(Number(roleId), userId);
+       if (!canAssign) {
+          return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
+       }
+    }
 
     // Guard against email conflicts if email changed
     if (email) {
@@ -106,7 +117,7 @@ export async function PATCH(
           data: {
             userId: id,
             roleId: Number(roleId),
-            createdBy: Number(session.user.id),
+            createdBy: userId,
           }
         });
       }
