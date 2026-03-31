@@ -20,6 +20,9 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { motion } from "framer-motion"
 import { useSocket } from "@/providers/socket-provider"
+import { useRouter } from "next/navigation"
+import { usePermissions } from "@/providers/permission-provider"
+import { ModuleGuard } from "@/components/guards/module-guard"
 
 export default function DashboardLayout({
   children,
@@ -29,7 +32,8 @@ export default function DashboardLayout({
   const { data: session, isPending, refetch } = authClient.useSession()
   const [mounted, setMounted] = React.useState(false)
   const { useEvent } = useSocket()
-
+  const router = useRouter()
+  const { isLoading: permissionsLoading } = usePermissions()
 
   useEvent("USERS_CHANGED", React.useCallback((data: any) => {
     if (String(data.userId) === String(session?.user?.id) && data.action === "profile_updated") {
@@ -41,7 +45,7 @@ export default function DashboardLayout({
     setMounted(true)
   }, [])
 
-  const isLoading = isPending || !mounted
+  const isLoading = isPending || !mounted || permissionsLoading
 
   if (isLoading) {
     return (
@@ -63,7 +67,9 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar user={user} />
       <SidebarInset>
-        {children}
+        <ModuleGuard>
+          {children}
+        </ModuleGuard>
       </SidebarInset>
     </SidebarProvider>
   )

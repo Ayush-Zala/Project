@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useHasPermission } from "@/hooks/use-has-permission"
 
 export default function UsersPage() {
   const [users, setUsers] = React.useState<any[]>([])
@@ -69,6 +70,14 @@ export default function UsersPage() {
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = React.useState(false)
   const [selectedUser, setSelectedUser] = React.useState<any>(null)
   const [availableRoles, setAvailableRoles] = React.useState<any[]>([])
+
+  // 🛡️ Capability Guards
+  const canCreate = useHasPermission("users:create")
+  const canUpdate = useHasPermission("users:update")
+  const canDelete = useHasPermission("users:delete")
+  const canToggle = useHasPermission("users:toggle")
+  const canAssignRole = useHasPermission("users:assign_role")
+  const canAssignPermission = useHasPermission("users:assign_permission")
 
   const fetchUsers = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
     setIsLoading(true)
@@ -190,13 +199,15 @@ export default function UsersPage() {
             >
               <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button
-              onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <UserPlusIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Add User</span>
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+              >
+                <UserPlusIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Add User</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -270,11 +281,11 @@ export default function UsersPage() {
                       <div className="flex items-center justify-center gap-3">
                         <Switch
                           checked={user.isActive}
-                          disabled={user.role?.slug === 'super-admin'}
+                          disabled={user.role?.slug === 'super-admin' || !canToggle}
                           onCheckedChange={() => handleToggleStatus(user)}
                         />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
-                          {user.isActive ? 'Active' : 'Suspended'}
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : (canToggle ? 'text-red-500' : 'text-muted-foreground')}`}>
+                          {user.isActive ? 'Active' : (canToggle ? 'Suspended' : 'Locked')}
                         </span>
                       </div>
                     </TableCell>
@@ -293,45 +304,68 @@ export default function UsersPage() {
                               Account Control
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40" />
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                              onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
-                            >
-                              <PencilIcon className="h-3.5 w-3.5" />
-                              <span>Edit Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                              onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
-                            >
-                              <ShieldIcon className="h-3.5 w-3.5" />
-                              <span>Change Role</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                              onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
-                            >
-                              <KeyIcon className="h-3.5 w-3.5" />
-                              <span>Reset Password</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                              onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
-                            >
-                              <ShieldIcon className="h-3.5 w-3.5 text-primary" />
-                              <span>Direct Permissions</span>
-                            </DropdownMenuItem>
+                            
+                            {canUpdate && (
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
+                              >
+                                <PencilIcon className="h-3.5 w-3.5" />
+                                <span>Edit Details</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {canAssignRole && (
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
+                              >
+                                <ShieldIcon className="h-3.5 w-3.5" />
+                                <span>Change Role</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {canUpdate && (
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
+                              >
+                                <KeyIcon className="h-3.5 w-3.5" />
+                                <span>Reset Password</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {canAssignPermission && (
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
+                              >
+                                <ShieldIcon className="h-3.5 w-3.5 text-primary" />
+                                <span>Direct Permissions</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuGroup>
-                          <DropdownMenuSeparator className="bg-border/40" />
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
-                              onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
-                            >
-                              <Trash2Icon className="h-3.5 w-3.5" />
-                              <span>Remove Access</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
+
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator className="bg-border/40" />
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem
+                                  className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
+                                  onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
+                                >
+                                  <Trash2Icon className="h-3.5 w-3.5" />
+                                  <span>Remove Access</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </>
+                          )}
+
+                          {!canUpdate && !canAssignRole && !canAssignPermission && !canDelete && (
+                             <div className="px-2 py-4 text-center">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Read Only Access</p>
+                             </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

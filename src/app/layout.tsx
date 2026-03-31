@@ -15,6 +15,7 @@ const geistMono = Geist_Mono({
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/providers/socket-provider";
+import { PermissionProvider } from "@/providers/permission-provider";
 import { Toaster } from "sonner";
 
 export default function RootLayout({
@@ -37,7 +38,9 @@ export default function RootLayout({
         >
           <TooltipProvider>
             <SocketProvider>
-              {children}
+              <PermissionProvider>
+                {children}
+              </PermissionProvider>
             </SocketProvider>
             <Toaster position="top-right" richColors />
           </TooltipProvider>

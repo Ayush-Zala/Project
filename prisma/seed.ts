@@ -122,6 +122,25 @@ async function main() {
     }
   }
 
+  // 6. Assign Super Admin to the first user found (Bootstrap)
+  const firstUser = await prisma.user.findFirst();
+  if (firstUser) {
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: firstUser.id, roleId: roleIDs["super-admin"] } },
+      update: { isActive: true },
+      create: {
+        userId: firstUser.id,
+        roleId: roleIDs["super-admin"],
+        isActive: true,
+        createdAt: epochNow,
+        updatedAt: epochNow,
+      },
+    });
+    console.log(`BOOTSTRAP: Assigned Super Admin role to ${firstUser.email}`);
+  } else {
+    console.log("BOOTSTRAP: No users found. Please sign up then run seed again.");
+  }
+
   console.log("Super Admin Manifested & Permissions Primed.");
   console.log("Seeding Protocol Complete.");
 }

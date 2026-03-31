@@ -33,16 +33,19 @@ const data = {
       title: "Roles",
       url: "/dashboard/roles",
       icon: <ShieldCheckIcon />,
+      permission: "roles:read",
     },
     {
       title: "Permissions",
       url: "/dashboard/permissions",
       icon: <KeyIcon />,
+      permission: "permissions:read",
     },
     {
       title: "Users",
       url: "/dashboard/users",
       icon: <UsersIcon />,
+      permission: "users:read",
     },
     {
       title: "Profile",

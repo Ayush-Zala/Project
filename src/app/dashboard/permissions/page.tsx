@@ -48,6 +48,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { PermissionDialog } from "@/components/permissions/permission-dialog"
+import { useHasPermission } from "@/hooks/use-has-permission"
 
 export default function PermissionsPage() {
   const [permissions, setPermissions] = React.useState<any[]>([])
@@ -59,6 +60,12 @@ export default function PermissionsPage() {
   // Dialog states
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = React.useState(false)
   const [selectedPermission, setSelectedPermission] = React.useState<any>(null)
+
+  // 🛡️ Capability Guards
+  const canCreate = useHasPermission("permissions:create")
+  const canUpdate = useHasPermission("permissions:update")
+  const canDelete = useHasPermission("permissions:delete")
+  const canToggle = useHasPermission("permissions:toggle")
 
   const fetchPermissions = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
     setIsLoading(true)
@@ -181,13 +188,15 @@ export default function PermissionsPage() {
             >
               <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button
-              onClick={() => { setSelectedPermission(null); setIsPermissionDialogOpen(true); }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Define Permission</span>
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={() => { setSelectedPermission(null); setIsPermissionDialogOpen(true); }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+              >
+                <PlusIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Define Permission</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -247,11 +256,12 @@ export default function PermissionsPage() {
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={p.isActive}
+                          disabled={!canToggle}
                           onCheckedChange={() => handleToggleStatus(p)}
                           className="data-[state=checked]:bg-primary"
                         />
                         <span className={`text-[10px] font-extrabold tracking-widest ${p.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {p.isActive ? 'ACTIVE' : 'LOCKED'}
+                          {p.isActive ? 'ACTIVE' : (canToggle ? 'LOCKED' : 'DEFUNCT')}
                         </span>
                       </div>
                     </TableCell>
@@ -268,24 +278,38 @@ export default function PermissionsPage() {
                           <DropdownMenuGroup>
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Definitions</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40 my-1" />
-                            <DropdownMenuItem
-                              onClick={() => { setSelectedPermission(p); setIsPermissionDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                              <span className="font-medium">Edit Manifest</span>
-                            </DropdownMenuItem>
+                            
+                            {canUpdate && (
+                              <DropdownMenuItem
+                                onClick={() => { setSelectedPermission(p); setIsPermissionDialogOpen(true); }}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                                <span className="font-medium">Edit Manifest</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuGroup>
-                          <DropdownMenuSeparator className="bg-border/40 my-1" />
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              onClick={() => handleDelete(p.id)}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
-                            >
-                              <Trash2Icon className="h-4 w-4" />
-                              <span className="font-bold">Purge Entry</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
+
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator className="bg-border/40 my-1" />
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem
+                                  onClick={() => handleDelete(p.id)}
+                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                  <span className="font-bold">Purge Entry</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </>
+                          )}
+
+                          {!canUpdate && !canDelete && (
+                            <div className="px-2 py-4 text-center">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Read Only Access</p>
+                             </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

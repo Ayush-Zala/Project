@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useHasPermission } from "@/hooks/use-has-permission"
 
 export default function RolesPage() {
   const [roles, setRoles] = React.useState<any[]>([])
@@ -63,6 +64,13 @@ export default function RolesPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedRole, setSelectedRole] = React.useState<any>(null)
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = React.useState(false)
+
+  // 🛡️ Capability Guards
+  const canCreate = useHasPermission("roles:create")
+  const canUpdate = useHasPermission("roles:update")
+  const canDelete = useHasPermission("roles:delete")
+  const canToggle = useHasPermission("roles:toggle")
+  const canAssignPermissions = useHasPermission("roles:assign_permission")
 
   const fetchRoles = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
     setIsLoading(true)
@@ -169,13 +177,15 @@ export default function RolesPage() {
             >
               <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button
-              onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Role</span>
-            </Button>
+            {canCreate && (
+              <Button
+                onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+              >
+                <PlusIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Role</span>
+              </Button>
+            )}
           </div>
         </div>
 
@@ -249,12 +259,12 @@ export default function RolesPage() {
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={role.isActive}
-                          disabled={role.slug === 'super-admin'}
+                          disabled={role.slug === 'super-admin' || !canToggle}
                           onCheckedChange={() => handleToggleStatus(role)}
                           className="data-[state=checked]:bg-primary"
                         />
                         <span className={`text-xs font-bold ${role.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {role.isActive ? 'ACTIVE' : 'INACTIVE'}
+                          {role.isActive ? 'ACTIVE' : (canToggle ? 'INACTIVE' : 'SUSPENDED')}
                         </span>
                       </div>
                     </TableCell>
@@ -276,38 +286,58 @@ export default function RolesPage() {
                           <DropdownMenuGroup>
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Entity Controls</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40 my-1" />
-                            <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsRoleDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
-                            >
-                              <PencilIcon className="h-4 w-4" />
-                              <span className="font-medium">Modify Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsPermissionsDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
-                            >
-                              <KeyIcon className="h-4 w-4 text-primary" />
-                              <span className="font-medium">Manage Permissions</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(role)}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
-                            >
-                              <PowerIcon className="h-4 w-4" />
-                              <span className="font-medium">{role.isActive ? 'Suspend Authorization' : 'Restore Authorization'}</span>
-                            </DropdownMenuItem>
+                            
+                            {canUpdate && (
+                              <DropdownMenuItem
+                                onClick={() => { setSelectedRole(role); setIsRoleDialogOpen(true); }}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                                <span className="font-medium">Modify Details</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {canAssignPermissions && (
+                              <DropdownMenuItem
+                                onClick={() => { setSelectedRole(role); setIsPermissionsDialogOpen(true); }}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                              >
+                                <KeyIcon className="h-4 w-4 text-primary" />
+                                <span className="font-medium">Manage Permissions</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {canToggle && (
+                              <DropdownMenuItem
+                                onClick={() => handleToggleStatus(role)}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                              >
+                                <PowerIcon className="h-4 w-4" />
+                                <span className="font-medium">{role.isActive ? 'Suspend Authorization' : 'Restore Authorization'}</span>
+                              </DropdownMenuItem>
+                            )}
                           </DropdownMenuGroup>
-                          <DropdownMenuSeparator className="bg-border/40 my-1" />
-                          <DropdownMenuGroup>
-                            <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsDeleteDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors focus:bg-red-500/10 focus:text-red-500"
-                            >
-                              <Trash2Icon className="h-4 w-4" />
-                              <span className="font-bold">Purge Permanently</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuGroup>
+
+                          {canDelete && (
+                            <>
+                              <DropdownMenuSeparator className="bg-border/40 my-1" />
+                              <DropdownMenuGroup>
+                                <DropdownMenuItem
+                                  onClick={() => { setSelectedRole(role); setIsDeleteDialogOpen(true); }}
+                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors focus:bg-red-500/10 focus:text-red-500"
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                  <span className="font-bold">Purge Permanently</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </>
+                          )}
+                          
+                          {!canUpdate && !canAssignPermissions && !canToggle && !canDelete && (
+                             <div className="px-2 py-4 text-center">
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Read Only Access</p>
+                             </div>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

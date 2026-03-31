@@ -16,6 +16,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { ChevronRightIcon } from "lucide-react"
+import { useHasPermission } from "@/hooks/use-has-permission"
 
 export function NavMain({
   items,
@@ -25,9 +26,11 @@ export function NavMain({
     url: string
     icon?: React.ReactNode
     isActive?: boolean
+    permission?: string
     items?: {
       title: string
       url: string
+      permission?: string
     }[]
   }[]
 }) {
@@ -36,6 +39,11 @@ export function NavMain({
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
+          // 🛡️ Root Item Guard
+          if (item.permission) {
+             const hasViewAccess = useHasPermission(item.permission);
+             if (!hasViewAccess) return null;
+          }
           if (!item.items?.length) {
             return (
               <SidebarMenuItem key={item.title}>
@@ -68,13 +76,19 @@ export function NavMain({
               </CollapsibleTrigger>
               <CollapsibleContent>
                 <SidebarMenuSub>
-                  {item.items?.map((subItem) => (
-                    <SidebarMenuSubItem key={subItem.title}>
-                      <SidebarMenuSubButton render={<a href={subItem.url} />}>
-                        <span>{subItem.title}</span>
-                      </SidebarMenuSubButton>
-                    </SidebarMenuSubItem>
-                  ))}
+                  {item.items?.map((subItem) => {
+                    if (subItem.permission) {
+                       const hasSubAccess = useHasPermission(subItem.permission);
+                       if (!hasSubAccess) return null;
+                    }
+                    return (
+                      <SidebarMenuSubItem key={subItem.title}>
+                        <SidebarMenuSubButton render={<a href={subItem.url} />}>
+                          <span>{subItem.title}</span>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    )
+                  })}
                 </SidebarMenuSub>
               </CollapsibleContent>
             </Collapsible>
