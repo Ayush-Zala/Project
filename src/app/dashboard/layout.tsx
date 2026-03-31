@@ -36,8 +36,13 @@ export default function DashboardLayout({
   const { isLoading: permissionsLoading } = usePermissions()
 
   useEvent("USERS_CHANGED", React.useCallback((data: any) => {
-    if (String(data.userId) === String(session?.user?.id) && data.action === "profile_updated") {
-      refetch()
+    if (String(data.userId) === String(session?.user?.id)) {
+      if (data.action === "profile_updated") {
+        refetch()
+      } else if (data.action === "toggled" && data.isActive === false) {
+        // 🛡️ Industrial Security: Real-time session eviction
+        window.location.href = "/login"
+      }
     }
   }, [session?.user?.id, refetch]))
 

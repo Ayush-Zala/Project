@@ -82,8 +82,20 @@ export async function PATCH(
       }
     });
 
-    // Broadcast
-    await emitEvent("USERS_CHANGED", { action: "toggled", userId: id });
+    // 🛡️ Industrial Security: If suspended, physically purge all active sessions
+    if (!updatedUser.isActive) {
+      await (prisma as any).session.deleteMany({
+        where: { userId: id }
+      });
+      console.log(`[SECURITY] Purged active sessions for suspended user: ${updatedUser.email}`);
+    }
+
+    // Broadcast status change for real-time client-side logout
+    await emitEvent("USERS_CHANGED", { 
+      action: "toggled", 
+      userId: id,
+      isActive: updatedUser.isActive 
+    });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
