@@ -259,12 +259,12 @@ export default function RolesPage() {
                       <div className="flex items-center gap-3">
                         <Switch
                           checked={role.isActive}
-                          disabled={role.slug === 'super-admin' || !canToggle}
+                          disabled={!role.isManageable || !canToggle}
                           onCheckedChange={() => handleToggleStatus(role)}
                           className="data-[state=checked]:bg-primary"
                         />
                         <span className={`text-xs font-bold ${role.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {role.isActive ? 'ACTIVE' : (canToggle ? 'INACTIVE' : 'SUSPENDED')}
+                          {role.isActive ? 'ACTIVE' : (!role.isManageable ? 'PROTECTED' : (canToggle ? 'INACTIVE' : 'SUSPENDED'))}
                         </span>
                       </div>
                     </TableCell>
@@ -287,10 +287,19 @@ export default function RolesPage() {
                             <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Entity Controls</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40 my-1" />
                             
+                            {!role.isManageable && (
+                               <div className="px-3 py-2 mb-2 bg-muted/50 rounded-lg border border-border/40">
+                                  <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-relaxed">
+                                     🛡️ Hierarchy Lock: This role is your authority source or parent.
+                                  </p>
+                               </div>
+                            )}
+
                             {canUpdate && (
                               <DropdownMenuItem
                                 onClick={() => { setSelectedRole(role); setIsRoleDialogOpen(true); }}
-                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                                disabled={!role.isManageable}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <PencilIcon className="h-4 w-4" />
                                 <span className="font-medium">Modify Details</span>
@@ -300,7 +309,8 @@ export default function RolesPage() {
                             {canAssignPermissions && (
                               <DropdownMenuItem
                                 onClick={() => { setSelectedRole(role); setIsPermissionsDialogOpen(true); }}
-                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                                disabled={!role.isManageable}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <KeyIcon className="h-4 w-4 text-primary" />
                                 <span className="font-medium">Manage Permissions</span>
@@ -310,7 +320,8 @@ export default function RolesPage() {
                             {canToggle && (
                               <DropdownMenuItem
                                 onClick={() => handleToggleStatus(role)}
-                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                                disabled={!role.isManageable}
+                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 <PowerIcon className="h-4 w-4" />
                                 <span className="font-medium">{role.isActive ? 'Suspend Authorization' : 'Restore Authorization'}</span>
@@ -324,7 +335,8 @@ export default function RolesPage() {
                               <DropdownMenuGroup>
                                 <DropdownMenuItem
                                   onClick={() => { setSelectedRole(role); setIsDeleteDialogOpen(true); }}
-                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors focus:bg-red-500/10 focus:text-red-500"
+                                  disabled={!role.isManageable}
+                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors focus:bg-red-500/10 focus:text-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                   <Trash2Icon className="h-4 w-4" />
                                   <span className="font-bold">Purge Permanently</span>

@@ -19,6 +19,8 @@ const roleCreateSchema = z.object({
   ),
 });
 
+import { isRoleManagedBy } from "@/lib/hierarchy";
+
 /**
  * GET: Handles paginated list and search functionality for roles.
  */
@@ -30,7 +32,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "roles:read");
+  const userId = Number(session.user.id);
+  const allowed = await hasPermission(userId, "roles:read");
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden: You do not have roles:read access" }, { status: 403 });
   }
@@ -64,8 +67,14 @@ export async function GET(req: Request) {
       }),
     ]);
 
+    // 🛡️ Hierarchy Check: Determine manageability for the current user
+    const enrichedRoles = await Promise.all(roles.map(async (role: any) => ({
+      ...role,
+      isManageable: await isRoleManagedBy(role.id, userId)
+    })));
+
     return NextResponse.json({
-      roles,
+      roles: enrichedRoles,
       pagination: {
         total,
         page,

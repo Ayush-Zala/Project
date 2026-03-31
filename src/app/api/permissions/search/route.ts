@@ -4,6 +4,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { hasPermission } from "@/lib/rbac";
 
+import { getUserCapabilities } from "@/lib/hierarchy";
+
 /**
  * GET: Non-paginated search for permissions (autocomplete).
  */
@@ -21,13 +23,19 @@ export async function GET(req: Request) {
   const query = searchParams.get("q") || "";
 
   try {
+    const userCaps = await getUserCapabilities(userId);
+
     const permissions = await (prisma as any).permission.findMany({
-      where: query ? {
-        OR: [
-          { name: { contains: query, mode: "insensitive" } },
-          { slug: { contains: query, mode: "insensitive" } },
-        ]
-      } : {},
+      where: {
+        ...(query ? {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { slug: { contains: query, mode: "insensitive" } },
+          ]
+        } : {}),
+        slug: { in: userCaps }, // 🛡️ Vertical Constraint: Cannot grant what you don't have
+        isActive: true,
+      },
       take: 1000,
       orderBy: { slug: "asc" },
       select: {

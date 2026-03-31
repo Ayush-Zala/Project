@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
 import { hasPermission } from "@/lib/rbac";
+import { isRoleManagedBy, getUserCapabilities } from "@/lib/hierarchy";
 import * as z from "zod";
 
 const batchAssignSchema = z.object({
@@ -21,14 +22,20 @@ export async function GET(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const userId = Number(session.user.id);
   const roleId = parseInt(idStr);
   if (isNaN(roleId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
-  const userId = Number(session.user.id);
   const allowed = await hasPermission(userId, "roles:read") || 
                   await hasPermission(userId, "roles:assign_permission");
   
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // 🛡️ Hierarchy Check: Cannot view assignments for Self or Parent Roles
+  const isManaged = await isRoleManagedBy(roleId, userId);
+  if (!isManaged) {
+     return NextResponse.json({ error: "Forbidden: You cannot manage your own or superior roles." }, { status: 403 });
+  }
 
   try {
     const rolePermissions = await (prisma as any).rolePermission.findMany({
@@ -60,11 +67,18 @@ export async function POST(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const allowed = await hasPermission(Number(session.user.id), "roles:assign_permission");
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
+  const userId = Number(session.user.id);
   const roleId = parseInt(idStr);
   if (isNaN(roleId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const allowed = await hasPermission(userId, "roles:assign_permission");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // 🛡️ Hierarchy Check: Cannot modify assignments for Self or Parent Roles
+  const isManaged = await isRoleManagedBy(roleId, userId);
+  if (!isManaged) {
+     return NextResponse.json({ error: "Forbidden: Access hierarchy violation detected." }, { status: 403 });
+  }
 
   try {
     const body = await req.json();
@@ -73,11 +87,22 @@ export async function POST(
 
     const { permissionIds } = result.data;
 
+    // 🛡️ Vertical Constraint: Cannot grant what you don't have
+    const userCaps = await getUserCapabilities(userId);
+    const targetPerms = await (prisma as any).permission.findMany({
+       where: { id: { in: permissionIds } },
+       select: { slug: true }
+    });
+
+    const hasUnauthorizedPerm = targetPerms.some((p: any) => !userCaps.includes(p.slug));
+    if (hasUnauthorizedPerm) {
+       console.error(`[BREACH_PREVENTION] User ${userId} tried to assign unauthorized permissions to role ${roleId}`);
+       return NextResponse.json({ error: "Forbidden: You cannot grant permissions that you do not hold." }, { status: 403 });
+    }
+
     // Use transaction for consistency
     await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Delete existing assignments (not ideal for audit trail, but simplest for "industrial" sync)
-      // Actually, let's just create what's missing and deactivate what's not in the list if we want status preservation.
-      // But for a simple "Set permissions" UI, a full sync is often expected.
+      // 1. Delete existing assignments
       await tx.rolePermission.deleteMany({
         where: { roleId }
       });
@@ -89,7 +114,7 @@ export async function POST(
             roleId,
             permissionId: pId,
             isActive: true,
-            createdBy: Number(session.user.id),
+            createdBy: userId,
           }))
         });
       }
