@@ -1,4 +1,4 @@
-import { betterAuth } from "better-auth";
+import { betterAuth, APIError } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./prisma";
@@ -10,6 +10,19 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
+  databaseHooks: {
+    user: {
+      update: {
+        after: async (user) => {
+          if (user.isActive === false) {
+            await prisma.session.deleteMany({
+              where: { userId: Number(user.id) },
+            });
+          }
+        },
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
@@ -47,6 +60,30 @@ export const auth = betterAuth({
   },
   plugins: [
     nextCookies(),
+    {
+      id: "user-status",
+      hooks: {
+        before: [
+          {
+            matcher: (ctx) => !!ctx.path && ctx.path.endsWith("/sign-in/email"),
+            handler: async (ctx) => {
+              const body = ctx.body as unknown as { email?: string };
+              if (body?.email) {
+                const user = await prisma.user.findUnique({
+                  where: { email: body.email },
+                });
+                if (user && !user.isActive) {
+                  console.warn(`Suspended user login attempt: ${body.email}`);
+                  throw new APIError("FORBIDDEN", {
+                    message: "account is suspended please contact admin",
+                  });
+                }
+              }
+            },
+          },
+        ],
+      },
+    },
   ],
   advanced: {
     database: {

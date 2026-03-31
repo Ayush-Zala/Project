@@ -50,7 +50,18 @@ export default function LoginPage() {
 
     if (error) {
       setIsLoading(false);
-      if (error.status === 403) {
+      // More robust check for suspension error
+      const isSuspended = error.status === 403 && error.message?.toLowerCase().includes("suspended");
+      if (isSuspended) {
+        toast.error(error.message, {
+          description: "This account has been deactivated by an administrator.",
+        });
+        // Also show as a validation error on the email field
+        form.setError("email", {
+          type: "manual",
+          message: error.message,
+        });
+      } else if (error.status === 403) {
         toast.error("Access Forbidden: Please verify your email first.");
       } else {
         toast.error(error.message || "Invalid credentials provided");
