@@ -57,11 +57,15 @@ export async function GET(req: Request) {
 
   // Include super-admin bypass flag
   const isSuperAdmin = user.userRoles.some(ur => ur.role.slug === 'super-admin');
+  
+  // Extract human-readable role names
+  const roleNames = user.userRoles.map(ur => ur.role.name);
 
-  console.log(`[RBAC DEBUG] User ${userId} (${user.email}) | Roles: ${user.userRoles.length} | Perms: ${allPerms.length} | isSuperAdmin: ${isSuperAdmin}`);
+  console.log(`[RBAC DEBUG] User ${userId} (${user.email}) | Roles: ${roleNames.join(', ')} | Perms: ${allPerms.length} | isSuperAdmin: ${isSuperAdmin}`);
 
   return NextResponse.json({ 
     permissions: allPerms,
-    isSuperAdmin
+    isSuperAdmin,
+    roleNames
   });
 }

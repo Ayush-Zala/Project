@@ -7,6 +7,7 @@ import { useSocket } from "@/providers/socket-provider"
 interface PermissionContextType {
   permissions: string[]
   isSuperAdmin: boolean
+  roles: string[]
   isLoading: boolean
   hasPermission: (slug: string) => boolean
   refresh: () => Promise<void>
@@ -15,6 +16,7 @@ interface PermissionContextType {
 const PermissionContext = React.createContext<PermissionContextType>({
   permissions: [],
   isSuperAdmin: false,
+  roles: [],
   isLoading: true,
   hasPermission: () => false,
   refresh: async () => {},
@@ -25,17 +27,19 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const [state, setState] = React.useState<{
     permissions: string[]
     isSuperAdmin: boolean
+    roles: string[]
     isLoading: boolean
   }>({
     permissions: [],
     isSuperAdmin: false,
+    roles: [],
     isLoading: true,
   })
   
   const fetchPermissions = React.useCallback(async () => {
     if (!session?.user) {
       if (!state.isLoading) return; // Already stopped loading
-      setState({ permissions: [], isSuperAdmin: false, isLoading: false })
+      setState({ permissions: [], isSuperAdmin: false, roles: [], isLoading: false })
       return
     }
 
@@ -45,6 +49,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       setState({
         permissions: data.permissions || [],
         isSuperAdmin: data.isSuperAdmin || false,
+        roles: data.roleNames || [],
         isLoading: false
       })
     } catch (error) {
@@ -74,10 +79,11 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   const value = React.useMemo(() => ({
     permissions: state.permissions,
     isSuperAdmin: state.isSuperAdmin,
+    roles: state.roles,
     isLoading: state.isLoading,
     hasPermission,
     refresh: fetchPermissions,
-  }), [state.permissions, state.isSuperAdmin, state.isLoading, hasPermission, fetchPermissions])
+  }), [state.permissions, state.isSuperAdmin, state.roles, state.isLoading, hasPermission, fetchPermissions])
 
   return (
     <PermissionContext.Provider value={value}>

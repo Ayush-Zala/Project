@@ -23,7 +23,8 @@ import {
 import { useRouter } from "next/navigation"
 import { authClient } from "@/lib/auth-client"
 import { useTheme } from "next-themes"
-import { ChevronsUpDownIcon, SparklesIcon, BadgeCheckIcon, CreditCardIcon, BellIcon, LogOutIcon, SunIcon, MoonIcon, LaptopIcon } from "lucide-react"
+import { usePermissions } from "@/providers/permission-provider"
+import { ChevronsUpDownIcon, BellIcon, LogOutIcon, SunIcon, MoonIcon, LaptopIcon } from "lucide-react"
 
 export function NavUser({
   user,
@@ -36,6 +37,7 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const router = useRouter()
+  const { roles } = usePermissions()
 
   const handleLogout = async () => {
     await authClient.signOut({
@@ -54,6 +56,8 @@ export function NavUser({
     .join("")
     .toUpperCase() || "UN"
 
+  const roleLabel = roles.length > 0 ? roles.join(", ") : "User"
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -70,7 +74,9 @@ export function NavUser({
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+                  <span className="truncate text-[10px] text-muted-foreground uppercase tracking-wider font-bold">
+                    {roleLabel}
+                  </span>
                 </div>
                 <ChevronsUpDownIcon className="ml-auto size-4" />
               </SidebarMenuButton>
@@ -91,17 +97,27 @@ export function NavUser({
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">{user.name}</span>
-                    <span className="truncate text-xs">{user.email}</span>
+                    <span className="truncate text-xs text-muted-foreground">{user.email}</span>
                   </div>
                 </div>
               </DropdownMenuLabel>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem disabled>
-                <SparklesIcon className="mr-2 h-4 w-4" />
-                Upgrade to Pro
-              </DropdownMenuItem>
+              <div className="px-2 py-1.5 flex flex-col gap-1">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Active Designations</span>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {roles.length > 0 ? roles.map(r => (
+                    <div key={r} className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5 ring-1 ring-primary/20">
+                      {r}
+                    </div>
+                  )) : (
+                    <div className="px-2 py-1 rounded-md bg-muted text-muted-foreground text-[10px] font-bold uppercase tracking-wider italic">
+                      No roles assigned
+                    </div>
+                  )}
+                </div>
+              </div>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
@@ -126,14 +142,6 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheckIcon className="mr-2 h-4 w-4" />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon className="mr-2 h-4 w-4" />
-                Billing
-              </DropdownMenuItem>
               <DropdownMenuItem>
                 <BellIcon className="mr-2 h-4 w-4" />
                 Notifications
