@@ -12,7 +12,10 @@ import {
   RefreshCwIcon,
   MoreVerticalIcon,
   PowerIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  ShieldIcon,
+  MailIcon,
+  UserIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
 import {
@@ -217,102 +221,115 @@ export default function PermissionsPage() {
                 <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">ID</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Permission</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Slug (Resource:Action)</TableHead>
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
+                {canToggle && (
+                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
+                )}
+                {(canUpdate || canDelete) && (
+                  <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {permissions.length === 0 ? (
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i} className="border-border/20">
+                    <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
+                    <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
+                    <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
+                    {canToggle && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
+                    {(canUpdate || canDelete) && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
+                  </TableRow>
+                ))
+              ) : permissions.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="h-64 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="p-4 bg-muted/20 rounded-full mb-2">
-                        <KeyIcon className="h-10 w-10 text-muted-foreground/30" />
-                      </div>
-                      <p className="text-lg font-medium text-muted-foreground">No permissions defined in manifest</p>
+                       <div className="p-4 bg-muted/20 rounded-full mb-2">
+                         <ShieldCheckIcon className="h-10 w-10 text-muted-foreground/30" />
+                       </div>
+                       <p className="text-lg font-medium text-muted-foreground">Unauthorized Access: Permission manifest is hidden or empty</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                permissions.map((p, index) => (
+                permissions.map((p) => (
                   <TableRow key={p.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
-                      #{(pagination.page - 1) * pagination.limit + index + 1}
+                      #{String(p.id).slice(-4).toUpperCase()}
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
+                      <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-foreground group-hover:text-primary transition-colors">{p.name}</span>
-                        {p.description && <span className="text-xs text-muted-foreground line-clamp-1">{p.description}</span>}
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter op-60">
+                          {p.description || 'System Resource Access Point'}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="bg-muted/50 border-border/40 font-mono text-[11px] px-2">
+                        <Badge variant="outline" className="font-mono text-[10px] bg-muted/30 border-border/40 text-muted-foreground px-2 py-0.5">
                           {p.slug}
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={p.isActive}
-                          disabled={!canToggle}
-                          onCheckedChange={() => handleToggleStatus(p)}
-                          className="data-[state=checked]:bg-primary"
-                        />
-                        <span className={`text-[10px] font-extrabold tracking-widest ${p.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {p.isActive ? 'ACTIVE' : (canToggle ? 'LOCKED' : 'DEFUNCT')}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" className="h-10 w-10 p-0 hover:bg-primary/10 rounded-full">
-                              <MoreVerticalIcon className="h-5 w-5 text-muted-foreground" />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end" className="w-48 bg-background border-border/40 p-2 shadow-2xl">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Definitions</DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-border/40 my-1" />
-                            
-                            {canUpdate && (
-                              <DropdownMenuItem
-                                onClick={() => { setSelectedPermission(p); setIsPermissionDialogOpen(true); }}
-                                className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
-                              >
-                                <PencilIcon className="h-4 w-4" />
-                                <span className="font-medium">Edit Manifest</span>
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuGroup>
-
-                          {canDelete && (
-                            <>
+                    {canToggle && (
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                           <Switch
+                             checked={p.isActive}
+                             onCheckedChange={() => handleToggleStatus(p)}
+                             className="data-[state=checked]:bg-primary"
+                           />
+                           <span className={`text-[10px] font-extrabold tracking-widest ${p.isActive ? 'text-green-500' : 'text-red-500'}`}>
+                             {p.isActive ? 'ACTIVE' : 'INACTIVE'}
+                           </span>
+                        </div>
+                      </TableCell>
+                    )}
+                    {(canUpdate || canDelete) && (
+                      <TableCell className="text-right pr-6">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="ghost" className="h-10 w-10 p-0 hover:bg-primary/10 rounded-full">
+                                <MoreVerticalIcon className="h-5 w-5 text-muted-foreground" />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end" className="w-48 bg-background border-border/40 p-2 shadow-2xl">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Definitions</DropdownMenuLabel>
                               <DropdownMenuSeparator className="bg-border/40 my-1" />
-                              <DropdownMenuGroup>
+                              
+                              {canUpdate && (
                                 <DropdownMenuItem
-                                  onClick={() => handleDelete(p.id)}
-                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
+                                  onClick={() => { setSelectedPermission(p); setIsPermissionDialogOpen(true); }}
+                                  className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
                                 >
-                                  <Trash2Icon className="h-4 w-4" />
-                                  <span className="font-bold">Purge Entry</span>
+                                  <PencilIcon className="h-4 w-4" />
+                                  <span className="font-medium">Edit Manifest</span>
                                 </DropdownMenuItem>
-                              </DropdownMenuGroup>
-                            </>
-                          )}
+                              )}
+                            </DropdownMenuGroup>
 
-                          {!canUpdate && !canDelete && (
-                            <div className="px-2 py-4 text-center">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Read Only Access</p>
-                             </div>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                            {canDelete && (
+                              <>
+                                <DropdownMenuSeparator className="bg-border/40 my-1" />
+                                <DropdownMenuGroup>
+                                  <DropdownMenuItem
+                                    onClick={() => handleDelete(p.id)}
+                                    className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
+                                  >
+                                    <Trash2Icon className="h-4 w-4" />
+                                    <span className="font-bold">Purge Entry</span>
+                                  </DropdownMenuItem>
+                                </DropdownMenuGroup>
+                              </>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}

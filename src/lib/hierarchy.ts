@@ -22,9 +22,13 @@ export async function isRoleManagedBy(targetRoleId: number, currentUserId: numbe
   if (!user || !user.isActive) return false;
 
   const userRoles = user.userRoles.map((ur: any) => ur.role);
+  // System-Protection: The Super Admin role is immutable and protected at the root level.
+  const targetRole = await (prisma as any).role.findUnique({ where: { id: targetRoleId }, select: { slug: true } });
+  if (targetRole?.slug === 'super-admin') return false;
+
   const isSuperAdmin = userRoles.some((r: any) => r.slug === 'super-admin');
   
-  // Super Admin can manage any role (except maybe themselves if we were strict, but usually they are root)
+  // Super Admin can manage any other role (except themselves if they held multiple roles, but we prioritize hierarchy)
   if (isSuperAdmin) return true;
 
   // 1. Self-Protection: Cannot manage your own role

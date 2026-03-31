@@ -6,14 +6,16 @@ import {
   SearchIcon,
   PencilIcon,
   Trash2Icon,
-  KeyIcon,
+  ShieldCheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
   MoreVerticalIcon,
-  UserIcon,
+  PowerIcon,
   ShieldIcon,
-  MailIcon
+  MailIcon,
+  UserIcon,
+  KeyIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -228,152 +230,167 @@ export default function UsersPage() {
                 <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">S.No</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">User Profile</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Identity & Role</TableHead>
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Status</TableHead>
-                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
+                {users.some(u => u.isToggleable && canToggle) && (
+                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Status</TableHead>
+                )}
+                {users.some(u => u.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                  <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {users.length === 0 && !isLoading ? (
+              {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic border-none">
-                    No users found matching your search.
+                  <TableCell colSpan={5} className="h-64 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="p-4 bg-muted/20 rounded-full mb-2">
+                        <SearchIcon className="h-10 w-10 text-muted-foreground/30" />
+                      </div>
+                      <p className="text-lg font-medium text-muted-foreground">No accounts detected in the current segment</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
                 users.map((user, index) => (
-                  <TableRow key={user.id} className="border-border/40 hover:bg-muted/20 transition-colors group">
-                    <TableCell className="text-center font-mono text-xs text-muted-foreground">
-                      #{((pagination?.page || 1) - 1) * (pagination?.limit || 10) + index + 1}
+                  <TableRow key={user.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
+                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
+                      #{(pagination.page - 1) * pagination.limit + index + 1}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden shrink-0">
-                          {user.image ? (
-                            <img src={user.image} alt={user.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <span className="text-sm font-bold text-primary">{user.name.charAt(0).toUpperCase()}</span>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-sm text-foreground">{user.name}</span>
-                          <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <MailIcon className="h-3 w-3" />
-                            {user.email}
+                      <div className="flex items-center gap-4">
+                        <div className="relative group/avatar">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold transition-all group-hover/avatar:scale-110">
+                            {user.name?.charAt(0).toUpperCase()}
                           </div>
+                          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${user.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
+                        </div>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold text-foreground group-hover:text-primary transition-colors">{user.name}</span>
+                          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-medium tracking-tight">
+                            <span className="op-60">✉</span> {user.email}
+                          </span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
                       {user.role ? (
-                        <Badge
-                          variant="outline"
-                          className="rounded-lg px-2 py-0.5 border-primary/20 bg-primary/5 text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit"
-                          style={{ borderColor: `${user.role.colorCode}40`, color: user.role.colorCode, backgroundColor: `${user.role.colorCode}10` }}
-                        >
-                          <ShieldIcon className="h-3 w-3" />
-                          {user.role.name}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge 
+                            variant="outline" 
+                            className="font-black text-[9px] uppercase tracking-tighter px-2 py-0 border-primary/20 text-primary bg-primary/5 shadow-sm"
+                            style={{ 
+                              borderColor: user.role.colorCode ? user.role.colorCode + '40' : undefined,
+                              color: user.role.colorCode || undefined,
+                              backgroundColor: user.role.colorCode ? user.role.colorCode + '10' : undefined
+                            }}
+                          >
+                            <ShieldCheckIcon className="h-2.5 w-2.5 mr-1" />
+                            {user.role.name}
+                          </Badge>
+                        </div>
                       ) : (
                         <span className="text-[11px] text-muted-foreground italic">No role assigned</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <Switch
-                          checked={user.isActive}
-                          disabled={!user.isToggleable || !canToggle}
-                          onCheckedChange={() => handleToggleStatus(user)}
-                        />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : (!user.isToggleable ? 'text-muted-foreground' : (canToggle ? 'text-red-500' : 'text-muted-foreground'))}`}>
-                          {user.isActive ? 'Active' : (!user.isToggleable ? 'Protected' : (canToggle ? 'Suspended' : 'Locked'))}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          render={
-                            <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-muted group-hover:bg-muted transition-colors">
-                              <MoreVerticalIcon className="h-4 w-4" />
-                            </Button>
-                          }
-                        />
-                        <DropdownMenuContent align="end" className="w-[180px] bg-popover border-border/40">
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
-                               Account Control
-                               {!user.isToggleable && <Badge variant="outline" className="bg-muted px-1.5 py-0 text-[8px] border-none text-muted-foreground">LOCKED</Badge>}
-                            </DropdownMenuLabel>
-                            <DropdownMenuSeparator className="bg-border/40" />
-                            
-                            {canUpdate && (
-                              <DropdownMenuItem
-                                disabled={!user.isToggleable}
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
-                              >
-                                <PencilIcon className="h-3.5 w-3.5" />
-                                <span>Edit Details</span>
-                              </DropdownMenuItem>
-                            )}
-
-                            {canAssignRole && (
-                              <DropdownMenuItem
-                                disabled={!user.isToggleable}
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
-                              >
-                                <ShieldIcon className="h-3.5 w-3.5" />
-                                <span>Change Role</span>
-                              </DropdownMenuItem>
-                            )}
-
-                            {canUpdate && (
-                              <DropdownMenuItem
-                                disabled={!user.isToggleable}
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
-                              >
-                                <KeyIcon className="h-3.5 w-3.5" />
-                                <span>Reset Password</span>
-                              </DropdownMenuItem>
-                            )}
-
-                            {canAssignPermission && (
-                              <DropdownMenuItem
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                                onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
-                              >
-                                <ShieldIcon className="h-3.5 w-3.5 text-primary" />
-                                <span>Direct Permissions</span>
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuGroup>
-
-                          {canDelete && (
+                    {users.some(u => u.isToggleable && canToggle) && (
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          {(canToggle && user.isToggleable) && (
                             <>
-                              <DropdownMenuSeparator className="bg-border/40" />
-                              <DropdownMenuGroup>
-                                <DropdownMenuItem
-                                  disabled={!user.isToggleable}
-                                  className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                  onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
-                                >
-                                  <Trash2Icon className="h-3.5 w-3.5" />
-                                  <span>Remove Access</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuGroup>
+                              <Switch
+                                checked={user.isActive}
+                                onCheckedChange={() => handleToggleStatus(user)}
+                              />
+                              <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {user.isActive ? 'Active' : 'Suspended'}
+                              </span>
                             </>
                           )}
+                        </div>
+                      </TableCell>
+                    )}
+                    {users.some(u => u.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                      <TableCell className="text-right pr-6">
+                        {(user.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger
+                              render={
+                                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-muted group-hover:bg-muted transition-colors">
+                                  <MoreVerticalIcon className="h-4 w-4" />
+                                </Button>
+                              }
+                            />
+                            <DropdownMenuContent align="end" className="w-[180px] bg-popover border-border/40">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
+                                  Account Control
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-border/40" />
 
-                          {!canUpdate && !canAssignRole && !canAssignPermission && !canDelete && (
-                             <div className="px-2 py-4 text-center">
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Read Only Access</p>
-                             </div>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                                {canUpdate && (
+                                  <DropdownMenuItem
+                                    disabled={!user.isToggleable}
+                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
+                                  >
+                                    <PencilIcon className="h-3.5 w-3.5" />
+                                    <span>Edit Details</span>
+                                  </DropdownMenuItem>
+                                )}
+
+                                {canAssignRole && (
+                                  <DropdownMenuItem
+                                    disabled={!user.isToggleable}
+                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
+                                  >
+                                    <ShieldIcon className="h-3.5 w-3.5" />
+                                    <span>Change Role</span>
+                                  </DropdownMenuItem>
+                                )}
+
+                                {canUpdate && (
+                                  <DropdownMenuItem
+                                    disabled={!user.isToggleable}
+                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
+                                  >
+                                    <KeyIcon className="h-3.5 w-3.5" />
+                                    <span>Reset Password</span>
+                                  </DropdownMenuItem>
+                                )}
+
+                                {canAssignPermission && (
+                                  <DropdownMenuItem
+                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                                    onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
+                                  >
+                                    <ShieldIcon className="h-3.5 w-3.5 text-primary" />
+                                    <span>Direct Permissions</span>
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuGroup>
+
+                              {canDelete && (
+                                <>
+                                  <DropdownMenuSeparator className="bg-border/40" />
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuItem
+                                      disabled={!user.isToggleable}
+                                      className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                      onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
+                                    >
+                                      <Trash2Icon className="h-3.5 w-3.5" />
+                                      <span>Remove Access</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuGroup>
+                                </>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))
               )}
