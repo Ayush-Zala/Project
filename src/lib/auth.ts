@@ -12,6 +12,40 @@ export const auth = betterAuth({
   }),
   databaseHooks: {
     user: {
+      create: {
+        after: async (user) => {
+          // 🛡️ Bootstrap Logic: First user to sign up becomes the Ultimate Admin
+          const userCount = await prisma.user.count();
+          if (userCount === 1) {
+            console.log(`🛡️ FIRST USER DETECTED: Provisioning Super Admin Role for [${user.email}]`);
+            
+            const superRole = await prisma.role.findUnique({
+              where: { slug: "super-admin" }
+            });
+
+            if (superRole) {
+              const epochNow = BigInt(Date.now());
+              await prisma.userRole.upsert({
+                where: { 
+                  userId_roleId: { 
+                    userId: Number(user.id), 
+                    roleId: superRole.id 
+                  } 
+                },
+                update: { isActive: true },
+                create: {
+                  userId: Number(user.id),
+                  roleId: superRole.id,
+                  isActive: true,
+                  createdAt: epochNow,
+                  updatedAt: epochNow,
+                }
+              });
+              console.log("Super Admin Protocol Manifested.");
+            }
+          }
+        }
+      },
       update: {
         after: async (user) => {
           if (user.isActive === false) {

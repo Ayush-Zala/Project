@@ -62,41 +62,6 @@ const prismaClientSingleton = () => {
 
   return baseClient.$extends({
     query: {
-      user: {
-        async create({ args, query }: any) {
-          const user = await query(args);
-
-          const userCount = await baseClient.user.count();
-
-          if (userCount === 1) {
-            console.log(`🛡️ FIRST USER DETECTED: Provisioning Super Admin Role for [${user.email}]`);
-
-            const superRole = await baseClient.role.findUnique({
-              where: { slug: "super-admin" }
-            });
-
-            if (superRole) {
-              const epoch = BigInt(Date.now());
-              await baseClient.userRole.create({
-                data: {
-                  userId: user.id,
-                  roleId: superRole.id,
-                  isActive: true,
-                  createdBy: null,
-                  updatedBy: null,
-                  createdAt: epoch,
-                  updatedAt: epoch,
-                }
-              });
-              console.log("Super Admin Protocol Initialized.");
-            } else {
-              console.warn("Super Admin Manifestation Warning: 'super-admin' role not found in roles table.");
-            }
-          }
-
-          return user;
-        },
-      } as any,
       $allModels: {
         async $allOperations({ operation, args, query }: any) {
           if (args.data) args.data = convertToBigInt(args.data);
