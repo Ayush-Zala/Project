@@ -2,9 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 // ─────────────────────────────────────────────────────────────
-// GET /api/users/search?q=john
 // Non-paginated search for autocomplete / quick lookups.
-// Returns id + name + email only.
 // ─────────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -14,11 +12,11 @@ export async function GET(req: Request) {
     const users = await (prisma as any).user.findMany({
       where: query
         ? {
-            OR: [
-              { name:  { contains: query, mode: "insensitive" as const } },
-              { email: { contains: query, mode: "insensitive" as const } },
-            ],
-          }
+          OR: [
+            { name: { contains: query, mode: "insensitive" as const } },
+            { email: { contains: query, mode: "insensitive" as const } },
+          ],
+        }
         : {},
       take: 20,
       orderBy: { name: "asc" },

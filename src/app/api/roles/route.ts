@@ -13,7 +13,7 @@ const roleCreateSchema = z.object({
     .regex(/^[a-zA-Z0-9\s-]+$/, "Role Manifest: Special characters are forbidden"),
   description: z.string().max(200, "Description too long").optional().nullable(),
   colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Invalid color-hex protocol"),
-  parentId: z.union([z.string(), z.number(), z.null()]).optional().transform(v => 
+  parentId: z.union([z.string(), z.number(), z.null()]).optional().transform(v =>
     (v === null || v === "none" || v === "") ? null : Number(v)
   ),
 });
@@ -88,7 +88,6 @@ export async function POST(req: Request) {
 
     const slug = slugify(name);
 
-    // Check if slug already exists
     const existing = await (prisma as any).role.findUnique({ where: { slug } });
     if (existing) {
       return NextResponse.json({ error: "A role with a similar name already exists" }, { status: 400 });
@@ -110,7 +109,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // 🔔 Notify all connected clients of the change
+    // Notify all connected clients of the change
     await emitEvent("ROLES_CHANGED", { action: "created", roleId: role.id })
 
     return NextResponse.json(role);

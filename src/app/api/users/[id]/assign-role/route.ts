@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
 
 /**
- * POST: Assigns a single role to a user (overwrites existing).
+ * POST: Assigns a single role to a user.
  */
 export async function POST(
   req: Request,
@@ -30,7 +30,6 @@ export async function POST(
     }
 
     await (prisma as any).$transaction(async (tx: any) => {
-      // Delete existing roles for this user (since only single-role is allowed)
       await tx.userRole.deleteMany({
         where: { userId }
       });
@@ -45,7 +44,7 @@ export async function POST(
       });
     });
 
-    // 🔔 Broadcast
+    // Broadcast
     await emitEvent("USERS_CHANGED", { action: "role_assigned", userId });
 
     return NextResponse.json({ message: "Role assigned successfully" });

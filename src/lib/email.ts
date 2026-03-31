@@ -15,7 +15,7 @@ export const sendEmail = async ({
 }) => {
   try {
     const { data, error } = await resend.emails.send({
-      from: "Better Auth <onboarding@resend.dev>", // Replace with your verified domain in production
+      from: "Better Auth <onboarding@resend.dev>", // Replace with our verified domain in production
       to,
       subject,
       text,

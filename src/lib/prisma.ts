@@ -23,14 +23,10 @@ const adapter = new PrismaPg(pool);
 /**
  * Helper to recursively convert Date objects to BigInt timestamps
  */
-/**
- * Inbound: Recursively convert Dates to BigInt for Database
- */
 function convertToBigInt(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (obj instanceof Date) return BigInt(obj.getTime());
   if (typeof obj === "string") {
-    // Standard Date/DateTime format check
     if (/^\d{4}-\d{2}-\d{2}/.test(obj)) {
       const timestamp = Date.parse(obj.includes(" ") ? obj.replace(" ", "T") : obj);
       if (!isNaN(timestamp)) return BigInt(timestamp);
@@ -68,17 +64,13 @@ const prismaClientSingleton = () => {
     query: {
       user: {
         async create({ args, query }: any) {
-          // Execute the normal user creation
           const user = await query(args);
-          
-          // ── Industrial First-User Detection ─────────
-          // Check the total count of users to see if this was the first entry
+
           const userCount = await baseClient.user.count();
-          
+
           if (userCount === 1) {
             console.log(`🛡️ FIRST USER DETECTED: Provisioning Super Admin Role for [${user.email}]`);
-            
-            // Link the first user to the 'super-admin' role
+
             const superRole = await baseClient.role.findUnique({
               where: { slug: "super-admin" }
             });
@@ -96,22 +88,20 @@ const prismaClientSingleton = () => {
                   updatedAt: epoch,
                 }
               });
-              console.log("✅ Super Admin Protocol Initialized.");
+              console.log("Super Admin Protocol Initialized.");
             } else {
-              console.warn("⚠️ Super Admin Manifestation Warning: 'super-admin' role not found in roles table.");
+              console.warn("Super Admin Manifestation Warning: 'super-admin' role not found in roles table.");
             }
           }
-          
+
           return user;
         },
       } as any,
       $allModels: {
         async $allOperations({ operation, args, query }: any) {
-          // Process Inputs
           if (args.data) args.data = convertToBigInt(args.data);
           if (args.where) args.where = convertToBigInt(args.where);
-          
-          // Execute and Process Results
+
           return convertToNumber(await query(args));
         },
       } as any,
@@ -134,7 +124,6 @@ const prismaClientSingleton = () => {
 
 // Global type declaration
 declare global {
-  // Use a new key (V4) to force a refresh during dev hot-reloads
   var prismaGlobalV4: ReturnType<typeof prismaClientSingleton> | undefined;
 }
 

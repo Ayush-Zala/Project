@@ -10,12 +10,10 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log("🌱 Industrial Seed: Provisioning Super Admin Role...");
+  console.log("Industrial Seed: Provisioning Super Admin Role...");
 
   const epochNow = BigInt(Date.now());
 
-  // Use upsert to ensure this ONLY runs if it doesn't exist, 
-  // without creating duplicates on repeated migrations.
   const superAdmin = await prisma.role.upsert({
     where: { slug: "super-admin" },
     update: {}, // Do nothing if it already exists
@@ -33,13 +31,13 @@ async function main() {
     },
   });
 
-  console.log("✅ Super Admin Role Manifested:", (superAdmin as any).name);
-  console.log("🌱 Seeding Protocol Complete.");
+  console.log("Super Admin Role Manifested:", (superAdmin as any).name);
+  console.log("Seeding Protocol Complete.");
 }
 
 main()
   .catch((e) => {
-    console.error("❌ Seeding Protocol Failed:", e);
+    console.error("Seeding Protocol Failed:", e);
     process.exit(1);
   })
   .finally(async () => {

@@ -20,7 +20,7 @@ const passwordResetSchema = z.object({
 });
 
 /**
- * PATCH: Changes a user's password (admin action).
+ * PATCH: Changes a user's password.
  */
 export async function PATCH(
   req: Request,
@@ -47,7 +47,7 @@ export async function PATCH(
 
     const { password } = result.data;
 
-    // ── Hash password ───────────────
+    // Hash password
     const passwordHash = await bcrypt.hash(password, 10);
 
     // Update the record in the Account table
@@ -59,13 +59,13 @@ export async function PATCH(
       },
     });
 
-    // Option: also update the User row's updatedAt
+    // Also update the User row's updatedAt
     await (prisma as any).user.update({
       where: { id: userId },
       data: { updatedAt: BigInt(Date.now()) },
     });
 
-    // 🔔 Broadcast
+    // Broadcast
     await emitEvent("USERS_CHANGED", { action: "password_changed", userId });
 
     return NextResponse.json({ message: "Password updated successfully" });

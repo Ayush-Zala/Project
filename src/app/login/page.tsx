@@ -46,17 +46,15 @@ export default function LoginPage() {
       callbackURL: "/dashboard",
     });
 
-    setIsLoading(true); // Keep loading while redirecting
+    setIsLoading(true);
 
     if (error) {
       setIsLoading(false);
-      // More robust check for suspension error
       const isSuspended = error.status === 403 && error.message?.toLowerCase().includes("suspended");
       if (isSuspended) {
         toast.error(error.message, {
           description: "This account has been deactivated by an administrator.",
         });
-        // Also show as a validation error on the email field
         form.setError("email", {
           type: "manual",
           message: error.message,

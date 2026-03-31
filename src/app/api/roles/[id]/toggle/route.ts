@@ -25,7 +25,7 @@ export async function PATCH(
   try {
     const role = await (prisma as any).role.findUnique({
       where: { id },
-      select: { 
+      select: {
         isActive: true,
         slug: true
       }
@@ -35,10 +35,10 @@ export async function PATCH(
       return NextResponse.json({ error: "Role not found" }, { status: 404 });
     }
 
-    // 🛡️ SECURITY GUARD: Prevent deactivation of Super Admin
+    // Prevent deactivation of Super Admin
     if (role.slug === 'super-admin' && role.isActive) {
       return NextResponse.json(
-        { error: "The Super Admin role is protected and cannot be deactivated." }, 
+        { error: "The Super Admin role is protected and cannot be deactivated." },
         { status: 403 }
       );
     }
@@ -56,7 +56,7 @@ export async function PATCH(
       }
     });
 
-    // 🔔 Real-time broadcast: status toggled
+    // Real-time broadcast: status toggled
     await emitEvent("ROLES_CHANGED", { action: "toggled", roleId: id, isActive: updatedRole.isActive })
 
     return NextResponse.json(updatedRole);

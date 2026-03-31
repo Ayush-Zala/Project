@@ -12,7 +12,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarGroupLabel, // Added SidebarGroupLabel import
+  SidebarGroupLabel,
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboardIcon,
@@ -21,7 +21,6 @@ import {
   UserCircleIcon
 } from "lucide-react"
 
-// Simplified navigation data
 const data = {
   navMain: [
     {

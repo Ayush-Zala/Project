@@ -30,8 +30,8 @@ export async function PATCH(
   try {
     const user = await (prisma as any).user.findUnique({
       where: { id },
-      select: { 
-        isActive: true, 
+      select: {
+        isActive: true,
         userRoles: {
           where: { isActive: true },
           take: 1,
@@ -44,13 +44,13 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // 🛡️ Flatten role for easier check
+    // Flatten role for easier check
     const roleSlug = user.userRoles?.[0]?.role?.slug;
 
-    // 🛡️ SECURITY GUARD: Prevent deactivation of Super Admin
+    // Prevent deactivation of Super Admin
     if (roleSlug === 'super-admin' && user.isActive) {
       return NextResponse.json(
-        { error: "This user is a Super Admin and cannot be deactivated." }, 
+        { error: "This user is a Super Admin and cannot be deactivated." },
         { status: 403 }
       );
     }
@@ -69,7 +69,7 @@ export async function PATCH(
       }
     });
 
-    // 🔔 Broadcast
+    // Broadcast
     await emitEvent("USERS_CHANGED", { action: "toggled", userId: id });
 
     return NextResponse.json(updatedUser);

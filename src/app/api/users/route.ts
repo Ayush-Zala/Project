@@ -25,19 +25,19 @@ const userCreateSchema = z.object({
 // ─────────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const page   = parseInt(searchParams.get("page")  || "1");
-  const limit  = parseInt(searchParams.get("limit") || "10");
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("limit") || "10");
   const search = searchParams.get("search") || "";
-  const skip   = (page - 1) * limit;
+  const skip = (page - 1) * limit;
 
   try {
     const where = search
       ? {
-          OR: [
-            { name:  { contains: search, mode: "insensitive" as const } },
-            { email: { contains: search, mode: "insensitive" as const } },
-          ],
-        }
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
       : {};
 
     const [total, users] = await Promise.all([
@@ -57,10 +57,9 @@ export async function GET(req: Request) {
           createdAt: true,
           updatedAt: true,
           createdBy: true,
-          // Include the single assigned role (via UserRole junction)
           userRoles: {
             where: { isActive: true },
-            take: 1, // single-role per user
+            take: 1,
             select: {
               role: {
                 select: { id: true, name: true, colorCode: true, slug: true },
@@ -71,7 +70,6 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    // Flatten userRoles → role for cleaner frontend consumption
     const normalized = users.map((u: any) => ({
       ...u,
       role: u.userRoles[0]?.role ?? null,
@@ -94,7 +92,7 @@ export async function GET(req: Request) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// POST /api/users  — Create a new user (admin action)
+// POST /api/users  — Create a new user 
 // ─────────────────────────────────────────────────────────────
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -112,7 +110,7 @@ export async function POST(req: Request) {
 
     const { name, email, password, roleId } = result.data;
 
-    // ── Unique-email guard ────────────────────────────────────
+    // Unique-email guard
     const existing = await (prisma as any).user.findUnique({ where: { email } });
     if (existing) {
       return NextResponse.json(
@@ -121,17 +119,17 @@ export async function POST(req: Request) {
       );
     }
 
-    // ── Hash password (same salt rounds as better-auth) ───────
+    // Hash password 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // ── Create user + account in a transaction ─────────────────
+    // Create user + account in a transaction
     const user = await (prisma as any).$transaction(async (tx: any) => {
       // 1. Create the user profile row
       const newUser = await tx.user.create({
         data: {
           name,
           email,
-          emailVerified: true,  // auto-verified (admin-created)
+          emailVerified: true,
           isActive: true,
           createdBy: Number(session.user.id),
         },
@@ -161,7 +159,7 @@ export async function POST(req: Request) {
       return newUser;
     });
 
-    // ── Fetch the created user with role for the response ─────
+    // Fetch the created user with role for the response
     const fullUser = await (prisma as any).user.findUnique({
       where: { id: user.id },
       select: {
@@ -181,7 +179,7 @@ export async function POST(req: Request) {
       userRoles: undefined,
     };
 
-    // 🔔 Broadcast to all dashboard clients
+    // Broadcast to all dashboard clients
     await emitEvent("USERS_CHANGED", { action: "created", userId: user.id });
 
     return NextResponse.json(response, { status: 201 });

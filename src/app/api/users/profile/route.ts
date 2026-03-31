@@ -14,9 +14,9 @@ const nameSchema = z.string()
  * GET: Fetch the current user's profile details.
  */
 export async function GET(req: Request) {
-// ...
+
   const session = await auth.api.getSession({ headers: await headers() });
-  
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -49,7 +49,7 @@ export async function GET(req: Request) {
  */
 export async function PATCH(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
-  
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -66,13 +66,13 @@ export async function PATCH(req: Request) {
 
     const updatedUser = await (prisma as any).user.update({
       where: { id: Number(session.user.id) },
-      data: { 
+      data: {
         name,
         updatedAt: BigInt(Date.now())
       },
     });
 
-    // 🔔 Broadcast change (helpful if user is logged in on multiple devices)
+    // Broadcast change
     await emitEvent("USERS_CHANGED", { action: "profile_updated", userId: updatedUser.id });
 
     return NextResponse.json({

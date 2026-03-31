@@ -73,23 +73,23 @@ export async function PATCH(
       }
     }
 
-    // ── Update in a transaction to handle role assignment ────────
+    // Update in a transaction to handle role assignment
     await (prisma as any).$transaction(async (tx: any) => {
       // 1. Update user profile
       await tx.user.update({
         where: { id },
-        data: { 
-          ...(name && { name }), 
-          ...(email && { email }), 
-          updatedAt: BigInt(Date.now()) 
+        data: {
+          ...(name && { name }),
+          ...(email && { email }),
+          updatedAt: BigInt(Date.now())
         },
       });
 
       // 2. Update role if roleId provided
       if (roleId) {
-        // Delete existing roles (single-role policy)
+        // Delete existing roles
         await tx.userRole.deleteMany({ where: { userId: id } });
-        
+
         // Assign new role
         await tx.userRole.create({
           data: {
@@ -103,7 +103,7 @@ export async function PATCH(
 
     const updated = await getUserWithRole(id);
 
-    // 🔔 Broadcast
+    // Broadcast
     await emitEvent("USERS_CHANGED", { action: "updated", userId: id });
 
     return NextResponse.json(updated);
@@ -139,7 +139,7 @@ export async function DELETE(
     // Delete user; Prisma cascades: sessions, accounts, userRoles, etc.
     await (prisma as any).user.delete({ where: { id } });
 
-    // 🔔 Broadcast
+    // Broadcast
     await emitEvent("USERS_CHANGED", { action: "deleted", userId: id });
 
     return NextResponse.json({ message: "User deleted permanently" });

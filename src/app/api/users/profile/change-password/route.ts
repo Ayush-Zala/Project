@@ -21,9 +21,9 @@ const passwordProtocol = z.object({
  * POST: Change the current user's password (requires current password).
  */
 export async function POST(req: Request) {
-// ...
+
   const session = await auth.api.getSession({ headers: await headers() });
-  
+
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -38,9 +38,7 @@ export async function POST(req: Request) {
 
     const { currentPassword, newPassword } = result.data;
 
-    // 🔥 Better-auth changePassword logic
-    // This will verify the current password using our custom bcryptjs logic
-    // which we already configured in auth.ts.
+    // This will verify the current password using custom bcryptjs logic
     await auth.api.changePassword({
       body: {
         currentPassword,
@@ -52,11 +50,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Password changed successfully" });
   } catch (error: any) {
     console.error("[PROFILE_CHANGE_PASSWORD]", error.message);
-    // Better Auth errors might contain 'Invalid password' etc.
-    const message = error.message.includes("Invalid password") 
+
+    const message = error.message.includes("Invalid password")
       ? "The current password you provided is incorrect."
       : "Failed to change password. Please try again.";
-      
+
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }

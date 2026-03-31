@@ -30,11 +30,8 @@ export default function DashboardLayout({
   const [mounted, setMounted] = React.useState(false)
   const { useEvent } = useSocket()
 
-  // 🔌 Real-time Session Sync
-  // When 'USERS_CHANGED' is emitted, we check if it's OUR profile and refetch if needed.
+
   useEvent("USERS_CHANGED", React.useCallback((data: any) => {
-    // Better Auth session IDs might be strings, Prisma IDs might be numbers.
-    // Use loose equality or explicit coercion for comparison.
     if (String(data.userId) === String(session?.user?.id) && data.action === "profile_updated") {
       refetch()
     }
@@ -44,7 +41,7 @@ export default function DashboardLayout({
     setMounted(true)
   }, [])
 
-  // ── Loading state ──────────────────────────────────────────
+  // Loading state
   if (isPending || !mounted) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -57,7 +54,7 @@ export default function DashboardLayout({
     )
   }
 
-  // ── Not authenticated: proxy middleware will redirect ──────
+  // Not authenticated: proxy middleware will redirect
   if (!session) return null
 
   const user = {

@@ -74,7 +74,7 @@ export async function PATCH(
       }
     });
 
-    // 🔔 Real-time broadcast: update
+    // Real-time broadcast: update
     await emitEvent("ROLES_CHANGED", { action: "updated", roleId: id })
 
     return NextResponse.json(role);
@@ -107,7 +107,7 @@ export async function DELETE(
       where: { id },
     });
 
-    // 🔔 Real-time broadcast: delete
+    // Real-time broadcast: delete
     await emitEvent("ROLES_CHANGED", { action: "deleted", roleId: id })
 
     return NextResponse.json({ message: "Role deleted permanently" });

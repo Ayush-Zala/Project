@@ -5,7 +5,6 @@ import { NextResponse } from "next/server";
 
 /**
  * GET: Handles non-paginated search for roles.
- * Used for quick lookups or dropdown selections.
  */
 export async function GET(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -25,7 +24,7 @@ export async function GET(req: Request) {
         ]
       } : {},
       orderBy: { name: 'asc' },
-      take: 20, // Reasonable limit for a non-paginated search
+      take: 20,
     });
 
     return NextResponse.json(roles);
