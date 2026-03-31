@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { hasPermission } from "@/lib/rbac";
 
 /**
  * GET: Handles non-paginated search for roles.
@@ -11,6 +12,9 @@ export async function GET(req: Request) {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const allowed = await hasPermission(Number(session.user.id), "roles:read");
+  if (!allowed) return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const term = searchParams.get("term") || "";

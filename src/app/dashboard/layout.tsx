@@ -41,20 +41,16 @@ export default function DashboardLayout({
     setMounted(true)
   }, [])
 
-  // Loading state
-  if (isPending || !mounted) {
+  const isLoading = isPending || !mounted
+
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1], rotate: [0, 90, 180, 270, 360] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="h-8 w-8 rounded-lg border-2 border-primary border-t-transparent"
-        />
+      <div className="flex min-h-screen items-center justify-center bg-background" suppressHydrationWarning>
+        <div className="h-8 w-8 rounded-lg border-2 border-primary border-t-transparent animate-spin" />
       </div>
     )
   }
 
-  // Not authenticated: proxy middleware will redirect
   if (!session) return null
 
   const user = {

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
+import { hasPermission } from "@/lib/rbac";
 
 const userCreateSchema = z.object({
   name: z.string()
@@ -25,6 +26,17 @@ const userCreateSchema = z.object({
 // ─────────────────────────────────────────────────────────────
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await hasPermission(Number(session.user.id), "users:read");
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden: You do not have users:read access" }, { status: 403 });
+  }
+
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
   const search = searchParams.get("search") || "";
@@ -98,6 +110,11 @@ export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const allowed = await hasPermission(Number(session.user.id), "users:create");
+  if (!allowed) {
+    return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
   }
 
   try {

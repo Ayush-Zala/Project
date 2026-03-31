@@ -7,34 +7,29 @@ import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
 
-const roleCreateSchema = z.object({
-  name: z.string()
-    .min(3, "Role Manifest: Name must be at least 3 characters")
-    .max(40, "Role Manifest: Name must not exceed 40 characters")
-    .regex(/^[a-zA-Z0-9\s-]+$/, "Role Manifest: Special characters are forbidden"),
-  description: z.string().max(200, "Description too long").optional().nullable(),
-  colorCode: z.string().regex(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/, "Invalid color-hex protocol"),
-  parentId: z.union([z.string(), z.number(), z.null()]).optional().transform(v =>
-    (v === null || v === "none" || v === "") ? null : Number(v)
-  ),
+const permissionCreateSchema = z.object({
+  name: z.string().min(3, "Name must be at least 3 characters").max(50),
+  resource: z.string().min(2, "Resource is required"),
+  action: z.string().min(2, "Action is required"),
+  description: z.string().max(200).optional().nullable(),
 });
 
 /**
- * GET: Handles paginated list and search functionality for roles.
+ * GET: Paginated list and search for permissions.
  */
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "roles:read");
+  // Check if user has permission to read permissions
+  const allowed = await hasPermission(Number(session.user.id), "permissions:read");
   if (!allowed) {
-    return NextResponse.json({ error: "Forbidden: You do not have roles:read access" }, { status: 403 });
+    return NextResponse.json({ error: "Forbidden: You do not have permissions:read access" }, { status: 403 });
   }
 
+  const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("limit") || "10");
   const search = searchParams.get("search") || "";
@@ -45,27 +40,23 @@ export async function GET(req: Request) {
       OR: [
         { name: { contains: search, mode: 'insensitive' as const } },
         { slug: { contains: search, mode: 'insensitive' as const } },
-        { description: { contains: search, mode: 'insensitive' as const } },
+        { resource: { contains: search, mode: 'insensitive' as const } },
+        { action: { contains: search, mode: 'insensitive' as const } },
       ]
     } : {};
 
-    const [total, roles] = await Promise.all([
-      (prisma as any).role.count({ where }),
-      (prisma as any).role.findMany({
+    const [total, permissions] = await Promise.all([
+      (prisma as any).permission.count({ where }),
+      (prisma as any).permission.findMany({
         where,
         skip,
         take: limit,
         orderBy: { id: 'asc' },
-        include: {
-          parent: {
-            select: { name: true }
-          }
-        }
       }),
     ]);
 
     return NextResponse.json({
-      roles,
+      permissions,
       pagination: {
         total,
         page,
@@ -74,13 +65,13 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("[ROLES_GET]", error);
+    console.error("[PERMISSIONS_GET]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
 /**
- * POST: Handles role creation.
+ * POST: Create a new permission.
  */
 export async function POST(req: Request) {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -88,50 +79,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const allowed = await hasPermission(Number(session.user.id), "roles:create");
+  const allowed = await hasPermission(Number(session.user.id), "permissions:create");
   if (!allowed) {
     return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
   }
 
   try {
     const body = await req.json();
-    const result = roleCreateSchema.safeParse(body);
+    const result = permissionCreateSchema.safeParse(body);
 
     if (!result.success) {
       return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
     }
 
-    const { name, description, colorCode, parentId } = result.data;
+    const { name, resource, action, description } = result.data;
+    const slug = `${resource.toLowerCase()}:${action.toLowerCase()}`;
 
-    const slug = slugify(name);
-
-    const existing = await (prisma as any).role.findUnique({ where: { slug } });
+    const existing = await (prisma as any).permission.findUnique({ where: { slug } });
     if (existing) {
-      return NextResponse.json({ error: "A role with a similar name already exists" }, { status: 400 });
+      return NextResponse.json({ error: "A permission with this resource:action slug already exists" }, { status: 400 });
     }
 
-    const role = await (prisma as any).role.create({
+    const permission = await (prisma as any).permission.create({
       data: {
         name,
         slug,
+        resource,
+        action,
         description,
-        colorCode,
-        parentId,
         createdBy: Number(session.user.id),
       },
-      include: {
-        parent: {
-          select: { name: true }
-        }
-      }
     });
 
-    // Notify all connected clients of the change
-    await emitEvent("ROLES_CHANGED", { action: "created", roleId: role.id })
+    await emitEvent("PERMISSIONS_CHANGED", { action: "created", permissionId: permission.id });
 
-    return NextResponse.json(role);
+    return NextResponse.json(permission, { status: 201 });
   } catch (error) {
-    console.error("[ROLES_POST]", error);
+    console.error("[PERMISSIONS_POST]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

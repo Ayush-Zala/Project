@@ -39,6 +39,7 @@ import { UserDialog } from "@/components/users/user-dialog"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
 import { ChangePasswordDialog } from "@/components/users/change-password-dialog"
 import { AssignRoleDialog } from "@/components/users/assign-role-dialog"
+import { UserPermissionsDialog } from "@/components/users/user-permissions-dialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
@@ -65,6 +66,7 @@ export default function UsersPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = React.useState(false)
   const [isRoleDialogOpen, setIsRoleDialogOpen] = React.useState(false)
+  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = React.useState(false)
   const [selectedUser, setSelectedUser] = React.useState<any>(null)
   const [availableRoles, setAvailableRoles] = React.useState<any[]>([])
 
@@ -312,6 +314,13 @@ export default function UsersPage() {
                               <KeyIcon className="h-3.5 w-3.5" />
                               <span>Reset Password</span>
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
+                              onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
+                            >
+                              <ShieldIcon className="h-3.5 w-3.5 text-primary" />
+                              <span>Direct Permissions</span>
+                            </DropdownMenuItem>
                           </DropdownMenuGroup>
                           <DropdownMenuSeparator className="bg-border/40" />
                           <DropdownMenuGroup>
@@ -390,6 +399,11 @@ export default function UsersPage() {
         user={selectedUser}
         roles={availableRoles}
         onSuccess={() => fetchUsers(pagination.page)}
+      />
+      <UserPermissionsDialog
+        open={isPermissionsDialogOpen}
+        onOpenChange={setIsPermissionsDialogOpen}
+        user={selectedUser}
       />
     </>
   )

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
+import { hasPermission } from "@/lib/rbac";
 
 // ── Shared helper: fetch a user with role ──────────────────────
 async function getUserWithRole(id: number) {
@@ -33,8 +34,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: idStr } = await params;
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const id = parseInt(idStr);
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const allowed = await hasPermission(Number(session.user.id), "users:read");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const user = await getUserWithRole(id);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -52,6 +60,9 @@ export async function PATCH(
   const { id: idStr } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const allowed = await hasPermission(Number(session.user.id), "users:update");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const id = parseInt(idStr);
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -123,6 +134,9 @@ export async function DELETE(
   const { id: idStr } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const allowed = await hasPermission(Number(session.user.id), "users:delete");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const id = parseInt(idStr);
   if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });

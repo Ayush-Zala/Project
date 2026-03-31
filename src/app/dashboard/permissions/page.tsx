@@ -6,13 +6,13 @@ import {
   SearchIcon,
   PencilIcon,
   Trash2Icon,
-  ShieldCheckIcon,
+  KeyIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   RefreshCwIcon,
   MoreVerticalIcon,
   PowerIcon,
-  KeyIcon
+  ShieldCheckIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -34,9 +34,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
-import { RoleDialog } from "@/components/roles/role-dialog"
-import { DeleteRoleDialog } from "@/components/roles/delete-role-dialog"
-import { RolePermissionsDialog } from "@/components/roles/role-permissions-dialog"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
@@ -50,63 +47,81 @@ import {
 } from "@/components/ui/breadcrumb"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { PermissionDialog } from "@/components/permissions/permission-dialog"
 
-export default function RolesPage() {
-  const [roles, setRoles] = React.useState<any[]>([])
+export default function PermissionsPage() {
+  const [permissions, setPermissions] = React.useState<any[]>([])
   const [pagination, setPagination] = React.useState<any>({ total: 0, page: 1, limit: 10, totalPages: 1 })
   const [search, setSearch] = React.useState("")
   const [isLoading, setIsLoading] = React.useState(true)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
 
   // Dialog states
-  const [isRoleDialogOpen, setIsRoleDialogOpen] = React.useState(false)
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
-  const [selectedRole, setSelectedRole] = React.useState<any>(null)
-  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = React.useState(false)
+  const [isPermissionDialogOpen, setIsPermissionDialogOpen] = React.useState(false)
+  const [selectedPermission, setSelectedPermission] = React.useState<any>(null)
 
-  const fetchRoles = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
+  const fetchPermissions = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/roles?page=${page}&limit=${pagination.limit}&search=${searchTerm}`)
+      const res = await fetch(`/api/permissions?page=${page}&limit=${pagination.limit}&search=${searchTerm}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setRoles(data.roles)
+      setPermissions(data.permissions)
       setPagination(data.pagination)
     } catch (error: any) {
-      toast.error(error.message || "Failed to load roles")
+      toast.error(error.message || "Failed to load permissions")
     } finally {
       setIsLoading(false)
     }
   }, [pagination.limit, search])
 
-  // 🔌 Real-time WebSocket sync — auto-reload when any user mutates roles data
+  // Real-time synchronization
   const { useEvent } = useSocket()
-  useEvent("ROLES_CHANGED", React.useCallback(() => {
-    fetchRoles(pagination.page, search)
-  }, [fetchRoles, pagination.page, search]))
+  useEvent("PERMISSIONS_CHANGED", React.useCallback(() => {
+    fetchPermissions(pagination.page, search)
+  }, [fetchPermissions, pagination.page, search]))
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
-      fetchRoles(1, search)
-    }, 500) // Debounced search
+      fetchPermissions(1, search)
+    }, 500)
     return () => clearTimeout(timer)
-  }, [search, fetchRoles])
+  }, [search, fetchPermissions])
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    await fetchRoles(1)
+    await fetchPermissions(1)
     setIsRefreshing(false)
-    toast.success("Roles list refreshed")
+    toast.success("Permissions list updated")
   }
 
-  const handleToggleStatus = async (role: any) => {
+  const handleToggleStatus = async (permission: any) => {
     try {
-      const res = await fetch(`/api/roles/${role.id}/toggle`, { method: "PATCH" })
-      if (!res.ok) throw new Error("Failed to toggle role status")
+      const res = await fetch(`/api/permissions/${permission.id}/toggle`, { method: "PATCH" })
+      if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to toggle permission status")
+      }
 
       const updated = await res.json()
-      setRoles(prev => prev.map(r => r.id === role.id ? updated : r))
-      toast.success(`${role.name} is now ${updated.isActive ? 'active' : 'inactive'}`)
+      setPermissions(prev => prev.map(p => p.id === permission.id ? updated : p))
+      toast.success(`${permission.name} is now ${updated.isActive ? 'active' : 'inactive'}`)
+    } catch (error: any) {
+      toast.error(error.message)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this permission permanently? This may break existing role assignments.")) return;
+    
+    try {
+      const res = await fetch(`/api/permissions/${id}`, { method: "DELETE" })
+      if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || "Failed to delete permission")
+      }
+      toast.success("Permission deleted permanently")
+      fetchPermissions(pagination.page)
     } catch (error: any) {
       toast.error(error.message)
     }
@@ -114,7 +129,6 @@ export default function RolesPage() {
 
   return (
     <>
-      {/* ── Sidebar header bar ─────────────────────────── */}
       <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
         <div className="flex items-center gap-2 px-4">
           <SidebarTrigger className="-ml-1" />
@@ -126,14 +140,13 @@ export default function RolesPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Role Management</BreadcrumbPage>
+                <BreadcrumbPage>Permissions</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
       </header>
 
-      {/* ── Page content ───────────────────────────────── */}
       <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
         {/* Header & Search */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
@@ -142,11 +155,11 @@ export default function RolesPage() {
           <div className="flex flex-col gap-2 relative z-10">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
-                <ShieldCheckIcon className="h-6 w-6 text-primary" />
+                <KeyIcon className="h-6 w-6 text-primary" />
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Role Management</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Permission Manifest</h1>
             </div>
-            <p className="text-muted-foreground ml-11">Configure hierarchical security roles and access levels.</p>
+            <p className="text-muted-foreground ml-11">Define and govern discrete access controls across the infrastructure.</p>
           </div>
 
           <div className="flex items-center gap-3 relative z-10">
@@ -155,7 +168,7 @@ export default function RolesPage() {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search by name, slug..."
+                placeholder="Search resources, actions..."
                 className="pl-10 w-full md:w-[280px] bg-background/50 border-border/40 focus:border-primary/50 transition-all rounded-xl"
               />
             </div>
@@ -165,27 +178,26 @@ export default function RolesPage() {
               onClick={handleRefresh}
               disabled={isRefreshing}
               className="border-border/40 hover:bg-muted/50 rounded-xl h-10 w-10 text-muted-foreground hover:text-primary transition-all active:scale-95"
-              title="Sync Manifest"
             >
               <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </Button>
             <Button
-              onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
+              onClick={() => { setSelectedPermission(null); setIsPermissionDialogOpen(true); }}
               className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
             >
               <PlusIcon className="h-4 w-4" />
-              <span className="hidden sm:inline">Add Role</span>
+              <span className="hidden sm:inline">Define Permission</span>
             </Button>
           </div>
         </div>
 
-        {/* Main Table Content */}
+        {/* Permissions Table */}
         <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
           {isLoading && (
             <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="flex flex-col items-center gap-3">
                 <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
-                <span className="text-sm font-medium tracking-widest uppercase">Loading Roles</span>
+                <span className="text-sm font-medium tracking-widest uppercase">Fetching Manifest</span>
               </div>
             </div>
           )}
@@ -194,74 +206,54 @@ export default function RolesPage() {
             <TableHeader className="bg-muted/30">
               <TableRow className="border-border/40 hover:bg-transparent">
                 <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">ID</TableHead>
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Identity</TableHead>
-                <TableHead className="hidden lg:table-cell font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Hierarchy</TableHead>
+                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Permission</TableHead>
+                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Slug (Resource:Action)</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
-                <TableHead className="hidden md:table-cell font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Created</TableHead>
                 <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {roles.length === 0 ? (
+              {permissions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-64 text-center">
+                  <TableCell colSpan={5} className="h-64 text-center">
                     <div className="flex flex-col items-center gap-2">
                       <div className="p-4 bg-muted/20 rounded-full mb-2">
-                        <ShieldCheckIcon className="h-10 w-10 text-muted-foreground/30" />
+                        <KeyIcon className="h-10 w-10 text-muted-foreground/30" />
                       </div>
-                      <p className="text-lg font-medium text-muted-foreground">No roles found matching your criteria</p>
-                      <Button variant="link" onClick={() => setSearch("")} className="text-primary hover:text-primary/80">Clear filters</Button>
+                      <p className="text-lg font-medium text-muted-foreground">No permissions defined in manifest</p>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                roles.map((role, index) => (
-                  <TableRow key={role.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
+                permissions.map((p, index) => (
+                  <TableRow key={p.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
                     <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
                       #{(pagination.page - 1) * pagination.limit + index + 1}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-4">
-                        <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md transition-transform group-hover:scale-110"
-                          style={{ backgroundColor: role.colorCode || '#3b82f6' }}
-                        >
-                          {role.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <span className="font-bold text-foreground group-hover:text-primary transition-colors">{role.name}</span>
-                          <div className="flex items-center gap-2">
-                            <code className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">{role.slug}</code>
-                          </div>
-                        </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="font-bold text-foreground group-hover:text-primary transition-colors">{p.name}</span>
+                        {p.description && <span className="text-xs text-muted-foreground line-clamp-1">{p.description}</span>}
                       </div>
                     </TableCell>
-                    <TableCell className="hidden lg:table-cell">
-                      {role.parent ? (
-                        <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary hover:bg-primary/10">
-                          Sub of {role.parent.name}
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="bg-muted/50 border-border/40 font-mono text-[11px] px-2">
+                          {p.slug}
                         </Badge>
-                      ) : (
-                        <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/50">Root Role</span>
-                      )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Switch
-                          checked={role.isActive}
-                          disabled={role.slug === 'super-admin'}
-                          onCheckedChange={() => handleToggleStatus(role)}
+                          checked={p.isActive}
+                          onCheckedChange={() => handleToggleStatus(p)}
                           className="data-[state=checked]:bg-primary"
                         />
-                        <span className={`text-xs font-bold ${role.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
-                          {role.isActive ? 'ACTIVE' : 'INACTIVE'}
+                        <span className={`text-[10px] font-extrabold tracking-widest ${p.isActive ? 'text-green-500' : 'text-muted-foreground'}`}>
+                          {p.isActive ? 'ACTIVE' : 'LOCKED'}
                         </span>
                       </div>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground font-medium">
-                      {new Date(Number(role.createdAt)).toLocaleDateString(undefined, {
-                        month: 'short', day: 'numeric', year: 'numeric'
-                      })}
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <DropdownMenu>
@@ -274,38 +266,24 @@ export default function RolesPage() {
                         />
                         <DropdownMenuContent align="end" className="w-48 bg-background border-border/40 p-2 shadow-2xl">
                           <DropdownMenuGroup>
-                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Entity Controls</DropdownMenuLabel>
+                            <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold px-2 py-2">Definitions</DropdownMenuLabel>
                             <DropdownMenuSeparator className="bg-border/40 my-1" />
                             <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsRoleDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
+                              onClick={() => { setSelectedPermission(p); setIsPermissionDialogOpen(true); }}
+                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors"
                             >
                               <PencilIcon className="h-4 w-4" />
-                              <span className="font-medium">Modify Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsPermissionsDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
-                            >
-                              <KeyIcon className="h-4 w-4 text-primary" />
-                              <span className="font-medium">Manage Permissions</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleToggleStatus(role)}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-primary/10 hover:text-primary transition-colors focus:bg-primary/10 focus:text-primary"
-                            >
-                              <PowerIcon className="h-4 w-4" />
-                              <span className="font-medium">{role.isActive ? 'Suspend Authorization' : 'Restore Authorization'}</span>
+                              <span className="font-medium">Edit Manifest</span>
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
                           <DropdownMenuSeparator className="bg-border/40 my-1" />
                           <DropdownMenuGroup>
                             <DropdownMenuItem
-                              onClick={() => { setSelectedRole(role); setIsDeleteDialogOpen(true); }}
-                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors focus:bg-red-500/10 focus:text-red-500"
+                              onClick={() => handleDelete(p.id)}
+                              className="flex items-center gap-3 px-3 py-2.5 cursor-pointer rounded-lg hover:bg-red-500/10 text-red-500 transition-colors"
                             >
                               <Trash2Icon className="h-4 w-4" />
-                              <span className="font-bold">Purge Permanently</span>
+                              <span className="font-bold">Purge Entry</span>
                             </DropdownMenuItem>
                           </DropdownMenuGroup>
                         </DropdownMenuContent>
@@ -317,29 +295,29 @@ export default function RolesPage() {
             </TableBody>
           </Table>
 
-          {/* Improved Pagination Footer */}
+          {/* Pagination */}
           <div className="flex items-center justify-between p-6 bg-muted/10 border-t border-border/40">
             <div className="text-xs text-muted-foreground font-medium">
-              Showing <span className="text-foreground font-bold">{roles.length}</span> of <span className="text-foreground font-bold">{pagination.total}</span> roles
-            </div>
+              Showing <span className="text-primary font-bold">{permissions.length}</span> of <span className="text-foreground font-bold">{pagination.total}</span> entries
+          </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
                 disabled={pagination.page <= 1 || isLoading}
-                onClick={() => fetchRoles(pagination.page - 1)}
-                className="h-9 w-9 p-0 border-border/40 rounded-lg hover:bg-muted/50"
+                onClick={() => fetchPermissions(pagination.page - 1)}
+                className="h-9 w-9 p-0 border-border/40 rounded-lg hover:bg-muted/50 transition-all hover:border-primary/50"
               >
                 <ChevronLeftIcon className="h-4 w-4" />
               </Button>
               <div className="flex items-center gap-1 mx-2">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => i + 1).map((p) => (
                   <Button
                     key={p}
                     variant={p === pagination.page ? "default" : "ghost"}
                     size="sm"
-                    onClick={() => fetchRoles(p)}
-                    className={`h-9 w-9 p-0 rounded-lg font-bold text-xs ${p === pagination.page ? 'bg-primary text-primary-foreground' : 'hover:bg-primary/10 hover:text-primary'}`}
+                    onClick={() => fetchPermissions(p)}
+                    className={`h-9 w-9 p-0 rounded-lg font-bold text-xs transition-all ${p === pagination.page ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105' : 'hover:bg-primary/10 hover:text-primary'}`}
                   >
                     {p}
                   </Button>
@@ -349,8 +327,8 @@ export default function RolesPage() {
                 variant="outline"
                 size="sm"
                 disabled={pagination.page >= pagination.totalPages || isLoading}
-                onClick={() => fetchRoles(pagination.page + 1)}
-                className="h-9 w-9 p-0 border-border/40 rounded-lg hover:bg-muted/50"
+                onClick={() => fetchPermissions(pagination.page + 1)}
+                className="h-9 w-9 p-0 border-border/40 rounded-lg hover:bg-muted/50 transition-all hover:border-primary/50"
               >
                 <ChevronRightIcon className="h-4 w-4" />
               </Button>
@@ -358,27 +336,15 @@ export default function RolesPage() {
           </div>
         </div>
 
-        {/* Dialog Components */}
-        <RoleDialog
-          open={isRoleDialogOpen}
+        {/* Dialog for Create/Edit */}
+        <PermissionDialog
+          open={isPermissionDialogOpen}
           onOpenChange={(open) => {
-            setIsRoleDialogOpen(open);
-            if (!open) setSelectedRole(null);
+            setIsPermissionDialogOpen(open);
+            if (!open) setSelectedPermission(null);
           }}
-          role={selectedRole}
-          parents={roles.map(r => ({ id: r.id, name: r.name }))}
-          onSuccess={() => fetchRoles(1)}
-        />
-        <RolePermissionsDialog
-          open={isPermissionsDialogOpen}
-          onOpenChange={setIsPermissionsDialogOpen}
-          role={selectedRole}
-        />
-        <DeleteRoleDialog
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          role={selectedRole}
-          onSuccess={() => fetchRoles(1)}
+          permission={selectedPermission}
+          onSuccess={() => fetchPermissions(1)}
         />
       </div>
     </>

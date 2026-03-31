@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
+import { hasPermission } from "@/lib/rbac";
 
 /**
  * PATCH: Toggles the isActive status of a user.
@@ -16,6 +17,9 @@ export async function PATCH(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const allowed = await hasPermission(Number(session.user.id), "users:toggle");
+  if (!allowed) return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
 
   const id = parseInt(idStr);
   if (isNaN(id)) {

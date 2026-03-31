@@ -18,9 +18,11 @@ const WS_SERVER_URL = process.env.WS_SERVER_URL || "http://localhost:3001";
  * React SocketProvider / page-level listeners.
  */
 export type RealtimeEvent =
-  | "ROLES_CHANGED"    // Any role mutation  (create / update / delete / toggle)
-  | "USERS_CHANGED"    // Future: user mutations
-  | "PERMISSIONS_CHANGED"; // Future: permission mutations
+  | "ROLES_CHANGED"          // Role mutation
+  | "USERS_CHANGED"          // User profile / status / password
+  | "PERMISSIONS_CHANGED"    // Permission definition mutation
+  | "ROLE_PERMISSIONS_CHANGED" // Mapping permissions to roles
+  | "USER_PERMISSIONS_CHANGED"; // Mapping permissions to users
 
 /**
  * Emits a one-shot event to the WebSocket gateway server.

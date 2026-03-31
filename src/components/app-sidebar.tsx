@@ -18,7 +18,8 @@ import {
   LayoutDashboardIcon,
   ShieldCheckIcon,
   UsersIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  KeyIcon
 } from "lucide-react"
 
 const data = {
@@ -32,6 +33,11 @@ const data = {
       title: "Roles",
       url: "/dashboard/roles",
       icon: <ShieldCheckIcon />,
+    },
+    {
+      title: "Permissions",
+      url: "/dashboard/permissions",
+      icon: <KeyIcon />,
     },
     {
       title: "Users",

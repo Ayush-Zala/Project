@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { hasPermission } from "@/lib/rbac";
 
 // ─────────────────────────────────────────────────────────────
 // Non-paginated search for autocomplete / quick lookups.
 // ─────────────────────────────────────────────────────────────
 export async function GET(req: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const allowed = await hasPermission(Number(session.user.id), "users:read");
+  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { searchParams } = new URL(req.url);
   const query = searchParams.get("q") || "";
 

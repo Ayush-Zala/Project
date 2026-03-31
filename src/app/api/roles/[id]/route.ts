@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
+import { hasPermission } from "@/lib/rbac";
 
 /**
  * GET: Fetches a single role by ID.
@@ -12,6 +13,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: idStr } = await params;
+
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const allowed = await hasPermission(Number(session.user.id), "roles:read");
+  if (!allowed) return NextResponse.json({ error: "Forbidden: You do not have roles:read access" }, { status: 403 });
+
   const id = parseInt(idStr);
   if (isNaN(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -48,6 +56,9 @@ export async function PATCH(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const allowed = await hasPermission(Number(session.user.id), "roles:update");
+  if (!allowed) return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
 
   const id = parseInt(idStr);
   if (isNaN(id)) {
@@ -96,6 +107,9 @@ export async function DELETE(
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const allowed = await hasPermission(Number(session.user.id), "roles:delete");
+  if (!allowed) return NextResponse.json({ error: "Forbidden: Access denied" }, { status: 403 });
 
   const id = parseInt(idStr);
   if (isNaN(id)) {
