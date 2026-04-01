@@ -230,10 +230,10 @@ export default function UsersPage() {
                 <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">S.No</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">User Profile</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Identity & Role</TableHead>
-                {users.some(u => u.isToggleable && canToggle) && (
+                {canToggle && (
                   <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Status</TableHead>
                 )}
-                {users.some(u => u.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                {(canUpdate || canAssignRole || canAssignPermission || canDelete) && (
                   <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
                 )}
               </TableRow>
@@ -241,12 +241,12 @@ export default function UsersPage() {
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-64 text-center">
+                  <TableCell colSpan={3 + (canToggle ? 1 : 0) + ((canUpdate || canAssignRole || canAssignPermission || canDelete) ? 1 : 0)} className="h-64 text-center">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="p-4 bg-muted/20 rounded-full mb-2">
-                        <SearchIcon className="h-10 w-10 text-muted-foreground/30" />
-                      </div>
-                      <p className="text-lg font-medium text-muted-foreground">No accounts detected in the current segment</p>
+                       <div className="p-4 bg-muted/20 rounded-full mb-2">
+                         <SearchIcon className="h-10 w-10 text-muted-foreground/30" />
+                       </div>
+                       <p className="text-lg font-medium text-muted-foreground">No accounts detected in the current segment</p>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -292,10 +292,10 @@ export default function UsersPage() {
                         <span className="text-[11px] text-muted-foreground italic">No role assigned</span>
                       )}
                     </TableCell>
-                    {users.some(u => u.isToggleable && canToggle) && (
+                    {canToggle && (
                       <TableCell className="text-center">
                         <div className="flex items-center justify-center gap-3">
-                          {(canToggle && user.isToggleable) && (
+                          {user.isToggleable && (
                             <>
                               <Switch
                                 checked={user.isActive}
@@ -309,9 +309,9 @@ export default function UsersPage() {
                         </div>
                       </TableCell>
                     )}
-                    {users.some(u => u.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                    {(canUpdate || canAssignRole || canAssignPermission || canDelete) && (
                       <TableCell className="text-right pr-6">
-                        {(user.isToggleable && (canUpdate || canAssignRole || canAssignPermission || canDelete)) && (
+                        {user.isToggleable && (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={

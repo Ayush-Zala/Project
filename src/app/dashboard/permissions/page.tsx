@@ -242,7 +242,7 @@ export default function PermissionsPage() {
                 ))
               ) : permissions.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-64 text-center">
+                  <TableCell colSpan={3 + (canToggle ? 1 : 0) + ((canUpdate || canDelete) ? 1 : 0)} className="h-64 text-center">
                     <div className="flex flex-col items-center gap-2">
                        <div className="p-4 bg-muted/20 rounded-full mb-2">
                          <ShieldCheckIcon className="h-10 w-10 text-muted-foreground/30" />

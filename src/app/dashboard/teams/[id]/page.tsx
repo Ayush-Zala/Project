@@ -1,0 +1,215 @@
+
+"use client"
+
+import * as React from "react"
+import {
+  LibraryIcon,
+  ShieldCheckIcon,
+  UsersIcon,
+  ChevronLeftIcon,
+  RefreshCwIcon,
+  ArrowLeftIcon,
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { toast } from "sonner"
+import { useSocket } from "@/providers/socket-provider"
+import Link from "next/link"
+import { TeamRolesTab } from "@/components/teams/team-roles-tab"
+import { TeamMembersTab } from "@/components/teams/team-members-tab"
+import { authClient } from "@/lib/auth-client"
+import { usePermissions } from "@/providers/permission-provider"
+
+export default function TeamDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id: idStr } = React.use(params)
+  const [team, setTeam] = React.useState<any>(null)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const [activeTab, setActiveTab] = React.useState("members")
+
+  const { data: session } = authClient.useSession()
+  const { hasPermission: useHasPermission, isLoading: permissionsLoading } = usePermissions()
+
+  const fetchTeam = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const res = await fetch(`/api/teams/${idStr}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setTeam(data)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load team details")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [idStr])
+
+  // 🔌 Real-time WebSocket sync
+  const { useEvent } = useSocket()
+  useEvent("TEAMS_CHANGED", React.useCallback((data: any) => {
+    if (String(data.teamId) === idStr) fetchTeam()
+  }, [idStr, fetchTeam]))
+
+  React.useEffect(() => {
+    fetchTeam()
+  }, [fetchTeam])
+
+  // 🛡️ Dynamic UI: Permission-aware tab visibility
+  const canReadMembers = useHasPermission("team_members:read");
+  const canReadRoles = useHasPermission("team_roles:read");
+  
+  // Auto-select first available tab if activeTab is hidden
+  React.useEffect(() => {
+    if (!canReadMembers && activeTab === "members" && canReadRoles) {
+      setActiveTab("roles");
+    } else if (!canReadRoles && activeTab === "roles" && canReadMembers) {
+      setActiveTab("members");
+    }
+  }, [canReadMembers, canReadRoles, activeTab]);
+
+  if ((isLoading && !team) || permissionsLoading) {
+    return (
+      <div className="h-full w-full flex items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
+          <span className="text-sm font-medium tracking-widest uppercase">Syncing Team Data</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!team) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center gap-4">
+        <LibraryIcon className="h-12 w-12 text-muted-foreground/20" />
+        <h2 className="text-xl font-bold">Team Not Found</h2>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard/teams">Back to Registry</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  if (!session) return null
+
+  return (
+    <>
+      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard/teams">Teams</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{team.name}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+      </header>
+
+      <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
+        {/* Team Identification Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] -ml-32 -mt-32" />
+          
+          <div className="flex items-start gap-6 relative z-10">
+             <div className="hidden sm:flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 border border-primary/20 text-primary">
+                <LibraryIcon className="h-8 w-8" />
+             </div>
+             <div className="flex flex-col gap-1.5">
+                <div className="flex items-center gap-3">
+                   <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{team.name}</h1>
+                   <Badge variant={team.isActive ? "default" : "secondary"} className={`uppercase text-[9px] font-black tracking-widest px-2 py-0.5 ${team.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : ''}`}>
+                      {team.isActive ? 'Active Segment' : 'Suspended'}
+                   </Badge>
+                </div>
+                <p className="text-muted-foreground text-sm max-w-2xl leading-relaxed">
+                   {team.description || "Authorized organizational unit for hierarchical policy enforcement."}
+                </p>
+                <div className="flex items-center gap-4 mt-2">
+                   <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60">
+                      <UsersIcon className="h-3 w-3" />
+                      {team._count?.members || 0} Members
+                   </div>
+                   <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60">
+                      <ShieldCheckIcon className="h-3 w-3" />
+                      {team._count?.roles || 0} Local Roles
+                   </div>
+                </div>
+             </div>
+          </div>
+
+          <div className="relative z-10">
+             <Button variant="outline" className="rounded-xl flex gap-2 border-border/40 hover:bg-muted/50" asChild>
+                <Link href="/dashboard/teams">
+                   <ArrowLeftIcon className="h-4 w-4" />
+                   Back to Registry
+                </Link>
+             </Button>
+          </div>
+        </div>
+
+        {/* Tabbed Management Interface */}
+        {(canReadMembers || canReadRoles) ? (
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+            <TabsList className="bg-muted/30 border border-border/40 p-1 rounded-xl w-full sm:w-auto flex overflow-x-auto no-scrollbar">
+              {canReadMembers && (
+                <TabsTrigger value="members" className="rounded-lg flex gap-2 px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+                  <UsersIcon className="h-4 w-4" />
+                  Members
+                </TabsTrigger>
+              )}
+              {canReadRoles && (
+                <TabsTrigger value="roles" className="rounded-lg flex gap-2 px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
+                  <ShieldCheckIcon className="h-4 w-4" />
+                  Local Roles
+                </TabsTrigger>
+              )}
+            </TabsList>
+
+            {canReadMembers && (
+              <TabsContent value="members" className="mt-0 focus-visible:outline-none">
+                <TeamMembersTab teamId={idStr} isActive={team.isActive} />
+              </TabsContent>
+            )}
+
+            {canReadRoles && (
+              <TabsContent value="roles" className="mt-0 focus-visible:outline-none">
+                <TeamRolesTab teamId={idStr} isActive={team.isActive} />
+              </TabsContent>
+            )}
+          </Tabs>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-20 bg-muted/10 rounded-3xl border border-dashed border-border/60">
+             <ShieldCheckIcon className="h-12 w-12 text-muted-foreground/20 mb-4" />
+             <h3 className="text-lg font-bold">Limited Visibility</h3>
+             <p className="text-sm text-muted-foreground">You do not have the required capabilities to manage this team's segments.</p>
+          </div>
+        )}
+      </div>
+    </>
+  )
+}

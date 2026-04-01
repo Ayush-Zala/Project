@@ -52,7 +52,7 @@ export default function DashboardLayout({
 
   if (!mounted || isPending || permissionsLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen items-center justify-center bg-background" suppressHydrationWarning>
         <div className="h-8 w-8 rounded-lg border-2 border-primary border-t-transparent animate-spin" />
       </div>
     )

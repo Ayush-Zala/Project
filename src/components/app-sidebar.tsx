@@ -19,7 +19,8 @@ import {
   ShieldCheckIcon,
   UsersIcon,
   UserCircleIcon,
-  KeyIcon
+  KeyIcon,
+  LibraryIcon
 } from "lucide-react"
 
 const data = {
@@ -46,6 +47,12 @@ const data = {
       url: "/dashboard/users",
       icon: <UsersIcon />,
       permission: "users:read",
+    },
+    {
+      title: "Teams",
+      url: "/dashboard/teams",
+      icon: <LibraryIcon />,
+      permission: "teams:read",
     },
     {
       title: "Profile",

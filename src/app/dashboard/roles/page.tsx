@@ -208,11 +208,11 @@ export default function RolesPage() {
                 <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">ID</TableHead>
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Identity</TableHead>
                 <TableHead className="hidden lg:table-cell font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Hierarchy</TableHead>
-                {roles.some(r => r.isManageable && canToggle) && (
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Status</TableHead>
+                {canToggle && (
+                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Status</TableHead>
                 )}
                 <TableHead className="hidden md:table-cell font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Created</TableHead>
-                {roles.some(r => r.isManageable && (canUpdate || canAssignPermissions || canDelete)) && (
+                {(canUpdate || canAssignPermissions || canDelete) && (
                    <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
                 )}
               </TableRow>
@@ -223,15 +223,15 @@ export default function RolesPage() {
                   <TableRow key={i} className="border-border/20">
                     <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
                     <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
-                    <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
-                    {roles.some(r => r.isManageable && canToggle) && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
-                    <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
-                    {roles.some(r => r.isManageable && (canUpdate || canAssignPermissions || canDelete)) && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
+                    <TableCell className="hidden lg:table-cell"><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
+                    {canToggle && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-10 w-full rounded-lg" /></TableCell>
+                    {(canUpdate || canAssignPermissions || canDelete) && <TableCell><Skeleton className="h-10 w-full rounded-lg" /></TableCell>}
                   </TableRow>
                 ))
               ) : roles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-64 text-center">
+                  <TableCell colSpan={4 + (canToggle ? 1 : 0) + ((canUpdate || canAssignPermissions || canDelete) ? 1 : 0)} className="h-64 text-center">
                     <div className="flex flex-col items-center gap-2">
                        <div className="p-4 bg-muted/20 rounded-full mb-2">
                          <ShieldIcon className="h-10 w-10 text-muted-foreground/30" />
@@ -269,10 +269,10 @@ export default function RolesPage() {
                         <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground/50">Root Role</span>
                       )}
                     </TableCell>
-                    {roles.some(r => r.isManageable && canToggle) && (
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          {(canToggle && role.isManageable) && (
+                    {canToggle && (
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-3">
+                          {role.isManageable && (
                             <>
                               <Switch
                                 checked={role.isActive}
@@ -292,9 +292,9 @@ export default function RolesPage() {
                         month: 'short', day: 'numeric', year: 'numeric'
                       })}
                     </TableCell>
-                    {roles.some(r => r.isManageable && (canUpdate || canAssignPermissions || canDelete)) && (
+                    {(canUpdate || canAssignPermissions || canDelete) && (
                       <TableCell className="text-right pr-6">
-                        {(role.isManageable && (canUpdate || canAssignPermissions || canDelete)) && (
+                        {role.isManageable && (
                           <DropdownMenu>
                             <DropdownMenuTrigger
                               render={
