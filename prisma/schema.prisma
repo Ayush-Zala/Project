@@ -52,6 +52,17 @@ model User {
   // AuditLog createdBy
   auditLogsCreated    AuditLog[]   @relation("AuditLogCreatedBy")
 
+  // Team 
+  teamsAsMember       TeamMember[]
+  createdTeams        Team[]           @relation("TeamCreatedBy")
+  updatedTeams        Team[]           @relation("TeamUpdatedBy")
+  createdTeamRoles    TeamRole[]       @relation("TeamRoleCreatedBy")
+  updatedTeamRoles    TeamRole[]       @relation("TeamRoleUpdatedBy")
+  createdTeamMembers  TeamMember[]     @relation("TeamMemberCreatedBy")
+  updatedTeamMembers  TeamMember[]     @relation("TeamMemberUpdatedBy")
+  createdTeamMemberRoles TeamMemberRole[] @relation("TeamMemberRoleCreatedBy")
+  updatedTeamMemberRoles TeamMemberRole[] @relation("TeamMemberRoleUpdatedBy")
+
   @@map("user")
 }
 
@@ -273,4 +284,86 @@ enum ActivityEvent {
   LOGIN
   LOGOUT
   PERMISSION_DENIED
+}
+
+// ─── TEAM STRUCTURE ──────────────────────────────────────
+
+model Team {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  createdByUser User? @relation("TeamCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("TeamUpdatedBy", fields: [updatedBy], references: [id])
+
+  roles   TeamRole[]
+  members TeamMember[]
+
+  @@map("team")
+}
+
+model TeamRole {
+  id          Int      @id @default(autoincrement())
+  teamId      Int
+  name        String
+  slug        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("TeamRoleCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("TeamRoleUpdatedBy", fields: [updatedBy], references: [id])
+
+  memberRoles TeamMemberRole[]
+
+  @@unique([teamId, slug])
+  @@map("team_role")
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  userId    Int
+  isActive  Boolean  @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  team          Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user          User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdByUser User? @relation("TeamMemberCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User? @relation("TeamMemberUpdatedBy", fields: [updatedBy], references: [id])
+
+  roles TeamMemberRole[]
+
+  @@unique([teamId, userId])
+  @@map("team_member")
+}
+
+model TeamMemberRole {
+  id           Int      @id @default(autoincrement())
+  teamMemberId Int
+  teamRoleId   Int
+  createdBy    Int?
+  updatedBy    Int?
+  createdAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt    BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  member        TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  role          TeamRole   @relation(fields: [teamRoleId], references: [id], onDelete: Cascade)
+  createdByUser User?      @relation("TeamMemberRoleCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser User?      @relation("TeamMemberRoleUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([teamMemberId, teamRoleId])
+  @@map("team_member_role")
 }
