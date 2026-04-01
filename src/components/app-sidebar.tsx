@@ -73,7 +73,7 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
             <SidebarMenuButton
               size="lg"
               render={
-                <a href="/dashboard">
+                <a href="/dashboard" className="no-underline">
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                     <ShieldCheckIcon className="size-5" />
                   </div>
