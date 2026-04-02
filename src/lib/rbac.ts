@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { createActivityEntry } from "./activity-logger";
 
 /**
  * Checks if a user has a specific permission.
@@ -71,6 +72,13 @@ export async function hasPermission(userId: number, permissionSlug: string): Pro
 export async function validatePermission(userId: number, permissionSlug: string) {
   const allowed = await hasPermission(userId, permissionSlug);
   if (!allowed) {
+    // 🛡️ Log Permission Denied Server Event
+    await createActivityEntry({
+      userId,
+      type: "PERMISSION_DENIED",
+      description: `Access denied for user #${userId} attempting to execute [${permissionSlug}]`,
+    });
+
     throw new Error("PERMISSION_DENIED");
   }
   return true;

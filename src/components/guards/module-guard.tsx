@@ -2,6 +2,7 @@
 
 import React from "react"
 import { usePermissions } from "@/providers/permission-provider"
+import { authClient } from "@/lib/auth-client"
 import { usePathname } from "next/navigation"
 import { ShieldAlertIcon } from "lucide-react"
 
@@ -18,6 +19,23 @@ export function ModuleGuard({ children }: { children: React.ReactNode }) {
   ]
 
   const activeModule = PROTECTED_MODULES.find(m => pathname.startsWith(m.prefix))
+  const { data: session } = authClient.useSession()
+
+  // 🛡️ Log Permission Denial UI Event
+  React.useEffect(() => {
+    if (activeModule && !isSuperAdmin && !isLoading && !hasPermission(activeModule.permission) && session?.user?.id) {
+       fetch("/api/internal/activity", {
+          method: "POST",
+          body: JSON.stringify({
+             userId: Number(session.user.id),
+             type: "PERMISSION_DENIED",
+             description: `UI Access Restricted: User ${session.user.email} attempted to visit [${activeModule.name}] module.`,
+             ipAddress: "127.0.0.1",
+             userAgent: navigator.userAgent
+          })
+       }).catch(err => console.error("Failed to log permission denial", err));
+    }
+  }, [activeModule, isSuperAdmin, isLoading, session?.user?.id])
 
   // Bypass if public or super-admin
   if (!activeModule || isSuperAdmin) return <>{children}</>

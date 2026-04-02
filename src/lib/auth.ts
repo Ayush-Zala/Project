@@ -4,6 +4,7 @@ import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./prisma";
 import { sendEmail } from "./email";
 import { getVerificationEmailTemplate, getResetPasswordEmailTemplate } from "./email-templates";
+import { createActivityEntry } from "./activity-logger";
 import bcrypt from "bcryptjs";
 
 export const auth = betterAuth({
@@ -47,7 +48,7 @@ export const auth = betterAuth({
         }
       },
       update: {
-        after: async (user) => {
+        after: async (user: any) => {
           if (user.isActive === false) {
             await prisma.session.deleteMany({
               where: { userId: Number(user.id) },
@@ -56,6 +57,23 @@ export const auth = betterAuth({
         },
       },
     },
+    session: {
+      create: {
+        after: async (session: any) => {
+          // 🛡️ Log Successful Login
+          const user = await prisma.user.findUnique({
+            where: { id: Number(session.userId) },
+            select: { email: true }
+          });
+          
+          await createActivityEntry({
+            userId: Number(session.userId),
+            type: "LOGIN",
+            description: `User ${user?.email || session.userId} logged in`,
+          });
+        }
+      }
+    }
   },
   emailAndPassword: {
     enabled: true,
@@ -95,21 +113,43 @@ export const auth = betterAuth({
   plugins: [
     nextCookies(),
     {
-      id: "user-status",
+      id: "industrial-audit-logging",
       hooks: {
         before: [
           {
-            matcher: (ctx) => !!ctx.path && ctx.path.endsWith("/sign-in/email"),
-            handler: async (ctx) => {
+            matcher: (ctx) => !!ctx.path && ctx.path.includes("/sign-in/email"),
+            handler: async (ctx: any) => {
               const body = ctx.body as unknown as { email?: string };
               if (body?.email) {
                 const user = await prisma.user.findUnique({
                   where: { email: body.email },
                 });
                 if (user && !user.isActive) {
-                  console.warn(`Suspended user login attempt: ${body.email}`);
+                  // 🛡️ Log Suspended Login Attempt
+                  await createActivityEntry({
+                    userId: Number(user.id),
+                    type: "LOGIN",
+                    description: `Suspended user ${body.email} tried to log in`,
+                  });
+
                   throw new APIError("FORBIDDEN", {
                     message: "account is suspended please contact admin",
+                  });
+                }
+              }
+            },
+          },
+          {
+            matcher: (ctx) => !!ctx.path && ctx.path.includes("/sign-out"),
+            handler: async (ctx) => {
+              if (ctx.request) {
+                const session = await auth.api.getSession({ headers: ctx.request.headers });
+                if (session?.user?.id) {
+                  // 🛡️ Log Successful Logout
+                  await createActivityEntry({
+                    userId: Number(session.user.id),
+                    type: "LOGOUT",
+                    description: `User ${session.user.email} logged out`,
                   });
                 }
               }

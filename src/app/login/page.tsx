@@ -14,7 +14,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { toast } from "sonner";
 
 // ── Industrial Login Schema ──────────────────────────────
 const loginSchema = z.object({
@@ -28,6 +27,7 @@ export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -39,6 +39,7 @@ export default function LoginPage() {
 
   const handleLogin = async (values: LoginValues) => {
     setIsLoading(true);
+    setErrorMessage(null);
 
     const { data, error } = await authClient.signIn.email({
       email: values.email,
@@ -46,23 +47,14 @@ export default function LoginPage() {
       callbackURL: "/dashboard",
     });
 
-    setIsLoading(true);
+    setIsLoading(false);
 
     if (error) {
-      setIsLoading(false);
       const isSuspended = error.status === 403 && error.message?.toLowerCase().includes("suspended");
       if (isSuspended) {
-        toast.error(error.message, {
-          description: "This account has been deactivated by an administrator.",
-        });
-        form.setError("email", {
-          type: "manual",
-          message: error.message,
-        });
-      } else if (error.status === 403) {
-        toast.error("Access Forbidden: Please verify your email first.");
+        setErrorMessage("Account is deactivated. Please contact an admin.");
       } else {
-        toast.error(error.message || "Invalid credentials provided");
+        setErrorMessage("Invalid credentials provided");
       }
     }
   };
@@ -184,6 +176,15 @@ export default function LoginPage() {
                     </>
                   )}
                 </Button>
+                {errorMessage && (
+                  <motion.p
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="text-xs font-bold text-red-500 text-center animate-pulse"
+                  >
+                    {errorMessage}
+                  </motion.p>
+                )}
                 <div className="text-sm text-center text-muted-foreground">
                   Don&apos;t have an account?{" "}
                   <Link
