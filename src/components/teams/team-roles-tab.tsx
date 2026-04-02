@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
+import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
 import { TeamRoleDialog } from "./team-role-dialog"
@@ -94,7 +95,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <ShieldCheckIcon className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold tracking-tight">Localized Roles</h2>
+          <h2 className="text-xl font-bold tracking-tight">Team Roles</h2>
         </div>
         {canManage && isActive && (
           <Button 
@@ -102,21 +103,17 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
           >
             <PlusIcon className="h-4 w-4" />
-            New Local Role
+            New Role
           </Button>
         )}
       </div>
 
-      <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
-        {isLoading && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
-             <RefreshCwIcon className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        )}
+      <div className="bg-background/40 border border-input rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
+
 
         <Table>
           <TableHeader className="bg-muted/30">
-            <TableRow className="border-border/40 hover:bg-transparent">
+            <TableRow className="border-input hover:bg-transparent">
               <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">ID</TableHead>
               <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Role Manifest</TableHead>
               {canToggle && (
@@ -128,10 +125,19 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {roles.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index} className="border-border/20 hover:bg-transparent">
+                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-16 mx-auto rounded-[6px] opacity-70" /></TableCell>
+                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-10/12 rounded-[6px] opacity-70" /></TableCell>
+                  {canToggle && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-24 mx-auto rounded-[6px] opacity-70" /></TableCell>}
+                  {hasAnyAction && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-8 ml-auto rounded-[6px] opacity-70" /></TableCell>}
+                </TableRow>
+              ))
+            ) : roles.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2 + (canToggle ? 1 : 0) + (hasAnyAction ? 1 : 0)} className="h-32 text-center text-muted-foreground italic">
-                  No local roles defined for this team segment.
+                  No team roles defined for this segment.
                 </TableCell>
               </TableRow>
             ) : (
@@ -144,7 +150,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
                     <div className="flex flex-col gap-0.5">
                       <span className="font-bold text-foreground group-hover:text-primary transition-colors">{role.name}</span>
                       <span className="text-[11px] text-muted-foreground/60 max-w-[400px] truncate">
-                        {role.description || "Localized authority manifest."}
+                        {role.description || "Team authority manifest."}
                       </span>
                     </div>
                   </TableCell>
@@ -156,7 +162,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
                           checked={role.isActive}
                           onCheckedChange={() => handleToggleStatus(role)}
                         />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${role.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${role.isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           {role.isActive ? 'Active' : 'Suspended'}
                         </span>
                       </div>
@@ -173,7 +179,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
                               </Button>
                             }
                           />
-                          <DropdownMenuContent align="end" className="w-[160px] bg-popover border-border/40">
+                          <DropdownMenuContent align="end" className="w-[160px] bg-popover border-input">
                             <DropdownMenuGroup>
                               {canUpdate && (
                                 <DropdownMenuItem

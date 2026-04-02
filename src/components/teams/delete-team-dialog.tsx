@@ -60,8 +60,8 @@ export function DeleteTeamDialog({ open, onOpenChange, team, onSuccess }: Delete
             This will automatically purge all associated <span className="text-red-500 font-bold tracking-tighter">TEAM ROLES</span> and <span className="text-red-500 font-bold tracking-tighter">MEMBERSHIP BINDINGS</span>. This operation cannot be reversed.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter className="pt-4 border-t border-border/40">
-          <AlertDialogCancel className="rounded-xl border-border/40 hover:bg-muted/50">Cancel</AlertDialogCancel>
+        <AlertDialogFooter className="pt-4 border-t border-input">
+          <AlertDialogCancel className="rounded-xl border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
           <AlertDialogAction
             onClick={(e: React.MouseEvent) => {
               e.preventDefault()

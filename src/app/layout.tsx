@@ -6,11 +6,11 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/providers/socket-provider";
 import { PermissionProvider } from "@/providers/permission-provider";
-import { Toaster } from "sonner";
 
 export default function RootLayout({
   children,
@@ -30,14 +30,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <TooltipProvider>
-            <SocketProvider>
-              <PermissionProvider>
-                {children}
-              </PermissionProvider>
-            </SocketProvider>
-            <Toaster position="top-right" richColors />
-          </TooltipProvider>
+          <NuqsAdapter>
+            <TooltipProvider>
+              <SocketProvider>
+                <PermissionProvider>
+                  {children}
+                </PermissionProvider>
+              </SocketProvider>
+            </TooltipProvider>
+          </NuqsAdapter>
         </ThemeProvider>
       </body>
     </html>

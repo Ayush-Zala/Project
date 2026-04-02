@@ -85,7 +85,7 @@ export function TeamRoleDialog({ open, onOpenChange, teamId, role, onSuccess }: 
         throw new Error(data.error || "Failed to provision role")
       }
 
-      toast.success(role ? "Team role updated" : "Local role provisioned successfully")
+      toast.success(role ? "Team role updated" : "Team role provisioned successfully")
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
@@ -97,19 +97,19 @@ export function TeamRoleDialog({ open, onOpenChange, teamId, role, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-input shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-lg">
               <ShieldCheckIcon className="h-5 w-5 text-primary" />
             </div>
             <DialogTitle className="text-2xl font-bold tracking-tight">
-              {role ? "Edit Team Role" : "Provision Local Role"}
+              {role ? "Edit Team Role" : "Provision Team Role"}
             </DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground/80">
             {role 
-              ? "Modify the localized authority manifest for this team role." 
+              ? "Modify the authority manifest for this team role." 
               : "Define a new set of capabilities specifically for this organizational unit."}
           </DialogDescription>
         </DialogHeader>
@@ -125,7 +125,7 @@ export function TeamRoleDialog({ open, onOpenChange, teamId, role, onSuccess }: 
                   <FormControl>
                     <Input 
                       placeholder="e.g. Project Lead / Auditor" 
-                      className="bg-background/50 border-border/40 focus:border-primary/50 rounded-xl" 
+                      className="bg-background/50 border-input focus:border-primary/50 rounded-xl" 
                       {...field} 
                     />
                   </FormControl>
@@ -142,8 +142,8 @@ export function TeamRoleDialog({ open, onOpenChange, teamId, role, onSuccess }: 
                   <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Capability Scope</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Describe the permissions associated with this local role..." 
-                      className="bg-background/50 border-border/40 focus:border-primary/50 min-h-[100px] resize-none rounded-xl" 
+                      placeholder="Describe the permissions associated with this team role..." 
+                      className="bg-background/50 border-input focus:border-primary/50 min-h-[100px] resize-none rounded-xl" 
                       {...field} 
                       value={field.value || ""}
                     />
@@ -153,7 +153,7 @@ export function TeamRoleDialog({ open, onOpenChange, teamId, role, onSuccess }: 
               )}
             />
 
-            <DialogFooter className="pt-4 border-t border-border/40">
+            <DialogFooter className="pt-4 border-t border-input">
               <Button
                 type="button"
                 variant="ghost"

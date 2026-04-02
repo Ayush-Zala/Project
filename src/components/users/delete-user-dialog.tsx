@@ -65,7 +65,7 @@ export function DeleteUserDialog({ open, onOpenChange, user, onSuccess }: Delete
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            className="border-border/40 hover:bg-muted/50 rounded-xl"
+            className="border-input hover:bg-muted/50 rounded-xl"
           >
             Cancel
           </Button>

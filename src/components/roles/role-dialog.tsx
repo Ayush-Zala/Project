@@ -117,7 +117,7 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-background border-border/40 selection:bg-primary/30">
+      <DialogContent className="sm:max-w-[500px] bg-background border-input selection:bg-primary/30">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold tracking-tight">
             {role ? "Edit Role" : "Create New Role"}
@@ -137,7 +137,7 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
                   <FormItem>
                     <FormLabel>Role Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. System Administrator" {...field} className="bg-muted/30 border-border/40 focus:border-primary/50" />
+                      <Input placeholder="e.g. System Administrator" {...field} className="bg-background border-input focus:border-primary/50" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -153,7 +153,7 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
                     <FormControl>
                       <Textarea 
                         placeholder="Provide a brief overview of this role's purpose" 
-                        className="resize-none bg-muted/30 border-border/40 focus:border-primary/50 min-h-[100px]" 
+                        className="resize-none bg-background border-input focus:border-primary/50 min-h-[100px]" 
                         {...field} 
                         value={field.value || ""}
                       />
@@ -175,11 +175,11 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
                         value={field.value || "none"}
                       >
                         <FormControl>
-                          <SelectTrigger className="bg-muted/30 border-border/40">
+                          <SelectTrigger className="bg-background border-input">
                             <SelectValue placeholder="None (Root)" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent className="bg-popover border-border/40">
+                        <SelectContent className="bg-popover border-input">
                           <SelectItem value="none">None (Root)</SelectItem>
                           {parents
                             .filter(p => !role || p.id !== role.id)
@@ -196,37 +196,6 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="colorCode"
-                  render={({ field }: { field: ControllerRenderProps<RoleFormValues, "colorCode"> }) => (
-                    <FormItem>
-                      <FormLabel>Identity Color</FormLabel>
-                      <div className="flex items-center gap-2">
-                        <FormControl>
-                          <div className="relative flex-1">
-                            <Input 
-                              {...field} 
-                              className="pl-10 bg-muted/30 border-border/40" 
-                              placeholder="#000000"
-                            />
-                            <div 
-                              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border border-border/40"
-                              style={{ backgroundColor: field.value }}
-                            />
-                          </div>
-                        </FormControl>
-                        <Input 
-                          type="color" 
-                          className="w-12 h-10 p-1 bg-transparent border-border/40 cursor-pointer"
-                          value={field.value}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </div>
 
@@ -235,7 +204,7 @@ export function RoleDialog({ open, onOpenChange, role, parents, onSuccess }: Rol
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                className="border-border/40 hover:bg-muted/50"
+                className="border-input hover:bg-muted/50"
               >
                 Cancel
               </Button>

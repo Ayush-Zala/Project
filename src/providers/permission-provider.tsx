@@ -23,7 +23,7 @@ const PermissionContext = React.createContext<PermissionContextType>({
 })
 
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending } = authClient.useSession()
   const [state, setState] = React.useState<{
     permissions: string[]
     isSuperAdmin: boolean
@@ -37,6 +37,8 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
   })
   
   const fetchPermissions = React.useCallback(async () => {
+    if (isPending) return; // Wait for session resolution
+    
     if (!session?.user) {
       if (!state.isLoading) return; // Already stopped loading
       setState({ permissions: [], isSuperAdmin: false, roles: [], isLoading: false })
@@ -56,7 +58,7 @@ export function PermissionProvider({ children }: { children: React.ReactNode }) 
       console.error("Failed to fetch user permissions manifest", error)
       setState(prev => ({ ...prev, isLoading: false }))
     }
-  }, [session?.user])
+  }, [session?.user, isPending])
 
   React.useEffect(() => {
     fetchPermissions()

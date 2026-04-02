@@ -142,7 +142,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] bg-background border-border/40 overflow-hidden">
+      <DialogContent className="sm:max-w-[550px] bg-background border-input overflow-hidden">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
              <div className="p-2 bg-primary/10 rounded-lg">
@@ -170,7 +170,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} className="bg-muted/30 border-border/40 focus:border-primary/50" />
+                        <Input placeholder="John Doe" {...field} className="bg-background border-input focus:border-primary/50" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -188,7 +188,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                           placeholder="john@example.com" 
                           {...field} 
                           disabled={!!user} // Email usually fixed or needs special flow
-                          className="bg-muted/30 border-border/40 focus:border-primary/50" 
+                          className="bg-background border-input focus:border-primary/50" 
                         />
                       </FormControl>
                       <FormMessage />
@@ -208,11 +208,11 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="bg-muted/30 border-border/40">
+                        <SelectTrigger className="bg-background border-input">
                           <SelectValue placeholder="Assign a security role" />
                         </SelectTrigger>
                       </FormControl>
-                        <SelectContent className="bg-popover border-border/40 max-h-[300px]">
+                        <SelectContent className="bg-popover border-input max-h-[300px]">
                           {roles
                             .filter((r) => r.isAssignable !== false)
                             .map((r) => (
@@ -230,7 +230,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
 
               {/* Password section only shown during creation */}
               {!user && (
-                <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-6">
+                <div className="grid grid-cols-2 gap-4 border-t border-input pt-6">
                   <FormField
                     control={form.control}
                     name="password"
@@ -243,7 +243,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                               type={showPassword ? "text" : "password"} 
                               placeholder="••••••••" 
                               {...field} 
-                              className="bg-muted/30 border-border/40 focus:border-primary/50 pr-10"
+                              className="bg-background border-input focus:border-primary/50 pr-10"
                             />
                             <Button
                               type="button"
@@ -277,7 +277,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
                               type={showConfirmPassword ? "text" : "password"} 
                               placeholder="••••••••" 
                               {...field} 
-                              className="bg-muted/30 border-border/40 focus:border-primary/50 pr-10"
+                              className="bg-background border-input focus:border-primary/50 pr-10"
                             />
                             <Button
                               type="button"
@@ -302,12 +302,12 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
               )}
             </div>
 
-            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-border/40 mt-6">
+            <DialogFooter className="gap-2 sm:gap-0 pt-2 border-t border-input mt-6">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                className="border-border/40 hover:bg-muted/50 rounded-xl"
+                className="border-input hover:bg-muted/50 rounded-xl"
               >
                 Cancel
               </Button>

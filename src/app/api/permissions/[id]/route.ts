@@ -9,6 +9,7 @@ import * as z from "zod";
 const permissionUpdateSchema = z.object({
   name: z.string().min(3).max(50).optional(),
   description: z.string().max(200).optional().nullable(),
+  isActive: z.boolean().optional(),
 });
 
 /**

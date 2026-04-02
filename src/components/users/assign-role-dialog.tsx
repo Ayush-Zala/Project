@@ -92,7 +92,7 @@ export function AssignRoleDialog({ open, onOpenChange, user, roles, onSuccess }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-background border-border/40">
+      <DialogContent className="sm:max-w-[425px] bg-background border-input">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
              <div className="p-2 bg-primary/10 rounded-lg">
@@ -100,7 +100,7 @@ export function AssignRoleDialog({ open, onOpenChange, user, roles, onSuccess }:
              </div>
              <DialogTitle className="text-xl font-bold tracking-tight">Modify Security Role</DialogTitle>
           </div>
-          <DialogDescription className="text-muted-foreground pb-2 border-b border-border/40">
+          <DialogDescription className="text-muted-foreground pb-2 border-b border-input">
             Select a new primary role for 
             <span className="font-bold text-foreground px-1">"{user?.name}"</span>. 
             This will immediately update their access level.
@@ -117,11 +117,11 @@ export function AssignRoleDialog({ open, onOpenChange, user, roles, onSuccess }:
                   <FormLabel>Security Role</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger className="bg-muted/30 border-border/40">
+                      <SelectTrigger className="bg-background border-input">
                         <SelectValue placeholder="Select a role" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent className="bg-popover border-border/40">
+                    <SelectContent className="bg-popover border-input">
                       {roles.map((r) => (
                         <SelectItem key={r.id} value={r.id.toString()}>
                           {r.name}
@@ -134,12 +134,12 @@ export function AssignRoleDialog({ open, onOpenChange, user, roles, onSuccess }:
               )}
             />
 
-            <DialogFooter className="mt-8 gap-2 sm:gap-0 pt-4 border-t border-border/40">
+            <DialogFooter className="mt-8 gap-2 sm:gap-0 pt-4 border-t border-input">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                className="border-border/40 hover:bg-muted/50 rounded-xl"
+                className="border-input hover:bg-muted/50 rounded-xl"
               >
                 Cancel
               </Button>

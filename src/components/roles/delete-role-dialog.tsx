@@ -65,7 +65,7 @@ export function DeleteRoleDialog({ open, onOpenChange, role, onSuccess }: Delete
           <Button 
             variant="outline" 
             onClick={() => onOpenChange(false)}
-            className="border-border/40 hover:bg-muted/50"
+            className="border-input hover:bg-muted/50"
           >
             Cancel
           </Button>

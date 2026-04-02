@@ -105,7 +105,7 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <div className="px-2 py-1.5 flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Active Designations</span>
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Designation</span>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {roles.length > 0 ? roles.map(r => (
                     <div key={r} className="px-2 py-1 rounded-md bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-1.5 ring-1 ring-primary/20">

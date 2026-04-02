@@ -2,49 +2,23 @@
 
 import * as React from "react"
 import {
-  UserPlusIcon,
-  SearchIcon,
-  PencilIcon,
-  Trash2Icon,
-  ShieldCheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
+  PlusIcon,
   RefreshCwIcon,
-  MoreVerticalIcon,
-  PowerIcon,
-  ShieldIcon,
-  MailIcon,
-  UserIcon,
-  KeyIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
 import { UserDialog } from "@/components/users/user-dialog"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
 import { ChangePasswordDialog } from "@/components/users/change-password-dialog"
 import { AssignRoleDialog } from "@/components/users/assign-role-dialog"
 import { UserPermissionsDialog } from "@/components/users/user-permissions-dialog"
-import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -57,12 +31,25 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useHasPermission } from "@/hooks/use-has-permission"
 
+import { PageShell } from "@/components/dashboard/page-shell"
+
+// Data Table Imports
+import { DataTable } from "@/components/data-table/data-table"
+import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar"
+import { ActionBar } from "@/components/data-table/action-bar"
+import { useDataTable } from "@/hooks/use-data-table"
+import { getUsersColumns } from "@/components/users/users-table-columns"
+import { useSearchParams } from "next/navigation"
+import { DataTableFilterField } from "@/types/data-table"
+import { Trash2Icon, UserCheckIcon, UserMinusIcon } from "lucide-react"
+
 export default function UsersPage() {
   const [users, setUsers] = React.useState<any[]>([])
-  const [pagination, setPagination] = React.useState<any>({ total: 0, page: 1, limit: 10, totalPages: 1 })
-  const [search, setSearch] = React.useState("")
+  const [pageCount, setPageCount] = React.useState(0)
+  const [totalCount, setTotalCount] = React.useState(0)
   const [isLoading, setIsLoading] = React.useState(true)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
+  const [isBulkLoading, setIsBulkLoading] = React.useState(false)
 
   // Dialog states
   const [isUserDialogOpen, setIsUserDialogOpen] = React.useState(false)
@@ -81,56 +68,7 @@ export default function UsersPage() {
   const canAssignRole = useHasPermission("users:assign_role")
   const canAssignPermission = useHasPermission("users:assign_permission")
 
-  const fetchUsers = React.useCallback(async (page: number = pagination.page, searchTerm: string = search) => {
-    setIsLoading(true)
-    try {
-      const res = await fetch(`/api/users?page=${page}&limit=${pagination.limit}&search=${searchTerm}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setUsers(data.users)
-      setPagination(data.pagination)
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load users")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [pagination.limit, search])
-
-  const fetchRoles = React.useCallback(async () => {
-    try {
-      const res = await fetch("/api/roles?limit=100") // Get all roles for selection
-      const data = await res.json()
-      setAvailableRoles(data.roles || [])
-    } catch (error) {
-      console.error("Failed to load roles for selection", error)
-    }
-  }, [])
-
-  // 🔌 Real-time WebSocket sync
-  const { useEvent } = useSocket()
-  useEvent("USERS_CHANGED", React.useCallback(() => {
-    fetchUsers(pagination.page, search)
-  }, [fetchUsers, pagination.page, search]))
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchUsers(1, search)
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [search, fetchUsers])
-
-  React.useEffect(() => {
-    fetchRoles()
-  }, [fetchRoles])
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await fetchUsers(1)
-    setIsRefreshing(false)
-    toast.success("Users list refreshed")
-  }
-
-  const handleToggleStatus = async (user: any) => {
+  const handleToggleStatus = React.useCallback(async (user: any) => {
     try {
       const res = await fetch(`/api/users/${user.id}/toggle`, { method: "PATCH" })
       if (!res.ok) {
@@ -144,12 +82,167 @@ export default function UsersPage() {
     } catch (error: any) {
       toast.error(error.message)
     }
+  }, [])
+
+  // 📋 Data Table Implementation
+  const columns = React.useMemo(() => getUsersColumns({
+    capabilities: { canUpdate, canDelete, canToggle, canAssignRole, canAssignPermission },
+    onEdit: (u) => { setSelectedUser(u); setIsUserDialogOpen(true); },
+    onDelete: (u) => { setSelectedUser(u); setIsDeleteDialogOpen(true); },
+    onPasswordReset: (u) => { setSelectedUser(u); setIsPasswordDialogOpen(true); },
+    onRoleChange: (u) => { setSelectedUser(u); setIsRoleDialogOpen(true); },
+    onDirectPermissions: (u) => { setSelectedUser(u); setIsPermissionsDialogOpen(true); },
+    onToggleStatus: handleToggleStatus,
+  }), [canUpdate, canDelete, canToggle, canAssignRole, canAssignPermission, handleToggleStatus])
+
+  const { 
+    table, 
+    onSearchChange, 
+    onFilterReset,
+    search, 
+    filters, 
+    setFilters,
+    sort, 
+    page, 
+    perPage 
+  } = useDataTable({
+    data: users,
+    columns,
+    pageCount,
+    initialColumnVisibility: {
+      email: false,
+    },
+  })
+
+  const fetchUsers = React.useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const params = new URLSearchParams()
+      if (page) params.set("page", String(page))
+      if (perPage) params.set("per_page", String(perPage))
+      if (sort) params.set("sort", sort)
+      if (search) params.set("search", search)
+      if (filters?.length) params.set("filters", JSON.stringify(filters))
+
+      const res = await fetch(`/api/users?${params.toString()}`)
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setUsers(data.users)
+      setPageCount(data.pagination.totalPages)
+      setTotalCount(data.pagination.total)
+    } catch (error: any) {
+      toast.error(error.message || "Failed to load users")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [page, perPage, sort, search, filters])
+
+  const fetchRoles = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/roles?limit=100")
+      const data = await res.json()
+      setAvailableRoles(data.roles || [])
+    } catch (error) {
+      console.error("Failed to load roles for selection", error)
+    }
+  }, [])
+
+  // 🔌 Real-time WebSocket sync
+  const { useEvent } = useSocket()
+  useEvent("USERS_CHANGED", React.useCallback(() => {
+    fetchUsers()
+  }, [fetchUsers]))
+
+  React.useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+
+  React.useEffect(() => {
+    fetchRoles()
+  }, [fetchRoles])
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await fetchUsers()
+    setIsRefreshing(false)
+    toast.success("Users list refreshed")
   }
+
+  const onBulkStatusUpdate = async (isActive: boolean) => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const ids = selectedRows.map(row => (row.original as any).id)
+    
+    setIsBulkLoading(true)
+    const toastId = toast.loading(`Updating status for ${ids.length} entries...`)
+    
+    try {
+      // Execute parallel updates via the main PATCH endpoint
+      await Promise.all(ids.map(id => 
+        fetch(`/api/users/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive }),
+        })
+      ))
+      
+      toast.success(`Succesfully synchronized ${ids.length} records`, { id: toastId })
+      table.toggleAllRowsSelected(false)
+      fetchUsers()
+    } catch (error: any) {
+      toast.error("Bulk sync failed: " + error.message, { id: toastId })
+    } finally {
+      setIsBulkLoading(false)
+    }
+  }
+
+  const onBulkDelete = async () => {
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const ids = selectedRows.map(row => (row.original as any).id)
+    
+    if (!confirm(`Are you sure you want to purge ${ids.length} entries? This action is irreversible.`)) return
+
+    setIsBulkLoading(true)
+    const toastId = toast.loading(`Purging ${ids.length} entries...`)
+    
+    try {
+      await Promise.all(ids.map(id => 
+        fetch(`/api/users/${id}`, { method: "DELETE" })
+      ))
+      
+      toast.success(`Successfully deleted ${ids.length} records`, { id: toastId })
+      table.toggleAllRowsSelected(false)
+      fetchUsers()
+    } catch (error: any) {
+      toast.error("Bulk delete failed: " + error.message, { id: toastId })
+    } finally {
+      setIsBulkLoading(false)
+    }
+  }
+
+  const filterFields: DataTableFilterField<any>[] = [
+    { label: "Name", id: "name", variant: "text" },
+    { label: "Email", id: "email", variant: "text" },
+    { 
+      label: "Role", 
+      id: "roleId", 
+      variant: "select", 
+      options: availableRoles.map(r => ({ label: r.name, value: String(r.id) })) 
+    },
+    { 
+      label: "Status", 
+      id: "isActive", 
+      variant: "select", 
+      options: [
+        { label: "Active", value: "true" },
+        { label: "Inactive", value: "false" }
+      ] 
+    },
+  ]
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-        <div className="flex items-center gap-2 px-4">
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 px-4">
+        <div className="flex items-center gap-2">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
@@ -159,275 +252,110 @@ export default function UsersPage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>User Management</BreadcrumbPage>
+                <BreadcrumbPage>Users</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
+            title="Refresh"
+          >
+            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </Button>
+          {canCreate && (
+            <Button
+              onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
+              size="sm"
+              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+            >
+              <PlusIcon className="h-4 w-4" />
+              <span className="text-[11px] font-bold uppercase tracking-wider">Add User</span>
+            </Button>
+          )}
+        </div>
       </header>
 
-      <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
-        {/* Header & Search */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
+      <PageShell>
+        {/* Advanced Data Table */}
+        <DataTable
+            table={table}
+            className="relative"
+            isLoading={isLoading}
+            isSearchActive={!!search}
+            isRefreshing={isRefreshing}
+        >
+            <DataTableAdvancedToolbar 
+                table={table} 
+                filterFields={filterFields}
+                filters={filters}
+                setFilters={setFilters}
+                onSearchChange={onSearchChange}
+                onFilterReset={onFilterReset}
+                search={search}
+                className="mb-4"
+            />
+            
+        </DataTable>
 
-          <div className="flex flex-col gap-2 relative z-10">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <UserIcon className="h-6 w-6 text-primary" />
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Accounts</h1>
-            </div>
-            <p className="text-muted-foreground ml-11">Provision and manage administrative and employee accounts.</p>
-          </div>
-
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="relative group">
-              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Name or email..."
-                className="pl-10 w-full md:w-[280px] bg-background/50 border-border/40 focus:border-primary/50 transition-all rounded-xl"
-              />
-            </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-              className="border-border/40 hover:bg-muted/50 rounded-xl h-10 w-10 text-muted-foreground hover:text-primary transition-all active:scale-95"
-              title="Sync Manifest"
-            >
-              <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </Button>
-            {canCreate && (
-              <Button
-                onClick={() => { setSelectedUser(null); setIsUserDialogOpen(true); }}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+        <ActionBar table={table}>
+           {canToggle && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      disabled={isBulkLoading}
+                      className="h-8 gap-2 px-3 hover:bg-muted/50 text-foreground/90 rounded-full transition-all active:scale-95 border border-border/40"
+                    >
+                      <UserCheckIcon className="size-3.5 text-primary" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Activate</span>
+                    </Button>
+                  }
+                />
+                <DropdownMenuContent align="center" className="w-[160px] bg-popover/95 backdrop-blur-xl border border-border/40 rounded-xl p-1 shadow-2xl">
+                   <DropdownMenuItem 
+                     className="gap-2 focus:bg-muted/50 focus:text-foreground rounded-lg py-2 cursor-pointer text-[10px] font-black uppercase tracking-widest"
+                     onClick={() => onBulkStatusUpdate(true)}
+                   >
+                     <div className="size-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]" />
+                     Operational
+                   </DropdownMenuItem>
+                   <DropdownMenuItem 
+                     className="gap-2 focus:bg-muted/50 focus:text-foreground rounded-lg py-2 cursor-pointer text-[10px] font-black uppercase tracking-widest"
+                     onClick={() => onBulkStatusUpdate(false)}
+                   >
+                     <div className="size-1.5 rounded-full bg-muted-foreground" />
+                     Suspended
+                   </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+           )}
+           {canDelete && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                disabled={isBulkLoading}
+                onClick={onBulkDelete}
+                className="h-8 gap-2 px-3 hover:bg-destructive/10 text-destructive hover:text-destructive rounded-full transition-all active:scale-95 border border-border/40"
               >
-                <UserPlusIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">Add User</span>
+                 <Trash2Icon className="size-3.5" />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Purge</span>
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Users Table */}
-        <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
-          {isLoading && (
-            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div className="flex flex-col items-center gap-3">
-                <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
-                <span className="text-sm font-medium tracking-widest uppercase">Syncing Users</span>
-              </div>
-            </div>
-          )}
-
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow className="border-border/40 hover:bg-transparent">
-                <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">S.No</TableHead>
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">User Profile</TableHead>
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Identity & Role</TableHead>
-                {canToggle && (
-                  <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Status</TableHead>
-                )}
-                {(canUpdate || canAssignRole || canAssignPermission || canDelete) && (
-                  <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
-                )}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={3 + (canToggle ? 1 : 0) + ((canUpdate || canAssignRole || canAssignPermission || canDelete) ? 1 : 0)} className="h-64 text-center">
-                    <div className="flex flex-col items-center gap-2">
-                       <div className="p-4 bg-muted/20 rounded-full mb-2">
-                         <SearchIcon className="h-10 w-10 text-muted-foreground/30" />
-                       </div>
-                       <p className="text-lg font-medium text-muted-foreground">No accounts detected in the current segment</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                users.map((user, index) => (
-                  <TableRow key={user.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
-                    <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
-                      #{(pagination.page - 1) * pagination.limit + index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4">
-                        <div className="relative group/avatar">
-                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold transition-all group-hover/avatar:scale-110">
-                            {user.name?.charAt(0).toUpperCase()}
-                          </div>
-                          <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-background ${user.isActive ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-bold text-foreground group-hover:text-primary transition-colors">{user.name}</span>
-                          <span className="text-[11px] text-muted-foreground flex items-center gap-1.5 font-medium tracking-tight">
-                            <span className="op-60">✉</span> {user.email}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {user.role ? (
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant="outline" 
-                            className="font-black text-[9px] uppercase tracking-tighter px-2 py-0 border-primary/20 text-primary bg-primary/5 shadow-sm"
-                            style={{ 
-                              borderColor: user.role.colorCode ? user.role.colorCode + '40' : undefined,
-                              color: user.role.colorCode || undefined,
-                              backgroundColor: user.role.colorCode ? user.role.colorCode + '10' : undefined
-                            }}
-                          >
-                            <ShieldCheckIcon className="h-2.5 w-2.5 mr-1" />
-                            {user.role.name}
-                          </Badge>
-                        </div>
-                      ) : (
-                        <span className="text-[11px] text-muted-foreground italic">No role assigned</span>
-                      )}
-                    </TableCell>
-                    {canToggle && (
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-3">
-                          {user.isToggleable && (
-                            <>
-                              <Switch
-                                checked={user.isActive}
-                                onCheckedChange={() => handleToggleStatus(user)}
-                              />
-                              <span className={`text-[10px] font-bold uppercase tracking-widest ${user.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {user.isActive ? 'Active' : 'Suspended'}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    )}
-                    {(canUpdate || canAssignRole || canAssignPermission || canDelete) && (
-                      <TableCell className="text-right pr-6">
-                        {user.isToggleable && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger
-                              render={
-                                <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-muted group-hover:bg-muted transition-colors">
-                                  <MoreVerticalIcon className="h-4 w-4" />
-                                </Button>
-                              }
-                            />
-                            <DropdownMenuContent align="end" className="w-[180px] bg-popover border-border/40">
-                              <DropdownMenuGroup>
-                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
-                                  Account Control
-                                </DropdownMenuLabel>
-                                <DropdownMenuSeparator className="bg-border/40" />
-
-                                {canUpdate && (
-                                  <DropdownMenuItem
-                                    disabled={!user.isToggleable}
-                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => { setSelectedUser(user); setIsUserDialogOpen(true); }}
-                                  >
-                                    <PencilIcon className="h-3.5 w-3.5" />
-                                    <span>Edit Details</span>
-                                  </DropdownMenuItem>
-                                )}
-
-                                {canAssignRole && (
-                                  <DropdownMenuItem
-                                    disabled={!user.isToggleable}
-                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => { setSelectedUser(user); setIsRoleDialogOpen(true); }}
-                                  >
-                                    <ShieldIcon className="h-3.5 w-3.5" />
-                                    <span>Change Role</span>
-                                  </DropdownMenuItem>
-                                )}
-
-                                {canUpdate && (
-                                  <DropdownMenuItem
-                                    disabled={!user.isToggleable}
-                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={() => { setSelectedUser(user); setIsPasswordDialogOpen(true); }}
-                                  >
-                                    <KeyIcon className="h-3.5 w-3.5" />
-                                    <span>Reset Password</span>
-                                  </DropdownMenuItem>
-                                )}
-
-                                {canAssignPermission && (
-                                  <DropdownMenuItem
-                                    className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                                    onClick={() => { setSelectedUser(user); setIsPermissionsDialogOpen(true); }}
-                                  >
-                                    <ShieldIcon className="h-3.5 w-3.5 text-primary" />
-                                    <span>Direct Permissions</span>
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuGroup>
-
-                              {canDelete && (
-                                <>
-                                  <DropdownMenuSeparator className="bg-border/40" />
-                                  <DropdownMenuGroup>
-                                    <DropdownMenuItem
-                                      disabled={!user.isToggleable}
-                                      className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      onClick={() => { setSelectedUser(user); setIsDeleteDialogOpen(true); }}
-                                    >
-                                      <Trash2Icon className="h-3.5 w-3.5" />
-                                      <span>Remove Access</span>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuGroup>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </TableCell>
-                    )}
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-
-          {/* Pagination */}
-          <div className="flex items-center justify-between gap-4 px-6 py-4 bg-muted/10 border-t border-border/40">
-            <p className="text-xs text-muted-foreground italic">
-              Showing <span className="font-bold text-foreground">{users.length}</span> of <span className="font-bold text-foreground">{pagination.total}</span> accounts
-            </p>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-lg border-border/40"
-                disabled={pagination.page <= 1 || isLoading}
-                onClick={() => fetchUsers(pagination.page - 1)}
-              >
-                <ChevronLeftIcon className="h-4 w-4" />
-              </Button>
-              <div className="h-8 w-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                {pagination.page}
-              </div>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-lg border-border/40"
-                disabled={pagination.page >= pagination.totalPages || isLoading}
-                onClick={() => fetchUsers(pagination.page + 1)}
-              >
-                <ChevronRightIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+           )}
+        </ActionBar>
+        
+        <p className="text-[11px] font-medium text-muted-foreground italic text-center mt-2">
+           Displaying {users.length} of {totalCount} organizational entities
+        </p>
+      </PageShell>
 
       {/* Dialogs */}
       <UserDialog
@@ -435,26 +363,26 @@ export default function UsersPage() {
         onOpenChange={setIsUserDialogOpen}
         user={selectedUser}
         roles={availableRoles}
-        onSuccess={() => fetchUsers(pagination.page)}
+        onSuccess={() => fetchUsers()}
       />
       <DeleteUserDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         user={selectedUser}
-        onSuccess={() => fetchUsers(pagination.page)}
+        onSuccess={() => fetchUsers()}
       />
       <ChangePasswordDialog
         open={isPasswordDialogOpen}
         onOpenChange={setIsPasswordDialogOpen}
         user={selectedUser}
-        onSuccess={() => fetchUsers(pagination.page)}
+        onSuccess={() => fetchUsers()}
       />
       <AssignRoleDialog
         open={isRoleDialogOpen}
         onOpenChange={setIsRoleDialogOpen}
         user={selectedUser}
         roles={availableRoles}
-        onSuccess={() => fetchUsers(pagination.page)}
+        onSuccess={() => fetchUsers()}
       />
       <UserPermissionsDialog
         open={isPermissionsDialogOpen}

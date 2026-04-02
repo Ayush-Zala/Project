@@ -94,7 +94,7 @@ export function TeamDialog({ open, onOpenChange, team, onSuccess }: TeamDialogPr
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-input shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -122,7 +122,7 @@ export function TeamDialog({ open, onOpenChange, team, onSuccess }: TeamDialogPr
                   <FormControl>
                     <Input 
                       placeholder="e.g. Industrial Engineering Core" 
-                      className="bg-background/50 border-border/40 focus:border-primary/50 rounded-xl" 
+                      className="bg-background/50 border-input focus:border-primary/50 rounded-xl" 
                       {...field} 
                     />
                   </FormControl>
@@ -140,7 +140,7 @@ export function TeamDialog({ open, onOpenChange, team, onSuccess }: TeamDialogPr
                   <FormControl>
                     <Textarea 
                       placeholder="Describe the operational scope of this team..." 
-                      className="bg-background/50 border-border/40 focus:border-primary/50 min-h-[100px] resize-none rounded-xl" 
+                      className="bg-background/50 border-input focus:border-primary/50 min-h-[100px] resize-none rounded-xl" 
                       {...field} 
                       value={field.value || ""}
                     />
@@ -150,7 +150,7 @@ export function TeamDialog({ open, onOpenChange, team, onSuccess }: TeamDialogPr
               )}
             />
 
-            <DialogFooter className="pt-4 border-t border-border/40">
+            <DialogFooter className="pt-4 border-t border-input">
               <Button
                 type="button"
                 variant="ghost"

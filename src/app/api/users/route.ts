@@ -6,6 +6,8 @@ import bcrypt from "bcryptjs";
 import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
+import { getPrismaWhere, getPrismaOrderBy } from "@/lib/data-table-server";
+import { type ExtendedColumnFilter } from "@/types/data-table";
 
 const userCreateSchema = z.object({
   name: z.string()
@@ -41,12 +43,23 @@ export async function GET(req: Request) {
   }
 
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "10");
+  const limit = parseInt(searchParams.get("per_page") || "10");
   const search = searchParams.get("search") || "";
+  const sort = searchParams.get("sort") || "";
+  const filtersRaw = searchParams.get("filters") || "[]";
+  
+  let filters: ExtendedColumnFilter[] = [];
+  try {
+    filters = JSON.parse(filtersRaw);
+  } catch (e) {
+    console.warn("Invalid filters ignored");
+  }
+
   const skip = (page - 1) * limit;
 
   try {
-    const where = search
+    // 1. Build general search where
+    const searchWhere = search
       ? {
         OR: [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -55,13 +68,23 @@ export async function GET(req: Request) {
       }
       : {};
 
+    // 2. Build advanced filters where
+    const advancedWhere = getPrismaWhere(filters);
+
+    // 3. Combine with AND
+    const where = {
+        AND: [searchWhere, advancedWhere]
+    };
+
+    const orderBy = getPrismaOrderBy(sort);
+
     const [total, users] = await Promise.all([
       (prisma as any).user.count({ where }),
       (prisma as any).user.findMany({
         where,
         skip,
         take: limit,
-        orderBy: { id: "asc" },
+        orderBy,
         select: {
           id: true,
           name: true,

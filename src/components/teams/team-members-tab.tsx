@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
@@ -113,19 +114,15 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
         )}
       </div>
 
-      <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
-        {isLoading && (
-          <div className="absolute inset-0 bg-background/50 backdrop-blur-sm z-50 flex items-center justify-center">
-             <RefreshCwIcon className="h-8 w-8 text-primary animate-spin" />
-          </div>
-        )}
+      <div className="bg-background/40 border border-input rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
+
 
         <Table>
           <TableHeader className="bg-muted/30">
-            <TableRow className="border-border/40 hover:bg-transparent">
+            <TableRow className="border-input hover:bg-transparent">
               <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">S.No</TableHead>
               <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Team Member</TableHead>
-              <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Localized Roles</TableHead>
+              <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Roles</TableHead>
               {canToggle && (
                 <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Membership</TableHead>
               )}
@@ -135,7 +132,17 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.length === 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, index) => (
+                <TableRow key={index} className="border-border/20 hover:bg-transparent">
+                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-full rounded-[6px] opacity-70" /></TableCell>
+                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-10/12 rounded-[6px] opacity-70" /></TableCell>
+                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-24 rounded-[6px] opacity-70" /></TableCell>
+                  {canToggle && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-full rounded-[6px] opacity-70" /></TableCell>}
+                  {hasAnyAction && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-8 ml-auto rounded-[6px] opacity-70" /></TableCell>}
+                </TableRow>
+              ))
+            ) : members.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3 + (canToggle ? 1 : 0) + (hasAnyAction ? 1 : 0)} className="h-32 text-center text-muted-foreground italic">
                   No personnel detected in this organizational segment.
@@ -167,7 +174,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
                            <Badge 
                             key={mr.role.id} 
                             variant="outline" 
-                            className={`font-black text-[8px] uppercase tracking-tighter px-1.5 py-0 border-primary/20 text-primary bg-primary/5 shadow-sm ${!mr.role.isActive ? 'line-through opacity-50' : ''}`}
+                            className={`font-medium text-[8px] uppercase tracking-wide px-1.5 py-0 border-primary/20 text-primary bg-primary/5 shadow-sm ${!mr.role.isActive ? 'line-through opacity-50' : ''}`}
                            >
                               {mr.role.name}
                            </Badge>
@@ -185,7 +192,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
                           checked={member.isActive}
                           onCheckedChange={() => handleToggleStatus(member)}
                         />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${member.isActive ? 'text-emerald-500' : 'text-red-500'}`}>
+                        <span className={`text-[10px] font-bold uppercase tracking-widest ${member.isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
                           {member.isActive ? 'Active Member' : 'Suspended'}
                         </span>
                       </div>
@@ -202,7 +209,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
                              </Button>
                            }
                          />
-                         <DropdownMenuContent align="end" className="w-[180px] bg-popover border-border/40">
+                         <DropdownMenuContent align="end" className="w-[180px] bg-popover border-input">
                            <DropdownMenuGroup>
                               <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
                                 Membership Control

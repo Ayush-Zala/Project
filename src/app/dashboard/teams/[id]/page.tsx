@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../components/ui/tabs"
 import {
   Breadcrumb,
@@ -83,12 +84,61 @@ export default function TeamDetailsPage({
 
   if ((isLoading && !team) || permissionsLoading) {
     return (
-      <div className="h-full w-full flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
-          <span className="text-sm font-medium tracking-widest uppercase">Syncing Team Data</span>
+      <>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Skeleton className="h-4 w-48 rounded" />
+          </div>
+        </header>
+
+        <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full animate-pulse">
+          {/* Header Card Skeleton */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-input">
+            <div className="flex items-start gap-6">
+               <Skeleton className="hidden sm:block h-16 w-16 rounded-2xl" />
+               <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-48 rounded-lg" />
+                    <Skeleton className="h-5 w-24 rounded-full" />
+                  </div>
+                  <Skeleton className="h-4 w-96 max-w-full rounded" />
+                  <div className="flex items-center gap-4 mt-1">
+                    <Skeleton className="h-3 w-20 rounded" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                  </div>
+               </div>
+            </div>
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+          
+          {/* Tabs & Table Skeleton */}
+          <div className="w-full space-y-6">
+             <Skeleton className="h-12 w-64 rounded-xl" />
+             
+             {/* Table Skeleton mimicking Image 1 */}
+             <div className="bg-background/40 border border-input rounded-2xl overflow-hidden shadow-xl backdrop-blur-md">
+                <div className="bg-muted/30 border-b border-input py-4 px-6 flex gap-8">
+                   <Skeleton className="h-4 w-12 rounded" />
+                   <Skeleton className="h-4 w-32 rounded" />
+                   <Skeleton className="h-4 w-24 rounded" />
+                   <Skeleton className="h-4 w-20 rounded ml-auto" />
+                </div>
+                <div className="flex flex-col">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex gap-4 p-6 border-b border-input/40">
+                      <Skeleton className="h-6 w-[80px] rounded-[6px] opacity-70 shrink-0" />
+                      <Skeleton className="h-6 w-5/12 rounded-[6px] opacity-70" />
+                      <Skeleton className="h-6 w-3/12 rounded-[6px] opacity-70" />
+                      <Skeleton className="h-6 w-8 ml-auto rounded-[6px] opacity-70 shrink-0" />
+                    </div>
+                  ))}
+                </div>
+             </div>
+          </div>
         </div>
-      </div>
+      </>
     )
   }
 
@@ -142,7 +192,7 @@ export default function TeamDetailsPage({
              <div className="flex flex-col gap-1.5">
                 <div className="flex items-center gap-3">
                    <h1 className="text-3xl font-extrabold tracking-tight text-foreground">{team.name}</h1>
-                   <Badge variant={team.isActive ? "default" : "secondary"} className={`uppercase text-[9px] font-black tracking-widest px-2 py-0.5 ${team.isActive ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : ''}`}>
+                   <Badge variant={team.isActive ? "default" : "secondary"} className={`uppercase text-[9px] font-black tracking-widest px-2 py-0.5 ${team.isActive ? 'bg-primary/10 text-primary border-primary/20' : 'opacity-50'}`}>
                       {team.isActive ? 'Active Segment' : 'Suspended'}
                    </Badge>
                 </div>
@@ -156,7 +206,7 @@ export default function TeamDetailsPage({
                    </div>
                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-bold text-muted-foreground/60">
                       <ShieldCheckIcon className="h-3 w-3" />
-                      {team._count?.roles || 0} Local Roles
+                      {team._count?.roles || 0} Roles
                    </div>
                 </div>
              </div>
@@ -185,7 +235,7 @@ export default function TeamDetailsPage({
               {canReadRoles && (
                 <TabsTrigger value="roles" className="rounded-lg flex gap-2 px-6 py-2.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">
                   <ShieldCheckIcon className="h-4 w-4" />
-                  Local Roles
+                  Roles
                 </TabsTrigger>
               )}
             </TabsList>

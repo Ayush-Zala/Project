@@ -67,7 +67,18 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { name, description, colorCode, parentId } = body;
+    const { name, description, colorCode, parentId, isActive } = body;
+
+    // 🛡️ Apex Protection: Prevent deactivation of Super Admin
+    const existingRole = await (prisma as any).role.findUnique({ where: { id } });
+    if (!existingRole) return NextResponse.json({ error: "Role not found" }, { status: 404 });
+
+    if (existingRole.slug === 'super-admin' && typeof isActive === "boolean" && !isActive) {
+      return NextResponse.json(
+        { error: "Forbidden: The Super Admin role is the system apex and cannot be deactivated." },
+        { status: 403 }
+      );
+    }
 
     const role = await (prisma as any).role.update({
       where: { id },
@@ -76,6 +87,7 @@ export async function PATCH(
         description,
         colorCode,
         parentId: parentId ? parseInt(parentId) : null,
+        isActive: typeof isActive === "boolean" ? isActive : undefined,
         updatedBy: Number(session.user.id),
       },
       include: {
@@ -117,6 +129,17 @@ export async function DELETE(
   }
 
   try {
+    // 🛡️ Apex Protection: Prevent deletion of Super Admin
+    const roleToDelete = await (prisma as any).role.findUnique({ where: { id } });
+    if (!roleToDelete) return NextResponse.json({ error: "Role not found" }, { status: 404 });
+
+    if (roleToDelete.slug === 'super-admin') {
+       return NextResponse.json(
+         { error: "Forbidden: The Super Admin role is mission-critical and cannot be purged." },
+         { status: 403 }
+       );
+    }
+
     await (prisma as any).role.delete({
       where: { id },
     });

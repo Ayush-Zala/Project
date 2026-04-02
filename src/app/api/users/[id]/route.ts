@@ -72,7 +72,7 @@ export async function PATCH(
 
   try {
     const body = await req.json();
-    const { name, email, roleId } = body;
+    const { name, email, roleId, isActive } = body;
 
     // 🛡️ Hierarchy Check: Cannot assign parent roles
     if (roleId) {
@@ -103,9 +103,17 @@ export async function PATCH(
         data: {
           ...(name && { name }),
           ...(email && { email }),
+          ...(typeof isActive === "boolean" && { isActive }),
           updatedAt: BigInt(Date.now())
         },
       });
+
+      // 🛡️ Industrial Security: If suspended, physically purge all active sessions
+      if (typeof isActive === "boolean" && !isActive) {
+        await tx.session.deleteMany({
+          where: { userId: id }
+        });
+      }
 
       // 2. Update role if roleId provided
       if (roleId) {

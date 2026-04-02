@@ -4,20 +4,40 @@ import * as React from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { 
-  UserCircleIcon, 
-  MailIcon, 
-  KeyIcon, 
+import {
+  UserCircleIcon,
+  MailIcon,
+  KeyIcon,
   ShieldCheckIcon,
   EyeIcon,
   EyeOffIcon,
   SaveIcon,
   RefreshCwIcon,
-  AlertCircleIcon
+  AlertCircleIcon,
+  CalendarIcon,
+  MapPinIcon,
+  PhoneIcon,
+  BriefcaseIcon,
+  Building2Icon,
+  ClockIcon
 } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/components/ui/tabs"
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage
+} from "@/components/ui/avatar"
 import {
   Form,
   FormControl,
@@ -64,10 +84,36 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isUpdatingProfile, setIsUpdatingProfile] = React.useState(false)
   const [isChangingPassword, setIsChangingPassword] = React.useState(false)
-  
+  const [isEditMode, setIsEditMode] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState("personal")
+
   const [showCurrent, setShowCurrent] = React.useState(false)
   const [showNew, setShowNew] = React.useState(false)
   const [showConfirm, setShowConfirm] = React.useState(false)
+
+  const getInitials = (name: string) => {
+    return name?.split(" ").map(n => n[0]).join("").toUpperCase() || ".."
+  }
+
+  const formatJoinedDate = (timestamp: string) => {
+    if (!timestamp) return "Unknown"
+    const date = new Date(Number(timestamp))
+    const day = date.getDate()
+    const month = date.toLocaleDateString("en-US", { month: "long" })
+    const year = date.getFullYear()
+
+    const getDaySuffix = (d: number) => {
+      if (d > 3 && d < 21) return 'th'
+      switch (d % 10) {
+        case 1: return "st"
+        case 2: return "nd"
+        case 3: return "rd"
+        default: return "th"
+      }
+    }
+
+    return `${month} ${day}${getDaySuffix(day)}, ${year}`
+  }
 
   // 1. Identity Form
   const profileForm = useForm<z.infer<typeof profileSchema>>({
@@ -114,9 +160,9 @@ export default function ProfilePage() {
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      
+
       setProfile((prev: any) => ({ ...prev, name: data.user.name }))
-      toast.success("Identity Manifest Updated")
+      toast.success("Profile Updated")
     } catch (error: any) {
       toast.error(error.message)
     } finally {
@@ -134,8 +180,8 @@ export default function ProfilePage() {
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      
-      toast.success("Security Credentials Synchronized")
+
+      toast.success("Password Updated")
       passwordForm.reset()
     } catch (error: any) {
       toast.error(error.message)
@@ -146,12 +192,52 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
-         <div className="flex flex-col items-center gap-4">
-            <RefreshCwIcon className="h-12 w-12 text-primary animate-spin" />
-            <span className="text-sm font-medium tracking-widest uppercase animate-pulse">Initializing Dashboard</span>
-         </div>
-      </div>
+      <>
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2 px-4">
+            <SidebarTrigger className="-ml-1" />
+            <Separator orientation="vertical" className="mr-2 h-4" />
+            <Skeleton className="h-4 w-48 rounded" />
+          </div>
+        </header>
+
+        <div className="flex flex-col gap-12 p-4 md:p-8 w-full max-w-screen-2xl mx-auto animate-pulse">
+          <div className="noir-card p-8 md:p-12 relative overflow-hidden group">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 relative z-10 w-full">
+              <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12 w-full">
+                <Skeleton className="h-28 w-28 md:h-36 md:w-36 rounded-full shrink-0" />
+                <div className="flex flex-col items-center md:items-start gap-4">
+                  <Skeleton className="h-10 md:h-14 w-[250px] md:w-[400px] rounded-xl" />
+                  <Skeleton className="h-6 w-32 rounded-md" />
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-8 mt-2">
+                    <Skeleton className="h-5 w-48 rounded" />
+                    <Skeleton className="h-5 w-40 rounded" />
+                  </div>
+                </div>
+              </div>
+              <Skeleton className="h-12 w-32 rounded-xl shrink-0 hidden md:block" />
+            </div>
+          </div>
+          
+          <div className="space-y-8">
+             <div className="flex gap-2 p-1.5 border border-input rounded-xl w-fit">
+                <Skeleton className="h-10 w-32 rounded-lg" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+             </div>
+             <div className="max-w-3xl noir-card p-6 space-y-6">
+                <Skeleton className="h-6 w-48 rounded" />
+                <div className="space-y-3 pt-4">
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                </div>
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-24 rounded" />
+                  <Skeleton className="h-14 w-full rounded-xl" />
+                </div>
+             </div>
+          </div>
+        </div>
+      </>
     )
   }
 
@@ -168,211 +254,288 @@ export default function ProfilePage() {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>Profile & Identity</BreadcrumbPage>
+                <BreadcrumbPage>Profile Identity</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
         </div>
       </header>
 
-      <div className="flex flex-col gap-10 p-8 max-w-5xl mx-auto w-full">
-        {/* Header Section */}
-        <div className="flex flex-col gap-2 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-[80px] -mr-32 -mt-32" />
-          <div className="flex items-center gap-4 relative z-10">
-             <div className="p-3 bg-primary/10 rounded-xl border border-primary/20">
-                <UserCircleIcon className="h-8 w-8 text-primary" />
-             </div>
-             <div>
-                <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Command Profile</h1>
-                <p className="text-muted-foreground">Manage your identity and high-security authentication settings.</p>
-             </div>
-          </div>
-        </div>
+      <div className="flex flex-col gap-12 p-4 md:p-8 w-full max-w-screen-2xl mx-auto transition-all duration-500">
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          {/* Identity Card */}
-          <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md">
-            <div className="p-6 border-b border-border/40 flex items-center gap-3 bg-muted/30">
-               <UserCircleIcon className="h-5 w-5 text-primary" />
-               <span className="font-bold uppercase tracking-widest text-xs">Personal Access Manifest</span>
-            </div>
-            
-            <Form {...profileForm}>
-              <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="p-8 flex flex-col gap-6">
-                <FormField
-                  control={profileForm.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Account Display Name</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <UserCircleIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            {...field}
-                            placeholder="Enter your command name..." 
-                            className="pl-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-12"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
+        {/* Modern Profile Header */}
+        <div className="noir-card p-8 md:p-12 relative overflow-hidden group">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-8 md:gap-12 relative z-10 w-full">
+            <div className="flex flex-col md:flex-row items-center gap-8 md:gap-12">
+              <div className="relative">
+                <Avatar className="h-28 w-28 md:h-36 md:w-36 aspect-square border-2 border-primary/20 shadow-none ring-4 ring-primary/5 rounded-full overflow-hidden">
+                  <AvatarImage src={profile?.image} className="rounded-full object-cover" />
+                  <AvatarFallback className="bg-muted text-primary text-3xl font-black rounded-full flex items-center justify-center">{getInitials(profile?.name)}</AvatarFallback>
+                </Avatar>
+                <div className="absolute -bottom-2 -right-2 p-2 bg-background border border-border shadow-sm rounded-full">
+                  <ShieldCheckIcon className="h-5 w-5 text-primary" />
+                </div>
+              </div>
 
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Registered Email (Readonly)</label>
-                  <div className="relative group opacity-60">
-                    <MailIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
-                    <Input 
-                      value={profile?.email}
-                      readOnly
-                      className="pl-10 bg-muted/10 border-border/20 rounded-xl h-12 cursor-not-allowed"
-                    />
-                  </div>
-                  <p className="text-[10px] text-muted-foreground italic ml-1 mt-1">Identity validation is tied to this permanent email manifest.</p>
+              <div className="flex flex-col items-center md:items-start gap-6">
+                <div className="flex flex-col items-center md:items-start gap-2">
+                  <h1 className="text-3xl md:text-6xl font-black tracking-tight uppercase text-foreground leading-none">{profile?.name}</h1>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-black uppercase tracking-widest text-[0.7rem] px-3 py-1 rounded-md">
+                    {profile?.role || "Global Member"}
+                  </Badge>
                 </div>
 
-                <Button 
-                  type="submit" 
-                  disabled={isUpdatingProfile || !profileForm.formState.isDirty}
-                  className="mt-4 bg-primary text-primary-foreground font-bold rounded-xl h-12 shadow-lg shadow-primary/20 active:scale-[0.98] transition-all"
-                >
-                  {isUpdatingProfile ? (
-                    <>
-                      <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
-                      UPDATING MANIFEST...
-                    </>
-                  ) : (
-                    <>
-                      <SaveIcon className="mr-2 h-4 w-4" />
-                      UPDATE IDENTITY
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </div>
-
-          {/* Security Card */}
-          <div className="bg-background/40 border border-border/40 rounded-2xl overflow-hidden shadow-xl backdrop-blur-md">
-            <div className="p-6 border-b border-border/40 flex items-center gap-3 bg-muted/30">
-               <ShieldCheckIcon className="h-5 w-5 text-emerald-500" />
-               <span className="font-bold uppercase tracking-widest text-xs">Security Protocol Access</span>
+                <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-8 mt-2">
+                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                    <MailIcon className="h-4 w-4 text-primary/40" />
+                    {profile?.email}
+                  </div>
+                  <div className="flex items-center gap-2 text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                    <CalendarIcon className="h-4 w-4 text-primary/40" />
+                    JOINED {formatJoinedDate(profile?.createdAt)}
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            <Form {...passwordForm}>
-              <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="p-8 flex flex-col gap-5">
-                <FormField
-                  control={passwordForm.control}
-                  name="currentPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Current Password</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            type={showCurrent ? "text" : "password"}
-                            {...field}
-                            placeholder="••••••••" 
-                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowCurrent(!showCurrent)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showCurrent ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
 
-                <FormField
-                  control={passwordForm.control}
-                  name="newPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">New Secure Password</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            type={showNew ? "text" : "password"}
-                            {...field}
-                            placeholder="••••••••" 
-                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNew(!showNew)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showNew ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={passwordForm.control}
-                  name="confirmPassword"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Confirm New Password</FormLabel>
-                      <FormControl>
-                        <div className="relative group">
-                          <KeyIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50 group-focus-within:text-primary transition-colors" />
-                          <Input 
-                            type={showConfirm ? "text" : "password"}
-                            {...field}
-                            placeholder="••••••••" 
-                            className="pl-10 pr-10 bg-muted/30 border-border/40 focus:border-primary/50 transition-all rounded-xl h-11"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowConfirm(!showConfirm)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {showConfirm ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage className="text-[10px] font-bold" />
-                    </FormItem>
-                  )}
-                />
-
-                <Button 
-                  type="submit" 
-                  disabled={isChangingPassword}
-                  variant="outline"
-                  className="mt-2 border-border/40 hover:bg-emerald-500/10 hover:text-emerald-500 hover:border-emerald-500/50 font-bold rounded-xl h-12 active:scale-[0.98] transition-all"
-                >
-                  {isChangingPassword ? (
-                    <>
-                      <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />
-                      RE-HASHING CREDENTIALS...
-                    </>
-                  ) : (
-                    <>
-                      <ShieldCheckIcon className="mr-2 h-4 w-4" />
-                      CHANGE PASSWORD
-                    </>
-                  )}
-                </Button>
-              </form>
-            </Form>
+            <Button
+              variant={isEditMode ? "destructive" : "default"}
+              onClick={() => {
+                if (isEditMode) {
+                  // Revert to original identity manifest
+                  profileForm.reset({ name: profile?.name })
+                  passwordForm.reset({ 
+                    currentPassword: "", 
+                    newPassword: "", 
+                    confirmPassword: "" 
+                  })
+                }
+                setIsEditMode(!isEditMode)
+              }}
+              className="px-8 h-12 rounded-xl font-black uppercase tracking-widest text-[0.7rem] transition-all active:scale-[0.98] shadow-none"
+            >
+              {isEditMode ? "Cancel Edit" : "Edit Profile"}
+            </Button>
           </div>
         </div>
+
+        {/* Tabbed Configuration Manifest */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
+          <TabsList className="bg-secondary/50 dark:bg-zinc-950/40 p-1.5 rounded-xl h-auto flex flex-wrap gap-1.5 border border-border/40 self-start backdrop-blur-xl relative">
+            <TabsTrigger 
+              value="personal" 
+              className="px-6 py-2.5 rounded-lg font-black uppercase tracking-[0.15em] text-[0.7rem] relative z-10 transition-colors duration-300 data-[state=active]:text-foreground text-muted-foreground hover:text-foreground"
+            >
+              {activeTab === "personal" && (
+                <motion.div
+                  layoutId="active-tab-highlight"
+                  className="absolute inset-0 bg-background dark:bg-zinc-800 rounded-lg -z-10 shadow-md"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <UserCircleIcon className="h-4 w-4 mr-2" />
+              Personal
+            </TabsTrigger>
+            <TabsTrigger 
+              value="security" 
+              className="px-6 py-2.5 rounded-lg font-black uppercase tracking-[0.15em] text-[0.7rem] relative z-10 transition-colors duration-300 data-[state=active]:text-foreground text-muted-foreground hover:text-foreground"
+            >
+              {activeTab === "security" && (
+                <motion.div
+                  layoutId="active-tab-highlight"
+                  className="absolute inset-0 bg-background dark:bg-zinc-800 rounded-lg -z-10 shadow-md"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <KeyIcon className="h-4 w-4 mr-2" />
+              Security
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="personal" className="space-y-8 outline-none">
+            <div className="max-w-3xl">
+              <div className="noir-card">
+                <div className="p-6 border-b border">
+                  <span className="font-black uppercase tracking-[0.2em] text-[0.8rem] text-primary">Personal Information</span>
+                </div>
+                <Form {...profileForm}>
+                  <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="p-4 space-y-6">
+                    <FormField
+                      control={profileForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-[0.75rem] font-black text-foreground uppercase tracking-widest ml-1">Full Name</FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <UserCircleIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-all duration-300" />
+                              <Input
+                                {...field}
+                                disabled={!isEditMode}
+                                placeholder="Enter your command identity..."
+                                className="pl-12 bg-background border border-input focus:border-primary transition-all rounded-xl h-14 text-[1rem] font-bold text-foreground disabled:opacity-100 disabled:cursor-not-allowed"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-[0.7rem] font-bold text-red-500 ml-1" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="space-y-3">
+                      <FormLabel className="text-[0.75rem] font-black text-foreground uppercase tracking-widest ml-1">Email Address</FormLabel>
+                      <div className="relative group">
+                        <MailIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/50" />
+                        <Input
+                          value={profile?.email}
+                          disabled
+                          className="pl-12 bg-background border border-input cursor-not-allowed rounded-xl h-14 text-[1rem] font-bold text-foreground disabled:opacity-100"
+                        />
+                        <Badge variant="outline" className="absolute right-4 top-1/2 -translate-y-1/2 text-[0.6rem] uppercase tracking-widest bg-primary/10 text-primary border-none">
+                          Verified
+                        </Badge>
+                      </div>
+                    </div>
+
+                    {isEditMode && (
+                      <Button
+                        type="submit"
+                        disabled={isUpdatingProfile || !profileForm.formState.isDirty}
+                        className="w-full md:w-auto px-10 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] flex gap-3 text-[0.8rem] shadow-none animate-in fade-in zoom-in-95 duration-300"
+                      >
+                        {isUpdatingProfile ? (
+                          <><RefreshCwIcon className="h-4 w-4 animate-spin" /> SAVING</>
+                        ) : (
+                          <span> SAVE CHANGES </span>
+                        )}
+                      </Button>
+                    )}
+                  </form>
+                </Form>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="security" className="space-y-8 outline-none">
+            <div className="noir-card lg:max-w-3xl">
+              <div className="p-6 border-b border flex items-center justify-between">
+
+                <span className="font-black uppercase tracking-[0.2em] text-[0.8rem] text-primary">Security Credentials</span>
+
+              </div>
+
+              <Form {...passwordForm}>
+                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="p-4 space-y-6">
+                  <FormField
+                    control={passwordForm.control}
+                    name="currentPassword"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormLabel className="text-[0.75rem] font-black text-foreground uppercase tracking-widest ml-1">Current Password</FormLabel>
+                        <FormControl>
+                          <div className="relative group">
+                            <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-all duration-300" />
+                            <Input
+                              type={showCurrent ? "text" : "password"}
+                              {...field}
+                              disabled={!isEditMode}
+                              placeholder="••••••••"
+                              className="pl-12 pr-12 bg-background border border-input focus:border-primary transition-all rounded-xl h-14 text-[1rem] font-bold text-foreground disabled:opacity-100 disabled:cursor-not-allowed"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowCurrent(!showCurrent)}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                            >
+                              {showCurrent ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-[0.7rem] font-bold text-red-500 ml-1" />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <FormField
+                      control={passwordForm.control}
+                      name="newPassword"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-[0.75rem] font-black text-foreground uppercase tracking-widest ml-1">New Password</FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-all duration-300" />
+                              <Input
+                                type={showNew ? "text" : "password"}
+                                {...field}
+                                disabled={!isEditMode}
+                                placeholder="••••••••"
+                                className="pl-12 pr-12 bg-background border border-input focus:border-primary transition-all rounded-xl h-14 text-[1rem] font-bold text-foreground disabled:opacity-100 disabled:cursor-not-allowed"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowNew(!showNew)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                              >
+                                {showNew ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-[0.7rem] font-bold text-red-500 ml-1" />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={passwordForm.control}
+                      name="confirmPassword"
+                      render={({ field }) => (
+                        <FormItem className="space-y-3">
+                          <FormLabel className="text-[0.75rem] font-black text-foreground uppercase tracking-widest ml-1">Confirm Identity</FormLabel>
+                          <FormControl>
+                            <div className="relative group">
+                              <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/30 group-focus-within:text-primary transition-all duration-300" />
+                              <Input
+                                type={showConfirm ? "text" : "password"}
+                                {...field}
+                                disabled={!isEditMode}
+                                placeholder="••••••••"
+                                className="pl-12 pr-12 bg-background border border-input focus:border-primary transition-all rounded-xl h-14 text-[1rem] font-bold text-foreground disabled:opacity-100 disabled:cursor-not-allowed"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowConfirm(!showConfirm)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-primary transition-colors"
+                              >
+                                {showConfirm ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormMessage className="text-[0.7rem] font-bold text-red-500 ml-1" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {isEditMode && (
+                      <Button
+                        type="submit"
+                        disabled={isChangingPassword}
+                        className="w-full md:w-auto px-10 bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-[0.2em] rounded-xl h-14 transition-all active:scale-[0.98] flex gap-3 text-[0.8rem] shadow-none animate-in fade-in zoom-in-95 duration-300"
+                      >
+                        {isChangingPassword ? (
+                          <><RefreshCwIcon className="h-4 w-4 animate-spin" /> UPDATING</>
+                        ) : (
+                          <span>SAVE CREDENTIALS</span>
+                        )}
+                      </Button>
+                  )}
+                </form>
+              </Form>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </>
   )

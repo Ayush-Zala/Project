@@ -96,7 +96,7 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-input shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -118,7 +118,7 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
                  placeholder="Search by name or email..." 
                  value={search}
                  onChange={(e) => setSearch(e.target.value)}
-                 className="pl-10 bg-background/50 border-border/40 focus:border-primary/50 rounded-xl"
+                 className="pl-10 bg-background/50 border-input focus:border-primary/50 rounded-xl"
                />
                {isLoadingUsers && <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
             </div>
@@ -127,10 +127,10 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Select User</label>
             <Select value={selectedUserId} onValueChange={(v) => setSelectedUserId(v || "")} disabled={users.length === 0}>
-               <SelectTrigger className="bg-background/50 border-border/40 rounded-xl">
+               <SelectTrigger className="bg-background/50 border-input rounded-xl">
                   <SelectValue placeholder={users.length === 0 ? "Search for users above..." : "Select a user to add"} />
                </SelectTrigger>
-               <SelectContent className="bg-popover border-border/40">
+               <SelectContent className="bg-popover border-input">
                   {users.map(u => (
                      <SelectItem key={u.id} value={u.id.toString()} className="cursor-pointer">
                         <div className="flex flex-col">
@@ -144,7 +144,7 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
           </div>
         </div>
 
-        <DialogFooter className="pt-4 border-t border-border/40">
+        <DialogFooter className="pt-4 border-t border-input">
            <Button
              type="button"
              variant="ghost"

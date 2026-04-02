@@ -6,6 +6,9 @@ import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
 
+import { getPrismaWhere, getPrismaOrderBy } from "@/lib/data-table-server";
+import { type ExtendedColumnFilter } from "@/types/data-table";
+
 const teamSchema = z.object({
   name: z.string().min(3, "Min 3 characters required").max(50),
   description: z.string().max(255).optional().nullable(),
@@ -26,27 +29,48 @@ export async function GET(req: Request) {
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "10");
+  const limit = parseInt(searchParams.get("per_page") || "10");
   const search = searchParams.get("search") || "";
+  const sort = searchParams.get("sort") || "";
+  const filtersRaw = searchParams.get("filters") || "[]";
+  
+  let filters: ExtendedColumnFilter[] = [];
+  try {
+    filters = JSON.parse(filtersRaw);
+  } catch (e) {
+    console.warn("Invalid filters ignored");
+  }
+
   const skip = (page - 1) * limit;
 
   try {
-    const where: any = {
-      AND: [
-        search ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' as const } },
-            { description: { contains: search, mode: 'insensitive' as const } },
-          ]
-        } : {},
-        !canReadAll ? {
-          OR: [
-            { createdBy: userId },
-            { members: { some: { userId, isActive: true } } }
-          ]
-        } : {}
+    // 1. Build general search where
+    const searchWhere = search
+      ? {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { description: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+      : {};
+
+    // 2. Hierarchy access check
+    const hierarchyWhere = !canReadAll ? {
+      OR: [
+        { createdBy: userId },
+        { members: { some: { userId, isActive: true } } }
       ]
+    } : {};
+
+    // 3. Build advanced filters where
+    const advancedWhere = getPrismaWhere(filters);
+
+    // 4. Combine with AND
+    const where = {
+        AND: [searchWhere, hierarchyWhere, advancedWhere]
     };
+
+    const orderBy = getPrismaOrderBy(sort) || { createdAt: 'desc' };
 
     const [total, teams] = await Promise.all([
       (prisma as any).team.count({ where }),
@@ -54,7 +78,7 @@ export async function GET(req: Request) {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         include: {
           _count: {
             select: { members: true, roles: true }

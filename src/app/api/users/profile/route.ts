@@ -30,6 +30,16 @@ export async function GET(req: Request) {
         email: true,
         image: true,
         isActive: true,
+        createdAt: true,
+        userRoles: {
+          select: {
+            role: {
+              select: {
+                name: true
+              }
+            }
+          }
+        }
       }
     });
 
@@ -37,7 +47,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    // Transform for UI
+    const formattedUser = {
+      ...user,
+      createdAt: user.createdAt?.toString(),
+      role: user.userRoles?.[0]?.role?.name || "Member"
+    };
+
+    return NextResponse.json(formattedUser);
   } catch (error) {
     console.error("[PROFILE_GET]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

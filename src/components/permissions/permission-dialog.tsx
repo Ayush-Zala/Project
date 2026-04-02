@@ -104,8 +104,8 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
-        <DialogHeader className="p-6 bg-muted/20 border-b border-border/40 relative">
+      <DialogContent className="sm:max-w-[500px] border-input bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+        <DialogHeader className="p-6 bg-muted/20 border-b border-input relative">
           <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-8 -mt-8" />
           <div className="flex items-center gap-3 relative z-10">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -131,7 +131,7 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
                 <FormItem>
                   <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Permission Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. Create Infrastructure Users" {...field} className="bg-muted/10 border-border/40 focus:border-primary/50 rounded-xl" />
+                    <Input placeholder="e.g. Create Infrastructure Users" {...field} className="bg-background border-input focus:border-primary/50 rounded-xl" />
                   </FormControl>
                   <FormMessage className="text-[10px] font-bold" />
                 </FormItem>
@@ -150,7 +150,7 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
                         placeholder="e.g. users" 
                         disabled={isEditing} 
                         {...field} 
-                        className="bg-muted/10 border-border/40 focus:border-primary/50 rounded-xl font-mono text-sm" 
+                        className="bg-background border-input focus:border-primary/50 rounded-xl font-mono text-sm" 
                       />
                     </FormControl>
                     <FormDescription className="text-[9px]">Resource namespace.</FormDescription>
@@ -169,7 +169,7 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
                         placeholder="e.g. create" 
                         disabled={isEditing} 
                         {...field} 
-                        className="bg-muted/10 border-border/40 focus:border-primary/50 rounded-xl font-mono text-sm" 
+                        className="bg-background border-input focus:border-primary/50 rounded-xl font-mono text-sm" 
                       />
                     </FormControl>
                     <FormDescription className="text-[9px]">Operation name.</FormDescription>
@@ -197,7 +197,7 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
                   <FormControl>
                     <Textarea 
                       placeholder="Describe why this permission exists..." 
-                      className="bg-muted/10 border-border/40 focus:border-primary/50 rounded-xl min-h-[80px]" 
+                      className="bg-background border-input focus:border-primary/50 rounded-xl min-h-[80px]" 
                       {...field} 
                       value={field.value || ""}
                     />
@@ -208,7 +208,7 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
             />
 
             <DialogFooter className="pt-4 gap-3 border-t border-border/20">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-border/40 hover:bg-muted/50 font-bold px-6">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input hover:bg-muted/50 font-bold px-6">
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-lg shadow-primary/20 transition-all active:scale-95">

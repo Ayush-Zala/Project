@@ -111,8 +111,8 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col gap-0 p-0 border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
-        <DialogHeader className="p-6 bg-muted/20 border-b border-border/40 relative">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col gap-0 p-0 border-input bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
+        <DialogHeader className="p-6 bg-muted/20 border-b border-input relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-12 -mt-12" />
           <div className="flex items-center gap-4 relative z-10">
             <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20 overflow-hidden shrink-0 shadow-lg shadow-primary/5">
@@ -148,12 +148,12 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
                     placeholder="Search manifest..." 
-                    className="pl-10 h-10 bg-background/50 border-border/40 rounded-xl focus:ring-1 focus:ring-primary/20 text-sm"
+                    className="pl-10 h-10 bg-background/50 border-input rounded-xl focus:ring-1 focus:ring-primary/20 text-sm"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
              </div>
-             <Badge variant="outline" className="h-10 px-4 rounded-xl border-border/40 bg-background/50 text-[10px] font-bold tracking-widest text-muted-foreground flex gap-2">
+             <Badge variant="outline" className="h-10 px-4 rounded-xl border-input bg-background/50 text-[10px] font-bold tracking-widest text-muted-foreground flex gap-2">
                 <FilterIcon className="h-3 w-3" />
                 {directIds.length} DIRECT
              </Badge>
@@ -186,8 +186,8 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
                              isDirect 
                                ? 'bg-primary/5 border-primary/30 shadow-primary/5' 
                                : isViaRole 
-                               ? 'bg-muted/30 border-border/20 cursor-not-allowed opacity-80' 
-                               : 'bg-background hover:bg-muted/30 border-border/40'
+                               ? 'bg-background border-input cursor-not-allowed opacity-80' 
+                               : 'bg-background hover:bg-background border-input'
                            }`}
                         >
                            <Checkbox 
@@ -219,8 +219,8 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
           )}
         </div>
 
-        <DialogFooter className="p-6 bg-muted/20 border-t border-border/40 gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-border/40 font-bold px-6 h-11 hover:bg-background transition-all">
+        <DialogFooter className="p-6 bg-muted/20 border-t border-input gap-3">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input font-bold px-6 h-11 hover:bg-background transition-all">
             Discard
           </Button>
           <Button 

@@ -96,7 +96,7 @@ export function ChangePasswordDialog({ open, onOpenChange, user, onSuccess }: Ch
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] bg-background border-border/40">
+      <DialogContent className="sm:max-w-[450px] bg-background border-input">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
              <div className="p-2 bg-primary/10 rounded-lg">
@@ -104,7 +104,7 @@ export function ChangePasswordDialog({ open, onOpenChange, user, onSuccess }: Ch
              </div>
              <DialogTitle className="text-xl font-bold tracking-tight">Force Password Reset</DialogTitle>
           </div>
-          <DialogDescription className="text-muted-foreground pb-2 border-b border-border/40">
+          <DialogDescription className="text-muted-foreground pb-2 border-b border-input">
             Securely override the password for 
             <span className="font-bold text-foreground px-1">"{user?.name}"</span> 
             ({user?.email}). The user will need their new credentials on next login.
@@ -127,7 +127,7 @@ export function ChangePasswordDialog({ open, onOpenChange, user, onSuccess }: Ch
                         autoComplete="new-password"
                         placeholder="••••••••" 
                         {...field} 
-                        className="bg-muted/30 border-border/40 focus:border-primary/50 pr-10"
+                        className="bg-background border-input focus:border-primary/50 pr-10"
                       />
                       <Button
                         type="button"
@@ -162,7 +162,7 @@ export function ChangePasswordDialog({ open, onOpenChange, user, onSuccess }: Ch
                         autoComplete="new-password"
                         placeholder="••••••••" 
                         {...field} 
-                        className="bg-muted/30 border-border/40 focus:border-primary/50 pr-10"
+                        className="bg-background border-input focus:border-primary/50 pr-10"
                       />
                       <Button
                         type="button"
@@ -185,12 +185,12 @@ export function ChangePasswordDialog({ open, onOpenChange, user, onSuccess }: Ch
               />
             </div>
 
-            <DialogFooter className="mt-8 gap-2 sm:gap-0 pt-4 border-t border-border/40">
+            <DialogFooter className="mt-8 gap-2 sm:gap-0 pt-4 border-t border-input">
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => onOpenChange(false)}
-                className="border-border/40 hover:bg-muted/50 rounded-xl"
+                className="border-input hover:bg-muted/50 rounded-xl"
               >
                 Cancel
               </Button>

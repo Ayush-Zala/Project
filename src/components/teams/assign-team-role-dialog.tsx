@@ -79,7 +79,7 @@ export function AssignTeamRoleDialog({ open, onOpenChange, teamId, member, onSuc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-border/40 shadow-2xl">
+      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-input shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -96,10 +96,10 @@ export function AssignTeamRoleDialog({ open, onOpenChange, teamId, member, onSuc
           <div className="space-y-2">
             <label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Select Local Role</label>
             <Select value={selectedRoleId} onValueChange={(v) => setSelectedRoleId(v || "")} disabled={isLoadingRoles || roles.length === 0}>
-               <SelectTrigger className="bg-background/50 border-border/40 rounded-xl">
+               <SelectTrigger className="bg-background/50 border-input rounded-xl">
                   <SelectValue placeholder={isLoadingRoles ? "Synchronizing Manifest..." : "Choose a team role..."} />
                </SelectTrigger>
-               <SelectContent className="bg-popover border-border/40">
+               <SelectContent className="bg-popover border-input">
                   {roles.filter(r => r.isActive).map(r => (
                      <SelectItem key={r.id} value={r.id.toString()} className="cursor-pointer">
                          <div className="flex flex-col">
@@ -116,7 +116,7 @@ export function AssignTeamRoleDialog({ open, onOpenChange, teamId, member, onSuc
           </div>
         </div>
 
-        <DialogFooter className="pt-4 border-t border-border/40">
+        <DialogFooter className="pt-4 border-t border-input">
            <Button
              type="button"
              variant="ghost"
