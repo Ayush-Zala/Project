@@ -51,7 +51,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
   return [
     {
       accessorKey: "createdAt",
-      header: "Timestamp",
+      header: "Time",
       cell: ({ row }) => {
         const date = new Date(Number(row.getValue("createdAt")))
         return (
@@ -68,7 +68,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
     },
     {
       accessorKey: "user",
-      header: "Actor",
+      header: "User",
       cell: ({ row }) => {
         const actor = row.original.createdByUser
         let isSystem = false;
@@ -98,7 +98,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
     },
     {
       accessorKey: "action",
-      header: "Action",
+      header: "Activity",
       cell: ({ row }) => {
         const action = row.getValue("action") as string
         const status = row.original.status as string
@@ -116,7 +116,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
     },
     {
       accessorKey: "resource",
-      header: "Resource",
+      header: "Location",
       cell: ({ row }) => {
         const resource = row.getValue("resource") as string
         const targetUser = row.original.user
@@ -138,7 +138,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
     },
     {
       accessorKey: "reason",
-      header: "Forensic Status",
+      header: "Description",
       cell: ({ row }) => {
         const reason = row.original.reason || "Operational update"
         const metaData = row.original.metaData
@@ -151,7 +151,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
                 </TooltipTrigger>
                 <TooltipContent className="bg-background/95 backdrop-blur-xl border border-border shadow-2xl p-3 rounded-lg max-w-[380px]">
                   <div className="flex flex-col gap-1">
-                    <div className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">Forensic Reason</div>
+                    <div className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">Activity Details</div>
                     <div className="text-[11px] text-foreground/80 break-all font-mono italic leading-relaxed whitespace-pre-wrap">
                       {reason}
                     </div>
@@ -176,7 +176,7 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
 
     {
       accessorKey: "ipAddress",
-      header: "Network",
+      header: "IP Address",
       cell: ({ row }) => {
         const ip = row.original.ipAddress || "::1"
         return (
@@ -190,9 +190,9 @@ export function getAuditColumns({ onViewDiff }: ColumnOptions): ColumnDef<AuditL
               </TooltipTrigger>
               <TooltipContent className="bg-background/95 backdrop-blur-xl border border-border shadow-2xl p-2 rounded-lg">
                 <div className="flex flex-col gap-1">
-                   <div className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">User Agent Profile</div>
+                   <div className="text-[9px] font-black uppercase tracking-widest text-primary mb-1">Device Profile</div>
                    <div className="max-w-[300px] text-[10px] text-muted-foreground break-all font-mono italic leading-relaxed">
-                      {row.original.userAgent || "Unknown Forensic Agent"}
+                      {row.original.userAgent || "Unknown Device"}
                    </div>
                 </div>
               </TooltipContent>

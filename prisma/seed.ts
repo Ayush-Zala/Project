@@ -22,6 +22,7 @@ const PERMISSIONS_MANIFEST: Record<string, string[]> = {
   teams: ["create", "read", "read_all", "update", "delete", "toggle"],
   team_roles: ["create", "read", "update", "delete", "toggle"],
   team_members: ["create", "read", "update", "delete", "toggle", "assign_role"],
+  audit: ["read"],
 };
 
 async function main() {
@@ -99,8 +100,8 @@ async function main() {
         name = `Toggle ${resourceLabel} Status`;
         description = `Provides the capability to suspend or activate ${resource} without deleting data.`;
       } else if (action === "read") {
-        name = `View ${resourceLabel} Manifest`;
-        description = `Full read-only access to browse and search the ${resource} registry.`;
+        name = resource === "audit" ? "View Forensic Intelligence Logs" : `View ${resourceLabel} Manifest`;
+        description = resource === "audit" ? "Complete forensic record of all industrial transactions and state changes." : `Full read-only access to browse and search the ${resource} registry.`;
       } else if (action === "read_all") {
         name = `View All ${resourceLabel} Segments`;
         description = `Global visibility across all organizational segments, bypassing decentralized isolation.`;
@@ -111,11 +112,11 @@ async function main() {
 
       const permission = await prisma.permission.upsert({
         where: { slug },
-        update: { name, description, isActive: true },
+        update: { name, description, isActive: true, resource: resource === "audit" ? "Logs" : resource },
         create: {
           name,
           slug,
-          resource,
+          resource: resource === "audit" ? "Logs" : resource,
           description,
           action,
           isActive: true,

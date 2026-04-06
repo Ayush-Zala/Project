@@ -20,10 +20,8 @@ export async function GET(req: Request) {
   const userId = Number(session.user.id);
   // 🛡️ Security Check: Only users with 'audit:read' or 'super-admin' capacity should see these logs
   const allowed = await hasPermission(userId, "audit:read");
-  // Temporary fallback: if audit:read doesn't exist yet, allow if user can manage roles
-  const fallbackAllowed = await hasPermission(userId, "roles:manage");
   
-  if (!allowed && !fallbackAllowed) {
+  if (!allowed) {
     return NextResponse.json({ error: "Forbidden: Forensic access denied" }, { status: 403 });
   }
 

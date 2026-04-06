@@ -45,7 +45,6 @@ export default function AuditLogsPage() {
 
   // 🛡️ Forensic Guards
   const canReadAudits = useHasPermission("audit:read")
-  const canManageRoles = useHasPermission("roles:manage") // Fallback for admins
 
   // 📋 Data Table Implementation
   const columns = React.useMemo(() => getAuditColumns({
@@ -122,7 +121,7 @@ export default function AuditLogsPage() {
   ]
 
   // 🛡️ Unauthorized Protection
-  if (!isLoading && !canReadAudits && !canManageRoles) {
+  if (!isLoading && !canReadAudits) {
      return (
         <div className="flex flex-col items-center justify-center h-[80vh] text-center p-6 bg-background">
            <div className="size-16 rounded-3xl bg-rose-500/10 flex items-center justify-center text-rose-500 mb-6 animate-pulse border border-rose-500/20 shadow-lg shadow-rose-500/10">
@@ -130,7 +129,7 @@ export default function AuditLogsPage() {
            </div>
            <h1 className="text-2xl font-black uppercase tracking-tighter text-foreground mb-2">Access Restricted</h1>
            <p className="text-[12px] font-medium text-muted-foreground italic max-w-sm leading-relaxed">
-              Your security clearance is insufficient to view forensic audit trails. <br/>
+              Your security clearance is insufficient to view activity history. <br/>
               <span className="text-primary font-bold">Protocol Status: Forbidden.</span>
            </p>
         </div>
@@ -167,7 +166,7 @@ export default function AuditLogsPage() {
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
-            title="Reload Forensic Data"
+            title="Reload Activity Data"
           >
             <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
@@ -177,7 +176,7 @@ export default function AuditLogsPage() {
       <PageShell>
         <div className="mb-6 flex flex-col gap-1.5 border-l-4 border-primary pl-4 py-2 bg-primary/[0.03] rounded-r-xl">
            <h2 className="text-xl font-black tracking-tight uppercase flex items-center gap-2 text-foreground">
-              Industrial Forensic Intelligence
+              Industrial Activity History
            </h2>
            <p className="text-[11px] font-medium text-muted-foreground italic leading-relaxed">
               Real-time administrative transaction monitoring. Capturing 100% of state changes across the project infrastructure. 
@@ -205,7 +204,7 @@ export default function AuditLogsPage() {
 
         <div className="text-[10px] font-black tracking-widest text-muted-foreground uppercase text-center mt-6 flex items-center justify-center gap-4 opacity-40">
            <div className="h-px w-20 bg-border" />
-           Analyzed {logs.length} of {totalCount} Forensic Records
+           Analyzed {logs.length} of {totalCount} Activity Records
            <div className="h-px w-20 bg-border" />
         </div>
       </PageShell>
