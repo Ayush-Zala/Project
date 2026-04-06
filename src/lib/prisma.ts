@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import { prismaAuditExtension } from "./prisma-audit-extension";
 
 /**
  * Handle BigInt serialization for JSON responses
@@ -60,7 +61,7 @@ function convertToNumber(obj: any): any {
 const prismaClientSingleton = () => {
   const baseClient = new PrismaClient({ adapter });
 
-  return baseClient.$extends({
+  return baseClient.$extends(prismaAuditExtension).$extends({
     query: {
       $allModels: {
         async $allOperations({ operation, args, query }: any) {
@@ -89,10 +90,10 @@ const prismaClientSingleton = () => {
 
 // Global type declaration
 declare global {
-  var prismaGlobalV4: ReturnType<typeof prismaClientSingleton> | undefined;
+  var prismaGlobalV17: ReturnType<typeof prismaClientSingleton> | undefined;
 }
 
 // Ensure the latest client is used in development
-export const prisma = globalThis.prismaGlobalV4 ?? prismaClientSingleton();
+export const prisma = globalThis.prismaGlobalV17 ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobalV4 = prisma;
+if (process.env.NODE_ENV !== "production") globalThis.prismaGlobalV17 = prisma;

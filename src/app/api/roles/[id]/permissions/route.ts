@@ -100,25 +100,30 @@ export async function POST(
        return NextResponse.json({ error: "Forbidden: You cannot grant permissions that you do not hold." }, { status: 403 });
     }
 
-    // Use transaction for consistency
-    await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Delete existing assignments
-      await tx.rolePermission.deleteMany({
-        where: { roleId }
-      });
-
-      // 2. Insert new assignments
-      if (permissionIds.length > 0) {
-        await tx.rolePermission.createMany({
-          data: permissionIds.map((pId: number) => ({
-            roleId,
-            permissionId: pId,
-            isActive: true,
-            createdBy: userId,
-          }))
-        });
-      }
+    // Fetch current permissions assigned to this role
+    const existing = await (prisma as any).rolePermission.findMany({
+      where: { roleId },
+      select: { id: true, permissionId: true },
     });
+
+    const existingIds = new Set<number>(existing.map((e: any) => e.permissionId));
+    const incomingIds = new Set<number>(permissionIds);
+
+    // Compute diff
+    const toRevoke = existing.filter((e: any) => !incomingIds.has(e.permissionId));
+    const toAssign = permissionIds.filter((pId: number) => !existingIds.has(pId));
+
+    // Step 1: Delete revoked permissions individually → extension logs each as ASSIGN (revoke)
+    for (const rp of toRevoke) {
+      await (prisma as any).rolePermission.delete({ where: { id: rp.id } });
+    }
+
+    // Step 2: Create new permissions individually → extension logs each as ASSIGN (grant)
+    for (const pId of toAssign) {
+      await (prisma as any).rolePermission.create({
+        data: { roleId, permissionId: pId, isActive: true, createdBy: userId },
+      });
+    }
 
     await emitEvent("ROLE_PERMISSIONS_CHANGED", { action: "assigned", roleId });
 

@@ -226,18 +226,18 @@ model RolePermission {
 
 model AuditLog {
   id        Int      @id @default(autoincrement())
-  userId    Int
-  action    AuditAction
-  resource  AuditResource
-  metaData  Json     // stores before & after snapshot with entity ID
+  userId    Int?
+  action    String   // CREATE, UPDATE, DELETE, etc.
+  resource  String   // The model name (e.g., "user", "role")
+  metaData  Json?    // stores before & after snapshot with entity ID
   ipAddress String?
   userAgent String?
-  status    AuditStatus
-  reason    String?  // failure reason
+  status    String   // SUCCESS, FAILURE
+  reason    String?  // summary or error reason
   createdBy Int?
   createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
 
-  user          User  @relation("AuditLogActor", fields: [userId], references: [id])
+  user          User? @relation("AuditLogActor", fields: [userId], references: [id])
   createdByUser User? @relation("AuditLogCreatedBy", fields: [createdBy], references: [id])
 
   @@map("audit_log")
@@ -257,28 +257,8 @@ model ActivityLog {
   @@map("activity_log")
 }
 
-// ─── ENUMS ───────────────────────────────────────────────
+// ─── ACTIVITY ENUMS ───────────────────────────────────────────
 
-enum AuditAction {
-  CREATE
-  UPDATE
-  DELETE
-  ASSIGN_ROLE
-  ASSIGN_PERMISSION
-  TOGGLE_STATUS
-  ROLE_PERMISSION
-}
-
-enum AuditResource {
-  USER
-  ROLE
-  PERMISSION
-}
-
-enum AuditStatus {
-  SUCCESS
-  FAILURE
-}
 
 enum ActivityEvent {
   LOGIN

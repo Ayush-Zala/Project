@@ -20,7 +20,8 @@ import {
   UsersIcon,
   UserCircleIcon,
   KeyIcon,
-  LibraryIcon
+  LibraryIcon,
+  HistoryIcon
 } from "lucide-react"
 
 const data = {
@@ -58,6 +59,12 @@ const data = {
       title: "Profile",
       url: "/dashboard/profile",
       icon: <UserCircleIcon />,
+    },
+    {
+      title: "Audit Logs",
+      url: "/dashboard/audit-logs",
+      icon: <HistoryIcon />,
+      permission: "audit:read",
     },
   ],
 }

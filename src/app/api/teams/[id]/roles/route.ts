@@ -24,31 +24,25 @@ export async function GET(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
+  const teamId = parseInt(idStr);
+  if (isNaN(teamId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
   const canRead = await hasPermission(userId, "team_roles:read");
   const canReadAll = await hasPermission(userId, "teams:read_all");
   
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const id = parseInt(idStr);
-  if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-
   try {
     // Isolation Check
     if (!canReadAll) {
       const existing = await (prisma as any).team.findFirst({
-        where: {
-          id,
-          OR: [
-            { createdBy: userId },
-            { members: { some: { userId, isActive: true } } }
-          ]
-        }
+        where: { id: teamId, OR: [{ createdBy: userId }, { members: { some: { userId, isActive: true } } }] }
       });
       if (!existing) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const roles = await (prisma as any).teamRole.findMany({
-      where: { teamId: id },
+      where: { teamId },
       orderBy: { createdAt: 'desc' }
     });
 
@@ -71,25 +65,17 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
+  const teamId = parseInt(idStr);
+  
   const canCreate = await hasPermission(userId, "team_roles:create");
   const canReadAll = await hasPermission(userId, "teams:read_all");
   
   if (!canCreate) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const id = parseInt(idStr);
-  if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-
   try {
-    // Isolation Check
     if (!canReadAll) {
       const existing = await (prisma as any).team.findFirst({
-        where: {
-          id,
-          OR: [
-            { createdBy: userId },
-            { members: { some: { userId, isActive: true } } }
-          ]
-        }
+        where: { id: teamId, OR: [{ createdBy: userId }, { members: { some: { userId, isActive: true } } }] }
       });
       if (!existing) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -99,29 +85,14 @@ export async function POST(
     if (!result.success) return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
 
     const slug = slugify(result.data.name);
-
-    // Check for unique slug per team
-    const existing = await (prisma as any).teamRole.findUnique({
-      where: { teamId_slug: { teamId: id, slug } }
-    });
-
-    if (existing) {
-      return NextResponse.json({ error: "A role with this name already exists in the team" }, { status: 400 });
-    }
+    const existing = await (prisma as any).teamRole.findUnique({ where: { teamId_slug: { teamId, slug } } });
+    if (existing) return NextResponse.json({ error: "A role with this name already exists" }, { status: 400 });
 
     const role = await (prisma as any).teamRole.create({
-      data: {
-        ...result.data,
-        slug,
-        teamId: id,
-        createdBy: userId,
-        updatedBy: userId,
-        createdAt: BigInt(Date.now()),
-        updatedAt: BigInt(Date.now()),
-      }
+      data: { ...result.data, slug, teamId, createdBy: userId, updatedBy: userId, createdAt: BigInt(Date.now()), updatedAt: BigInt(Date.now()) }
     });
 
-    await emitEvent("TEAM_ROLES_CHANGED", { action: "created", teamId: id, roleId: role.id });
+    await emitEvent("TEAM_ROLES_CHANGED", { action: "created", teamId, roleId: role.id });
     return NextResponse.json(role, { status: 201 });
   } catch (error) {
     console.error("[TEAM_ROLES_POST]", error);

@@ -10,6 +10,8 @@ import {
   ShieldIcon,
   ToggleLeftIcon,
   PowerIcon,
+  AlertTriangleIcon,
+  Loader2Icon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -32,6 +34,16 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
 import { AddMemberDialog } from "./add-member-dialog"
@@ -48,7 +60,9 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedMember, setSelectedMember] = React.useState<any>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   const canManage = useHasPermission("team_members:create")
   const canUpdate = useHasPermission("team_members:update")
@@ -93,6 +107,25 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
       toast.success(`${member.user?.name} is now ${updated.isActive ? 'active' : 'suspended'} in this team`)
     } catch (error: any) {
       toast.error(error.message)
+    }
+  }
+
+  const handleRemoveMember = async () => {
+    if (!selectedMember) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${selectedMember.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to remove member")
+      }
+      toast.success(`User ${selectedMember.user?.name} removed from team`)
+      setIsDeleteDialogOpen(false)
+      fetchMembers()
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -227,7 +260,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
                               {canDelete && (
                                 <DropdownMenuItem
                                   className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
-                                  onClick={() => { /* handleRemoveMember */ }}
+                                  onClick={() => { setSelectedMember(member); setIsDeleteDialogOpen(true); }}
                                 >
                                   <Trash2Icon className="h-3.5 w-3.5" />
                                   <span>Remove from Team</span>
@@ -260,6 +293,35 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
         member={selectedMember}
         onSuccess={fetchMembers}
       />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-popover/95 backdrop-blur-xl border-red-500/20 shadow-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 text-red-500 mb-2">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <AlertTriangleIcon className="h-6 w-6" />
+              </div>
+              <AlertDialogTitle className="text-2xl font-bold tracking-tight">Revoke Membership</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-muted-foreground/80 leading-relaxed">
+              Confirm removal of <span className="font-bold text-foreground">[{selectedMember?.user?.name}]</span> from this organizational unit.
+              <br /><br />
+              All role assignments for this member within this team will be permanently purged.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-4 border-t border-input">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg shadow-red-500/20 transition-all flex gap-2 active:scale-95"
+              disabled={isDeleting}
+              onClick={(e) => { e.preventDefault(); handleRemoveMember(); }}
+            >
+              {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <Trash2Icon className="h-4 w-4" />}
+              Confirm Removal
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

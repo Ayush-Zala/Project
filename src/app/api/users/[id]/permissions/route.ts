@@ -103,29 +103,37 @@ export async function POST(
       });
     }
 
-    await (prisma as any).$transaction(async (tx: any) => {
-      // For direct assignments, we might want to sync as well
-      await tx.userPermission.deleteMany({
-        where: { userId }
-      });
-
-      if (filteredIds.length > 0) {
-        await tx.userPermission.createMany({
-          data: filteredIds.map((pId: number) => ({
-            userId,
-            permissionId: pId,
-            isActive: true,
-            createdBy: Number(session.user.id),
-          }))
-        });
-      }
+    // Fetch current direct permissions for this user
+    const existing = await (prisma as any).userPermission.findMany({
+      where: { userId },
+      select: { id: true, permissionId: true },
     });
+
+    const existingIds = new Set<number>(existing.map((e: any) => e.permissionId));
+    const incomingIds = new Set<number>(filteredIds);
+
+    // Compute diff
+    const toRevoke = existing.filter((e: any) => !incomingIds.has(e.permissionId));
+    const toAssign = filteredIds.filter((pId: number) => !existingIds.has(pId));
+
+    // Step 1: Delete revoked permissions individually → extension logs each as ASSIGN (revoke)
+    for (const up of toRevoke) {
+      await (prisma as any).userPermission.delete({ where: { id: up.id } });
+    }
+
+    // Step 2: Create new permissions individually → extension logs each as ASSIGN (grant)
+    for (const pId of toAssign) {
+      await (prisma as any).userPermission.create({
+        data: { userId, permissionId: pId, isActive: true, createdBy: Number(session.user.id) },
+      });
+    }
 
     await emitEvent("USER_PERMISSIONS_CHANGED", { action: "assigned", userId });
 
     return NextResponse.json({ 
       message: "Direct permissions assigned successfully", 
-      count: filteredIds.length,
+      count: toAssign.length,
+      revoked: toRevoke.length,
       ignoredDueToRole: permissionIds.length - filteredIds.length 
     });
   } catch (error) {

@@ -8,6 +8,8 @@ import {
   PencilIcon,
   Trash2Icon,
   RefreshCwIcon,
+  AlertTriangleIcon,
+  Loader2Icon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -28,6 +30,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Switch } from "@/components/ui/switch"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
@@ -43,7 +55,9 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
   const [roles, setRoles] = React.useState<any[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const [isRoleDialogOpen, setIsRoleDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedRole, setSelectedRole] = React.useState<any>(null)
+  const [isDeleting, setIsDeleting] = React.useState(false)
 
   const canManage = useHasPermission("team_roles:create")
   const canUpdate = useHasPermission("team_roles:update")
@@ -87,6 +101,25 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
       toast.success(`Role [${role.name}] is now ${updated.isActive ? 'active' : 'suspended'}`)
     } catch (error: any) {
       toast.error(error.message)
+    }
+  }
+
+  const handleDeleteRole = async () => {
+    if (!selectedRole) return
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/teams/${teamId}/roles/${selectedRole.id}`, { method: "DELETE" })
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || "Failed to purge role")
+      }
+      toast.success(`Role [${selectedRole.name}] purged from organizational manifest`)
+      setIsDeleteDialogOpen(false)
+      fetchRoles()
+    } catch (error: any) {
+      toast.error(error.message)
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -193,7 +226,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
                               {canDelete && (
                                 <DropdownMenuItem
                                   className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
-                                  onClick={() => { /* handleDelete */ }}
+                                  onClick={() => { setSelectedRole(role); setIsDeleteDialogOpen(true); }}
                                 >
                                   <Trash2Icon className="h-3.5 w-3.5" />
                                   <span>Delete Role</span>
@@ -219,6 +252,35 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
         role={selectedRole}
         onSuccess={fetchRoles}
       />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-popover/95 backdrop-blur-xl border-red-500/20 shadow-2xl">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 text-red-500 mb-2">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <AlertTriangleIcon className="h-6 w-6" />
+              </div>
+              <AlertDialogTitle className="text-2xl font-bold tracking-tight">Purge Team Role</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-muted-foreground/80 leading-relaxed">
+              CRITICAL ACTION: You are about to permanently delete the role <span className="font-bold text-foreground">[{selectedRole?.name}]</span>.
+              <br /><br />
+              This will automatically purge all <span className="text-red-500 font-bold tracking-tighter">MEMBER ASSIGNMENTS</span> associated with this role. This operation cannot be reversed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="pt-4 border-t border-input">
+            <AlertDialogCancel disabled={isDeleting} className="rounded-xl border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg shadow-red-500/20 transition-all flex gap-2 active:scale-95"
+              disabled={isDeleting}
+              onClick={(e) => { e.preventDefault(); handleDeleteRole(); }}
+            >
+              {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <Trash2Icon className="h-4 w-4" />}
+              Confirm Purge
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

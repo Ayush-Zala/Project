@@ -83,10 +83,10 @@ export async function PATCH(
     const role = await (prisma as any).role.update({
       where: { id },
       data: {
-        name,
-        description,
-        colorCode,
-        parentId: parentId ? parseInt(parentId) : null,
+        name: name !== undefined ? name : undefined,
+        description: description !== undefined ? description : undefined,
+        colorCode: colorCode !== undefined ? colorCode : undefined,
+        parentId: parentId === undefined ? undefined : (parentId ? parseInt(parentId) : null),
         isActive: typeof isActive === "boolean" ? isActive : undefined,
         updatedBy: Number(session.user.id),
       },

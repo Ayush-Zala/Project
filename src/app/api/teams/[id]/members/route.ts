@@ -21,39 +21,29 @@ export async function GET(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = Number(session.user.id);
-  const canRead = await hasPermission(userId, "team_members:read");
-  const canReadAll = await hasPermission(userId, "teams:read_all");
+  const actorId = Number(session.user.id);
+  const teamId = parseInt(idStr);
+  if (isNaN(teamId)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+
+  const canRead = await hasPermission(actorId, "team_members:read");
+  const canReadAll = await hasPermission(actorId, "teams:read_all");
   
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-
-  const id = parseInt(idStr);
-  if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
 
   try {
     // Isolation Check
     if (!canReadAll) {
       const existing = await (prisma as any).team.findFirst({
-        where: {
-          id,
-          OR: [
-            { createdBy: userId },
-            { members: { some: { userId, isActive: true } } }
-          ]
-        }
+        where: { id: teamId, OR: [{ createdBy: actorId }, { members: { some: { userId: actorId, isActive: true } } }] }
       });
       if (!existing) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const members = await (prisma as any).teamMember.findMany({
-      where: { teamId: id },
+      where: { teamId },
       include: {
-        user: {
-          select: { id: true, name: true, email: true, image: true, isActive: true }
-        },
-        roles: {
-          include: { role: true }
-        }
+        user: { select: { id: true, name: true, email: true, image: true, isActive: true } },
+        roles: { include: { role: true } }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -66,7 +56,7 @@ export async function GET(
 }
 
 /**
- * POST: Add a member to a team
+ * POST: Add a new member to a team
  */
 export async function POST(
   req: Request,
@@ -76,26 +66,18 @@ export async function POST(
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const userId = Number(session.user.id);
-  const canCreate = await hasPermission(userId, "team_members:create");
-  const canReadAll = await hasPermission(userId, "teams:read_all");
+  const actorId = Number(session.user.id);
+  const teamId = parseInt(idStr);
+  
+  const canCreate = await hasPermission(actorId, "team_members:create");
+  const canReadAll = await hasPermission(actorId, "teams:read_all");
   
   if (!canCreate) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const id = parseInt(idStr);
-  if (isNaN(id)) return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
-
   try {
-    // Isolation Check
     if (!canReadAll) {
       const existing = await (prisma as any).team.findFirst({
-        where: {
-          id,
-          OR: [
-            { createdBy: userId },
-            { members: { some: { userId, isActive: true } } }
-          ]
-        }
+        where: { id: teamId, OR: [{ createdBy: actorId }, { members: { some: { userId: actorId, isActive: true } } }] }
       });
       if (!existing) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -106,45 +88,30 @@ export async function POST(
 
     const { userId: targetUserId } = result.data;
 
-    // Check if team exists
-    const teamExists = await (prisma as any).team.findUnique({ where: { id } });
-    if (!teamExists) return NextResponse.json({ error: "Team not found" }, { status: 404 });
-
-    // Check if user exists
-    const userExists = await (prisma as any).user.findUnique({ where: { id: targetUserId } });
-    if (!userExists) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
-    // Check if already a member
+    // Check if already a member (even inactive)
     const existing = await (prisma as any).teamMember.findUnique({
-      where: { teamId_userId: { teamId: id, userId: targetUserId } }
+      where: { teamId_userId: { teamId, userId: targetUserId } }
     });
 
     if (existing) {
       if (existing.isActive) {
-        return NextResponse.json({ error: "User is already a member of this team" }, { status: 400 });
+        return NextResponse.json({ error: "User is already a member" }, { status: 400 });
       } else {
         // Reactivate
         const updated = await (prisma as any).teamMember.update({
           where: { id: existing.id },
-          data: { isActive: true, updatedBy: userId, updatedAt: BigInt(Date.now()) }
+          data: { isActive: true, updatedBy: actorId, updatedAt: BigInt(Date.now()) }
         });
-        await emitEvent("TEAM_MEMBERS_CHANGED", { action: "updated", teamId: id, memberId: updated.id });
+        await emitEvent("TEAM_MEMBERS_CHANGED", { action: "updated", teamId, memberId: updated.id });
         return NextResponse.json(updated);
       }
     }
 
     const member = await (prisma as any).teamMember.create({
-      data: {
-        teamId: id,
-        userId: targetUserId,
-        createdBy: userId,
-        updatedBy: userId,
-        createdAt: BigInt(Date.now()),
-        updatedAt: BigInt(Date.now()),
-      }
+      data: { teamId, userId: targetUserId, createdBy: actorId, updatedBy: actorId, createdAt: BigInt(Date.now()), updatedAt: BigInt(Date.now()) }
     });
 
-    await emitEvent("TEAM_MEMBERS_CHANGED", { action: "created", teamId: id, userId: targetUserId });
+    await emitEvent("TEAM_MEMBERS_CHANGED", { action: "created", teamId, userId: targetUserId });
     return NextResponse.json(member, { status: 201 });
   } catch (error) {
     console.error("[TEAM_MEMBERS_POST]", error);
