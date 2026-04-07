@@ -29,12 +29,16 @@ export function DataTableViewOptions<TData>({
   const filteredColumns = table
     .getAllColumns()
     .filter((column) => {
-      const isHideable = typeof column.accessorFn !== "undefined" && column.getCanHide()
+      // 🛡️ Include any column that allows hiding
+      const isHideable = column.getCanHide()
       if (!isHideable) return false
 
       const title = (column.columnDef.meta as any)?.title || 
                     (typeof column.columnDef.header === 'string' ? column.columnDef.header : "")
       const id = column.id
+
+      // 🛡️ Exclude columns that are purely structural or specifically omitted
+      if (id === "select" || id === "actions") return false
 
       return (
         title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -83,7 +87,7 @@ export function DataTableViewOptions<TData>({
                 const title = (column.columnDef.meta as any)?.title || 
                    (typeof column.columnDef.header === 'string' 
                       ? column.columnDef.header 
-                      : column.id.split('.').pop()?.replace(/([A-Z])/g, ' $1').trim() || column.id)
+                      : (column.id.split('.').pop()?.replace(/([A-Z])/g, ' $1').trim() || column.id))
 
                 const isVisible = column.getIsVisible()
 

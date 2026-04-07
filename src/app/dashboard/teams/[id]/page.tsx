@@ -93,9 +93,9 @@ export default function TeamDetailsPage({
           </div>
         </header>
 
-        <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full animate-pulse">
+        <div className="flex flex-col gap-8 px-4 md:px-8 py-8 w-full animate-pulse">
           {/* Header Card Skeleton */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-input">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-6 md:p-10 rounded-2xl border border-input">
             <div className="flex items-start gap-6">
                <Skeleton className="hidden sm:block h-16 w-16 rounded-2xl" />
                <div className="flex flex-col gap-3">
@@ -180,9 +180,9 @@ export default function TeamDetailsPage({
         </div>
       </header>
 
-      <div className="flex flex-col gap-8 p-8 max-w-7xl mx-auto w-full">
+      <div className="flex flex-col gap-8 px-4 md:px-8 py-8 w-full">
         {/* Team Identification Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-8 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-muted/20 p-6 md:p-10 rounded-2xl border border-border/40 backdrop-blur-sm relative overflow-hidden">
           <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-primary/5 rounded-full blur-[80px] -ml-32 -mt-32" />
           
           <div className="flex items-start gap-6 relative z-10">

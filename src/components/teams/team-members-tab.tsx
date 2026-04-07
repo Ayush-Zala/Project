@@ -147,7 +147,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
         )}
       </div>
 
-      <div className="bg-background/40 border border-input rounded-2xl overflow-hidden shadow-xl backdrop-blur-md relative">
+      <div className="bg-background/40 border border-input rounded-2xl overflow-x-auto shadow-xl backdrop-blur-md relative">
 
 
         <Table>

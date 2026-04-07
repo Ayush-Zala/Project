@@ -103,6 +103,7 @@ export function getTeamsColumns({
     {
       id: "analytics",
       size: 200,
+      meta: { title: "Members" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Members" />
       ),
