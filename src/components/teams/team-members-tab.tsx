@@ -58,7 +58,6 @@ interface TeamMembersTabProps {
 export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   const [members, setMembers] = React.useState<any[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
-  const [isAddDialogOpen, setIsAddDialogOpen] = React.useState(false)
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedMember, setSelectedMember] = React.useState<any>(null)
@@ -131,21 +130,6 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <UsersIcon className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold tracking-tight">Team Personnel</h2>
-        </div>
-        {canManage && isActive && (
-          <Button 
-            onClick={() => setIsAddDialogOpen(true)}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-          >
-            <UserPlusIcon className="h-4 w-4" />
-            Add Member
-          </Button>
-        )}
-      </div>
 
       <div className="bg-background/40 border border-input rounded-2xl overflow-x-auto shadow-xl backdrop-blur-md relative">
 
@@ -279,12 +263,6 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
         </Table>
       </div>
 
-      <AddMemberDialog 
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        teamId={teamId}
-        onSuccess={fetchMembers}
-      />
 
       <AssignTeamRoleDialog 
         open={isAssignDialogOpen}

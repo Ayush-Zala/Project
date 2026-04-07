@@ -125,21 +125,6 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <ShieldCheckIcon className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold tracking-tight">Team Roles</h2>
-        </div>
-        {canManage && isActive && (
-          <Button 
-            onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
-            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-          >
-            <PlusIcon className="h-4 w-4" />
-            New Role
-          </Button>
-        )}
-      </div>
 
       <div className="bg-background/40 border border-input rounded-2xl overflow-x-auto shadow-xl backdrop-blur-md relative">
 
