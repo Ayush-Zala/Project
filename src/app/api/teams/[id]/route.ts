@@ -9,6 +9,7 @@ import { hasPermission } from "@/lib/rbac";
 const teamUpdateSchema = z.object({
   name: z.string().min(3, "Min 3 characters required").max(50).optional(),
   description: z.string().max(255).optional().nullable(),
+  isActive: z.boolean().optional(),
 });
 
 /**

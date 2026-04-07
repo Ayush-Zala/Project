@@ -52,13 +52,30 @@ export default function TeamsPage() {
   const canUpdate = useHasPermission("teams:update")
   const canDelete = useHasPermission("teams:delete")
 
+  const handleToggleStatus = async (team: any) => {
+    try {
+      const res = await fetch(`/api/teams/${team.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !team.isActive }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      toast.success(`Team ${team.name} ${!team.isActive ? 'activated' : 'suspended'}`)
+      fetchTeams()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update team status")
+    }
+  }
+
   // 📋 Data Table Implementation
   const columns = React.useMemo(() => getTeamsColumns({
-    capabilities: { canUpdate, canDelete },
+    capabilities: { canUpdate, canDelete, canToggle: canUpdate },
     onEdit: (t) => { setSelectedTeam(t); setIsTeamDialogOpen(true); },
     onDelete: (t) => { setSelectedTeam(t); setIsDeleteDialogOpen(true); },
+    onToggleStatus: handleToggleStatus,
     onManageMembers: (t) => router.push(`/dashboard/teams/${t.id}`),
-  }), [canUpdate, canDelete, router])
+  }), [canUpdate, canDelete, router, handleToggleStatus])
 
   const { 
     table, 

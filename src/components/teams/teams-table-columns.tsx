@@ -10,24 +10,29 @@ import {
   Trash2Icon,
   ShieldIcon,
   InfoIcon,
-  TimerIcon
+  TimerIcon,
+  ActivityIcon
 } from "lucide-react"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 import { Button } from "@/components/ui/button"
+import { StatusIndicator } from "@/components/ui/status-indicator"
 
 export function getTeamsColumns({
   onEdit,
   onDelete,
+  onToggleStatus,
   onManageMembers,
   capabilities
 }: {
   onEdit: (team: any) => void
   onDelete: (team: any) => void
+  onToggleStatus: (team: any) => void
   onManageMembers: (team: any) => void
   capabilities: {
     canUpdate: boolean
     canDelete: boolean
+    canToggle: boolean
   }
 }): ColumnDef<any>[] {
   return [
@@ -128,7 +133,29 @@ export function getTeamsColumns({
       },
     },
     {
-        accessorKey: "createdAt",
+      accessorKey: "isActive",
+      size: 150,
+      meta: { title: "Status" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const team = row.original
+        
+        return (
+          <StatusIndicator 
+             isActive={team.isActive} 
+             onToggle={() => onToggleStatus(team)} 
+             activeLabel="Active" 
+             inactiveLabel="Suspended" 
+             variant="switch" 
+             disabled={!capabilities.canToggle}
+          />
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
         size: 150,
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Created" />
