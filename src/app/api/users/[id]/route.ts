@@ -76,10 +76,10 @@ export async function PATCH(
 
     // 🛡️ Hierarchy Check: Cannot assign parent roles
     if (roleId) {
-       const canAssign = await isRoleAssignableBy(Number(roleId), userId);
-       if (!canAssign) {
-          return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
-       }
+      const canAssign = await isRoleAssignableBy(Number(roleId), userId);
+      if (!canAssign) {
+        return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
+      }
     }
 
     // Guard against email conflicts if email changed
@@ -169,8 +169,44 @@ export async function DELETE(
   }
 
   try {
+    const adminId = Number(session.user.id);
+
+    // 1. Fetch user snapshot before purging (for forensics)
+    const target = await (prisma as any).user.findUnique({
+      where: { id },
+      select: { email: true, name: true }
+    });
+
+    if (!target) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+    // 🔧 FORENSIC PROTOCOL: Consolidation & Suppression
+    const { setAuditSuppression } = await import("@/lib/audit-context");
+    setAuditSuppression(true);
+
     // Delete user; Prisma cascades: sessions, accounts, userRoles, etc.
     await (prisma as any).user.delete({ where: { id } });
+
+    // 🏗️ MANUAL FORENSIC EMISSION: Clean Architecture
+    // Record the professional administrative action
+    await (prisma as any).auditLog.create({
+      data: {
+        userId: null, // The Actor
+        createdBy: adminId,
+        action: "DELETE",
+        resource: "user",
+        status: "SUCCESS",
+        reason: `User ${target.email} deleted`,
+        metaData: {
+          targetId: id,
+          email: target.email,
+          name: target.name,
+          adminId
+        }
+      }
+    });
+
+    // Restore suppression for any subsequent operations in this request
+    setAuditSuppression(false);
 
     // Broadcast
     await emitEvent("USERS_CHANGED", { action: "deleted", userId: id });

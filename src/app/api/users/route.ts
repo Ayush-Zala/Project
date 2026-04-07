@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   const search = searchParams.get("search") || "";
   const sort = searchParams.get("sort") || "";
   const filtersRaw = searchParams.get("filters") || "[]";
-  
+
   let filters: ExtendedColumnFilter[] = [];
   try {
     filters = JSON.parse(filtersRaw);
@@ -73,7 +73,7 @@ export async function GET(req: Request) {
 
     // 3. Combine with AND
     const where = {
-        AND: [searchWhere, advancedWhere]
+      AND: [searchWhere, advancedWhere]
     };
 
     const orderBy = getPrismaOrderBy(sort);
@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     // 🛡️ Hierarchy Check: Cannot assign parent roles
     const canAssign = await isRoleAssignableBy(Number(roleId), userId);
     if (!canAssign) {
-       return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: Hierarchy violation. You cannot assign a superior/parent role." }, { status: 403 });
     }
 
     // Unique-email guard
@@ -173,6 +173,11 @@ export async function POST(req: Request) {
 
     // Hash password 
     const passwordHash = await bcrypt.hash(password, 10);
+
+    // 🔧 FORENSIC PROTOCOL: Consolidate logs into a single high-fidelity record
+    // We suppress automatic audits for User, Account, and UserRole within this scope.
+    const { setAuditSuppression } = await import("@/lib/audit-context");
+    setAuditSuppression(true);
 
     // Create user + account in a transaction
     const user = await (prisma as any).$transaction(async (tx: any) => {
@@ -203,13 +208,38 @@ export async function POST(req: Request) {
           data: {
             userId: newUser.id,
             roleId: Number(roleId),
-            createdBy: Number(session.user.id),
+            createdBy: userId,
           },
         });
       }
 
       return newUser;
     });
+
+    // 🏗️ MANUAL FORENSIC EMISSION: Clean Architecture
+    // Now that the transaction is successful, we create the single consolidated log.
+    const targetRole = await (prisma as any).role.findUnique({ where: { id: Number(roleId) } });
+    const auditReason = `User ${user.email} created and assigned Role ${targetRole?.name || "Standard"}`;
+
+    await (prisma as any).auditLog.create({
+      data: {
+        userId: null, // The Actor
+        createdBy: userId,
+        action: "CREATE",
+        resource: "user",
+        status: "SUCCESS",
+        reason: auditReason,
+        metaData: {
+          userId: user.id,
+          roleId: Number(roleId),
+          roleName: targetRole?.name,
+          email: user.email
+        }
+      }
+    });
+
+    // Restore suppression for any subsequent operations in this request if needed (optional)
+    setAuditSuppression(false);
 
     // Fetch the created user with role for the response
     const fullUser = await (prisma as any).user.findUnique({

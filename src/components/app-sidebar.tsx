@@ -93,7 +93,6 @@ export function AppSidebar({ user, ...props }: React.ComponentProps<typeof Sideb
             />
           </SidebarMenuItem>
         </SidebarMenu>
-        <SidebarGroupLabel>Application</SidebarGroupLabel>
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />

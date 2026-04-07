@@ -16,6 +16,7 @@ import { toast } from "sonner"
 import { KeyIcon, RefreshCwIcon, UserIcon, SearchIcon, FilterIcon, InfoIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface UserPermissionsDialogProps {
@@ -161,9 +162,26 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
 
         <div className="flex-1 min-h-0 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40" style={{ maxHeight: '50vh' }}>
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 gap-3">
-              <RefreshCwIcon className="h-10 w-10 text-primary animate-spin" />
-              <p className="text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase tracking-widest">Accessing Infrastructure</p>
+            <div className="space-y-10 animate-pulse">
+              {[1, 2].map((group) => (
+                <div key={group} className="space-y-5">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="h-4 w-24 bg-primary/10 rounded-full" />
+                    <Skeleton className="h-px w-full bg-primary/5" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border border-border/40 bg-muted/5 shadow-sm">
+                        <Skeleton className="size-5 rounded-md shrink-0 opacity-40" />
+                        <div className="space-y-3 w-full">
+                          <Skeleton className="h-4 w-[60%] rounded-full opacity-60" />
+                          <Skeleton className="h-3 w-[80%] rounded-full opacity-30" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
             <div className="space-y-8">

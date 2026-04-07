@@ -131,6 +131,13 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
       }
 
       toast.success(user ? "User updated successfully" : "User created successfully")
+      form.reset({
+        name: "",
+        email: "",
+        roleId: "",
+        password: "",
+        confirmPassword: "",
+      })
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {

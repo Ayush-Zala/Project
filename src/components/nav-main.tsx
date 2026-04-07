@@ -36,13 +36,12 @@ export function NavMain({
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => {
           // 🛡️ Root Item Guard
           if (item.permission) {
-             const hasViewAccess = useHasPermission(item.permission);
-             if (!hasViewAccess) return null;
+            const hasViewAccess = useHasPermission(item.permission);
+            if (!hasViewAccess) return null;
           }
           if (!item.items?.length) {
             return (
@@ -78,8 +77,8 @@ export function NavMain({
                 <SidebarMenuSub>
                   {item.items?.map((subItem) => {
                     if (subItem.permission) {
-                       const hasSubAccess = useHasPermission(subItem.permission);
-                       if (!hasSubAccess) return null;
+                      const hasSubAccess = useHasPermission(subItem.permission);
+                      if (!hasSubAccess) return null;
                     }
                     return (
                       <SidebarMenuSubItem key={subItem.title}>

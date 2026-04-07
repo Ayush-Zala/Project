@@ -50,6 +50,12 @@ import { AddMemberDialog } from "./add-member-dialog"
 import { AssignTeamRoleDialog } from "./assign-team-role-dialog"
 import { useHasPermission } from "@/hooks/use-has-permission"
 
+import { DataTable } from "@/components/data-table/data-table"
+import { DataTableAdvancedToolbar } from "@/components/data-table/data-table-advanced-toolbar"
+import { useDataTable } from "@/hooks/use-data-table"
+import { getMemberColumns } from "./member-table-columns"
+import { DataTableFilterField } from "@/types/data-table"
+
 interface TeamMembersTabProps {
   teamId: string
   isActive: boolean
@@ -57,7 +63,10 @@ interface TeamMembersTabProps {
 
 export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   const [members, setMembers] = React.useState<any[]>([])
+  const [pageCount, setPageCount] = React.useState(0)
+  const [totalCount, setTotalCount] = React.useState(0)
   const [isLoading, setIsLoading] = React.useState(true)
+  
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedMember, setSelectedMember] = React.useState<any>(null)
@@ -69,21 +78,52 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   const canToggle = useHasPermission("team_members:toggle")
   const canAssignRole = useHasPermission("team_members:assign_role")
 
-  const hasAnyAction = (canAssignRole || canDelete)
+  const columns = React.useMemo(() => getMemberColumns({
+    onAssignRole: (m) => { setSelectedMember(m); setIsAssignDialogOpen(true); },
+    onRemove: (m) => { setSelectedMember(m); setIsDeleteDialogOpen(true); },
+    onToggleStatus: (m) => handleToggleStatus(m),
+    isTeamActive: isActive,
+    capabilities: { canDelete, canToggle, canAssignRole }
+  }), [canDelete, canToggle, canAssignRole, isActive])
+
+  const { 
+    table, 
+    onSearchChange, 
+    onFilterReset,
+    search, 
+    filters, 
+    setFilters,
+    sort, 
+    page, 
+    perPage 
+  } = useDataTable({
+    data: members,
+    columns,
+    pageCount,
+  })
 
   const fetchMembers = React.useCallback(async () => {
     setIsLoading(true)
     try {
-      const res = await fetch(`/api/teams/${teamId}/members`)
+      const params = new URLSearchParams()
+      if (page) params.set("page", String(page))
+      if (perPage) params.set("per_page", String(perPage))
+      if (sort) params.set("sort", sort)
+      if (search) params.set("search", search)
+      if (filters?.length) params.set("filters", JSON.stringify(filters))
+
+      const res = await fetch(`/api/teams/${teamId}/members?${params.toString()}`)
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setMembers(data)
+      setMembers(data.members)
+      setPageCount(data.pagination.totalPages)
+      setTotalCount(data.pagination.total)
     } catch (error: any) {
       toast.error(error.message || "Failed to load team members")
     } finally {
       setIsLoading(false)
     }
-  }, [teamId])
+  }, [teamId, page, perPage, sort, search, filters])
 
   const { useEvent } = useSocket()
   useEvent("TEAM_MEMBERS_CHANGED", React.useCallback((data: any) => {
@@ -128,140 +168,38 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
     }
   }
 
+  const filterFields: DataTableFilterField<any>[] = [
+    { label: "Name", id: "user.name", variant: "text" },
+    { label: "Email", id: "user.email", variant: "text" },
+    { 
+      label: "Status", 
+      id: "isActive", 
+      variant: "select",
+      options: [
+        { label: "Active", value: "true" },
+        { label: "Suspended", value: "false" }
+      ]
+    },
+  ]
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
-
-      <div className="bg-background/40 border border-input rounded-2xl overflow-x-auto shadow-xl backdrop-blur-md relative">
-
-
-        <Table>
-          <TableHeader className="bg-muted/30">
-            <TableRow className="border-input hover:bg-transparent">
-              <TableHead className="w-[80px] text-center font-bold uppercase text-[10px] tracking-widest text-muted-foreground py-4">S.No</TableHead>
-              <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Team Member</TableHead>
-              <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground">Roles</TableHead>
-              {canToggle && (
-                <TableHead className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground text-center">Membership</TableHead>
-              )}
-              {hasAnyAction && (
-                <TableHead className="text-right font-bold uppercase text-[10px] tracking-widest text-muted-foreground pr-8">Actions</TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index} className="border-border/20 hover:bg-transparent">
-                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-full rounded-[6px] opacity-70" /></TableCell>
-                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-10/12 rounded-[6px] opacity-70" /></TableCell>
-                  <TableCell className="py-6 px-4"><Skeleton className="h-6 w-24 rounded-[6px] opacity-70" /></TableCell>
-                  {canToggle && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-full rounded-[6px] opacity-70" /></TableCell>}
-                  {hasAnyAction && <TableCell className="py-6 px-4"><Skeleton className="h-6 w-8 ml-auto rounded-[6px] opacity-70" /></TableCell>}
-                </TableRow>
-              ))
-            ) : members.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={3 + (canToggle ? 1 : 0) + (hasAnyAction ? 1 : 0)} className="h-32 text-center text-muted-foreground italic">
-                  No personnel detected in this organizational segment.
-                </TableCell>
-              </TableRow>
-            ) : (
-              members.map((member, index) => (
-                <TableRow key={member.id} className={`border-border/20 group hover:bg-primary/5 transition-colors ${!member.isActive ? 'opacity-60' : ''}`}>
-                  <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
-                    #{index + 1}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-4">
-                      <div className="relative group/avatar">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs">
-                          {member.user?.name?.charAt(0).toUpperCase()}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-foreground group-hover:text-primary transition-colors">{member.user?.name}</span>
-                        <span className="text-[10px] text-muted-foreground tracking-tight font-medium uppercase">{member.user?.email}</span>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-2">
-                       {member.roles?.length > 0 ? (
-                         member.roles.map((mr: any) => (
-                           <Badge 
-                            key={mr.role.id} 
-                            variant="outline" 
-                            className={`font-medium text-[8px] uppercase tracking-wide px-1.5 py-0 border-primary/20 text-primary bg-primary/5 shadow-sm ${!mr.role.isActive ? 'line-through opacity-50' : ''}`}
-                           >
-                              {mr.role.name}
-                           </Badge>
-                         ))
-                       ) : (
-                         <span className="text-[10px] text-muted-foreground italic">No roles assigned</span>
-                       )}
-                      </div>
-                    </TableCell>
-                  {canToggle && (
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <Switch
-                          disabled={!canToggle || !isActive}
-                          checked={member.isActive}
-                          onCheckedChange={() => handleToggleStatus(member)}
-                        />
-                        <span className={`text-[10px] font-bold uppercase tracking-widest ${member.isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
-                          {member.isActive ? 'Active Member' : 'Suspended'}
-                        </span>
-                      </div>
-                    </TableCell>
-                  )}
-                  {hasAnyAction && (
-                    <TableCell className="text-right pr-6">
-                      {(isActive && member.isActive) && (
-                      <DropdownMenu>
-                         <DropdownMenuTrigger
-                           render={
-                             <Button variant="ghost" className="h-8 w-8 p-0 rounded-full hover:bg-muted group-hover:bg-muted transition-colors">
-                               <MoreVerticalIcon className="h-4 w-4" />
-                             </Button>
-                           }
-                         />
-                         <DropdownMenuContent align="end" className="w-[180px] bg-popover border-input">
-                           <DropdownMenuGroup>
-                              <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground px-2 py-1.5 flex items-center justify-between">
-                                Membership Control
-                              </DropdownMenuLabel>
-                              <DropdownMenuSeparator className="bg-border/40" />
-                              <DropdownMenuItem
-                                className="gap-2 cursor-pointer focus:bg-primary/10 focus:text-primary transition-colors py-2"
-                                onClick={() => { setSelectedMember(member); setIsAssignDialogOpen(true); }}
-                              >
-                                <ShieldIcon className="h-3.5 w-3.5" />
-                                <span>Assign Team Role</span>
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuSeparator className="bg-border/40" />
-                              {canDelete && (
-                                <DropdownMenuItem
-                                  className="gap-2 text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer transition-colors py-2"
-                                  onClick={() => { setSelectedMember(member); setIsDeleteDialogOpen(true); }}
-                                >
-                                  <Trash2Icon className="h-3.5 w-3.5" />
-                                  <span>Remove from Team</span>
-                                </DropdownMenuItem>
-                              )}
-                           </DropdownMenuGroup>
-                         </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+      <DataTable
+          table={table}
+          isLoading={isLoading}
+          isSearchActive={!!search}
+      >
+          <DataTableAdvancedToolbar 
+              table={table} 
+              filterFields={filterFields}
+              filters={filters}
+              setFilters={setFilters}
+              onSearchChange={onSearchChange}
+              onFilterReset={onFilterReset}
+              search={search}
+              className="mb-4"
+          />
+      </DataTable>
 
 
       <AssignTeamRoleDialog 

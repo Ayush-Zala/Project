@@ -17,16 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
 import Link from "next/link"
@@ -96,13 +87,13 @@ export default function TeamDetailsPage({
   if ((isLoading && !team) || permissionsLoading) {
     return (
       <>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <Skeleton className="h-4 w-48 rounded" />
-          </div>
-        </header>
+        <DashboardHeader 
+          breadcrumbs={[
+            { label: "Dashboard", href: "/dashboard" },
+            { label: "Teams", href: "/dashboard/teams" },
+            { label: "Loading..." }
+          ]}
+        />
 
         <div className="flex flex-col gap-4 px-4 md:px-8 py-4 w-full animate-pulse">
           {/* Header Card Skeleton */}
@@ -169,53 +160,37 @@ export default function TeamDetailsPage({
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 bg-background/80 backdrop-blur-md sticky top-0 z-50 px-4">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard/teams">Teams</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{team.name}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={fetchTeam} className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95">
-            <RefreshCwIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+      <DashboardHeader
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Teams", href: "/dashboard/teams" },
+          { label: team.name }
+        ]}
+      >
+        <Button variant="ghost" size="icon" onClick={fetchTeam} className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95">
+          <RefreshCwIcon className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
+        {activeTab === "members" && canCreateMember && team.isActive && (
+          <Button
+            onClick={() => setIsAddMemberOpen(true)}
+            size="sm"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+          >
+            <UserPlusIcon className="h-4 w-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider">Add Member</span>
           </Button>
-          {activeTab === "members" && canCreateMember && team.isActive && (
-            <Button
-              onClick={() => setIsAddMemberOpen(true)}
-              size="sm"
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <UserPlusIcon className="h-4 w-4" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Add Member</span>
-            </Button>
-          )}
-          {activeTab === "roles" && canCreateRole && team.isActive && (
-            <Button
-              onClick={() => setIsAddRoleOpen(true)}
-              size="sm"
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Add Role</span>
-            </Button>
-          )}
-        </div>
-      </header>
+        )}
+        {activeTab === "roles" && canCreateRole && team.isActive && (
+          <Button
+            onClick={() => setIsAddRoleOpen(true)}
+            size="sm"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+          >
+            <PlusIcon className="h-4 w-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider">Add Role</span>
+          </Button>
+        )}
+      </DashboardHeader>
 
       <div className="flex flex-col gap-6 px-4 md:px-8 py-4 w-full">
         {/* Team Identification Header */}

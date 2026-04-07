@@ -7,18 +7,22 @@ import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
 import { slugify } from "@/lib/utils";
 
+import { getPrismaWhere, getPrismaOrderBy } from "@/lib/data-table-server";
+import { type ExtendedColumnFilter } from "@/types/data-table";
+
 const teamRoleSchema = z.object({
   name: z.string().min(3, "Min 3 characters required").max(50),
   description: z.string().max(255).optional().nullable(),
 });
 
 /**
- * GET: List all roles for a team
+ * GET: List all roles for a team with pagination and search
  */
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { searchParams } = new URL(req.url);
   const { id: idStr } = await params;
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,6 +36,21 @@ export async function GET(
   
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const page = parseInt(searchParams.get("page") || "1");
+  const limit = parseInt(searchParams.get("per_page") || "10");
+  const search = searchParams.get("search") || "";
+  const sort = searchParams.get("sort") || "";
+  const filtersRaw = searchParams.get("filters") || "[]";
+
+  let filters: ExtendedColumnFilter[] = [];
+  try {
+    filters = JSON.parse(filtersRaw);
+  } catch (e) {
+    console.warn("Invalid filters ignored");
+  }
+
+  const skip = (page - 1) * limit;
+
   try {
     // Isolation Check
     if (!canReadAll) {
@@ -41,12 +60,46 @@ export async function GET(
       if (!existing) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const roles = await (prisma as any).teamRole.findMany({
-      where: { teamId },
-      orderBy: { createdAt: 'desc' }
-    });
+    // 1. Build general search where
+    const searchWhere = search
+      ? {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { slug: { contains: search, mode: "insensitive" as const } },
+          { description: { contains: search, mode: "insensitive" as const } },
+        ],
+      }
+      : {};
 
-    return NextResponse.json(roles);
+    // 2. Build advanced filters where
+    const advancedWhere = getPrismaWhere(filters);
+
+    // 3. Combine with AND
+    const where = {
+      AND: [{ teamId }, searchWhere, advancedWhere]
+    };
+
+    const orderBy = getPrismaOrderBy(sort) || { createdAt: 'desc' };
+
+    const [total, roles] = await Promise.all([
+      (prisma as any).teamRole.count({ where }),
+      (prisma as any).teamRole.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy,
+      }),
+    ]);
+
+    return NextResponse.json({
+      roles,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error("[TEAM_ROLES_GET]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

@@ -10,6 +10,7 @@ export interface AuditContext {
   ipAddress?: string;
   userAgent?: string;
   reason?: string; // Optional context-specific reason
+  skipAudit?: boolean; // 🔒 INTERNAL: Suppress automatic model-level logging
 }
 
 // Global storage singleton
@@ -37,5 +38,16 @@ export function setAuditReason(reason: string) {
   const context = auditStorage.getStore();
   if (context) {
     context.reason = reason;
+  }
+}
+
+/**
+ * Programmatically suppress all automatic model-level auditing for the current context.
+ * Used for consolidated, manual auditing in complex transactions.
+ */
+export function setAuditSuppression(skip: boolean) {
+  const context = auditStorage.getStore();
+  if (context) {
+    context.skipAudit = skip;
   }
 }

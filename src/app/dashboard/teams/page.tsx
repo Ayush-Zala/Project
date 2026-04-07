@@ -10,16 +10,7 @@ import { TeamDialog } from "@/components/teams/team-dialog"
 import { DeleteTeamDialog } from "@/components/teams/delete-team-dialog"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb"
-import { Separator } from "@/components/ui/separator"
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { useRouter } from "next/navigation"
 
@@ -163,46 +154,33 @@ export default function TeamsPage() {
 
   return (
     <>
-      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 px-4 shadow-sm backdrop-blur-md bg-background/80 sticky top-0 z-50">
-        <div className="flex items-center gap-2">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>Teams</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-
-        <div className="flex items-center gap-2">
+      <DashboardHeader
+        breadcrumbs={[
+          { label: "Dashboard", href: "/dashboard" },
+          { label: "Teams" }
+        ]}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
+          title="Refresh"
+        >
+          <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </Button>
+        {canCreate && (
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
-            title="Refresh"
+            onClick={() => { setSelectedTeam(null); setIsTeamDialogOpen(true); }}
+            size="sm"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
           >
-            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <PlusIcon className="h-4 w-4" />
+            <span className="text-[11px] font-bold uppercase tracking-wider">Add Team</span>
           </Button>
-          {canCreate && (
-            <Button
-              onClick={() => { setSelectedTeam(null); setIsTeamDialogOpen(true); }}
-              size="sm"
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-            >
-              <PlusIcon className="h-4 w-4" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Add Team</span>
-            </Button>
-          )}
-        </div>
-      </header>
+        )}
+      </DashboardHeader>
 
       <PageShell>
         {/* Advanced Data Table */}
