@@ -59,6 +59,25 @@ function computeDiff(oldData: any, newData: any) {
   return diff;
 }
 
+/**
+ * 🛡️ FLATTEN COMPOSITE AND NESTED KEYS
+ * Ensures that IDs hidden within composite unique keys (like in upsert) are 
+ * accessible to the audit resolvers.
+ */
+function flattenPayload(payload: any): any {
+   if (!payload || typeof payload !== "object") return payload;
+   const flattened = { ...payload };
+
+   for (const key in flattened) {
+      const value = flattened[key];
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+         // Flatten composite key objects (e.g., teamMemberId_teamRoleId)
+         Object.assign(flattened, value);
+      }
+   }
+   return flattened;
+}
+
 export const prismaAuditExtension = Prisma.defineExtension((client) => {
   return client.$extends({
     name: "audit-logging",
@@ -108,8 +127,13 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
           // Fallback: If headers failed (Next.js Dynamic Server Usage error), sniff args
           if (!actorId && args?.data) {
              const manualActor = args.data.updatedBy || args.data.createdBy || args.data.userId;
-             if (manualActor) actorId = Number(manualActor);
+             if (manualActor && typeof Number(manualActor) === "number" && Number(manualActor) > 0) {
+                actorId = Number(manualActor);
+             }
           }
+          
+          // 🛡️ Ensure actorId is zero-safe (Postgres IDs are 1+)
+          if (actorId && (isNaN(actorId) || actorId <= 0)) actorId = null;
           
           let oldData: any = null;
 
@@ -217,7 +241,9 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
             // Resolve Target User
             let targetUserId: number | null = null;
             if (["user", "userpermission", "userrole", "teammember", "teammemberrole"].includes(safeModel)) {
-               const tid = result?.userId || oldData?.userId || args?.data?.userId || result?.id || oldData?.id || args?.where?.id;
+               // 🛡️ SNIFFING PROTECTION: Only use 'id' as targetUserId if the model itself is 'user'.
+               // For junctions, the record 'id' is NOT the User ID.
+               const tid = result?.userId || oldData?.userId || args?.data?.userId || (safeModel === "user" ? (result?.id || oldData?.id || args?.where?.id) : null);
                if (tid) targetUserId = Number(tid);
             } else if (["session", "account"].includes(safeModel)) {
                const tid = result?.userId || oldData?.userId || args?.data?.userId;
@@ -225,11 +251,13 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
             }
 
             // 🚫 DUPLICATE PROTECTION: Suppress 'deleteMany' on junction tables (often part of a sync/cleanup)
+            // 🚫 DUPLICATE PROTECTION: Suppress 'deleteMany' on junction tables (often part of a sync/cleanup)
             const isJunctionCleanup = ["rolepermission", "userpermission", "userrole", "teammember", "teammemberrole"].includes(safeModel) && operation === "deleteMany";
 
             if (!isJunctionCleanup && (operationError || finalAction !== "UPDATE" || metaData)) {
                 // 📝 Human-readable reason — no redundant action/model prefixes
-                 const payload = { ...oldData, ...result, ...args?.data, ...args?.where };
+                 const rawPayload = { ...oldData, ...result, ...args?.data, ...args?.where };
+                 const payload = flattenPayload(rawPayload);
                  let auditDescription = "";
 
                  if (safeModel === "userrole") {
@@ -290,32 +318,55 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                        auditDescription = `Permission ${pName} marked as ${newStatus}`;
                     } else auditDescription = `Permission ${pName} details were updated`;
                  } else if (safeModel === "teammemberrole") {
-                    const trName = await (async () => {
-                       try {
-                          const trId = payload.teamRoleId;
-                          if (trId) {
-                             const tr = await (client as any).teamRole.findUnique({ where: { id: trId }, select: { name: true } });
-                             if (tr?.name) return tr.name;
+                    // 🛡️ DEEP CONTEXT ALIGNMENT
+                    let uName = "Unknown User";
+                    let trName = "Unknown Role";
+                    let tName = "Unknown Team";
+
+                    try {
+                       // 🛡️ COMPOSITE LOOKUP: More reliable for junction upserts than surrogate ID
+                       const tmId = payload.teamMemberId;
+                       const trId = payload.teamRoleId;
+                       
+                       if (tmId && trId) {
+                          const fullRecord = await (client as any).teamMemberRole.findUnique({
+                             where: { 
+                                teamMemberId_teamRoleId: { 
+                                   teamMemberId: Number(tmId), 
+                                   teamRoleId: Number(trId) 
+                                } 
+                             },
+                             include: {
+                                role: { select: { name: true } },
+                                member: {
+                                   include: {
+                                      user: { select: { name: true, email: true } },
+                                      team: { select: { name: true } }
+                                   }
+                                }
+                             }
+                          });
+
+                          if (fullRecord) {
+                             if (fullRecord.role?.name) trName = fullRecord.role.name;
+                             if (fullRecord.member?.user) uName = fullRecord.member.user.name || fullRecord.member.user.email;
+                             if (fullRecord.member?.team?.name) tName = fullRecord.member.team.name;
+                             
+                             // 🛠️ Late resolution of targetUserId
+                             if (fullRecord.member?.userId) targetUserId = Number(fullRecord.member.userId);
+                          } else {
+                             console.log(`[AUDIT_DEBUG] teamMemberRole record not found for tmId: ${tmId}, trId: ${trId}`);
                           }
-                       } catch(e) {}
-                       return "Unknown Role";
-                    })();
-                    const uName = await (async () => {
-                       try {
-                          const memberId = payload.teamMemberId;
-                          if (memberId) {
-                             const member = await (client as any).teamMember.findUnique({
-                                where: { id: memberId },
-                                select: { user: { select: { name: true, email: true } } }
-                             });
-                             if (member?.user) return member.user.name || member.user.email;
-                          }
-                       } catch(e) {}
-                       return "Unknown User";
-                    })();
+                       } else {
+                          console.log(`[AUDIT_DEBUG] Missing IDs in payload - tmId: ${tmId}, trId: ${trId}`, Object.keys(payload));
+                       }
+                    } catch (e) {
+                       console.error(`[AUDIT_DEBUG_ERROR]`, e);
+                    }
+
                     auditDescription = baseAction === "DELETE"
-                       ? `Team role ${trName} revoked from user ${uName}`
-                       : `Team role ${trName} granted to user ${uName}`;
+                       ? `Team role ${trName} revoked from user ${uName} in Team ${tName}`
+                       : `Team role ${trName} granted to user ${uName} in Team ${tName}`;
                  } else if (safeModel === "team") {
                     const tName = await resolveName("team", payload);
                     if (finalAction === "CREATE") auditDescription = `Team ${tName} was created`;
@@ -342,19 +393,28 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                    errorReason = operationError instanceof Error ? operationError.message : String(operationError);
                 }
 
-                await (client as any).auditLog.create({
-                    data: {
-                        userId: targetUserId,
-                        createdBy: actorId,
-                        action: finalAction,
-                        resource: model.toLowerCase(),
-                        metaData: metaData as any,
-                        ipAddress: ipAddress || "DYNAMIC_RESOLVER",
-                        userAgent: userAgent || "PRISMA_EXTENSION",
-                        status: operationError ? "FAILURE" : "SUCCESS",
-                        reason: errorReason || genericReason || auditDescription,
-                    }
-                });
+                 // 🛡️ ULTIMATE ID SANITIZATION (Postgres IDs must be > 0)
+                 const finalTargetUserId = (targetUserId && !isNaN(targetUserId) && targetUserId > 0) ? targetUserId : null;
+                 const finalActorId = (actorId && !isNaN(actorId) && actorId > 0) ? actorId : null;
+
+                 try {
+                    await (client as any).auditLog.create({
+                        data: {
+                            userId: finalTargetUserId,
+                            createdBy: finalActorId,
+                            action: finalAction,
+                            resource: model.toLowerCase(),
+                            metaData: metaData as any,
+                            ipAddress: ipAddress || "DYNAMIC_RESOLVER",
+                            userAgent: userAgent || "PRISMA_EXTENSION",
+                            status: operationError ? "FAILURE" : "SUCCESS",
+                            reason: errorReason || genericReason || auditDescription,
+                        }
+                    });
+                 } catch (auditCreateError) {
+                    // 🛡️ SILENT LOG FAILURE: Audit fails, but business logic MUST continue.
+                    console.error(`[AUDIT_LOG_CREATE_FAILED] Model: ${model} | Action: ${finalAction} | Target: ${finalTargetUserId} | Actor: ${finalActorId}`, auditCreateError);
+                 }
             }
           } catch (auditError) {
             console.error(`[AUDIT_EXTENSION_ERROR]`, auditError);
