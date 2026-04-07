@@ -159,10 +159,10 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
                 </TableCell>
               </TableRow>
             ) : (
-              roles.map((role) => (
+              roles.map((role, index) => (
                 <TableRow key={role.id} className="border-border/20 group hover:bg-primary/5 transition-colors">
                   <TableCell className="text-center font-mono text-xs font-bold text-muted-foreground py-6">
-                    #{role.id.toString().slice(-4).toUpperCase()}
+                    #{index + 1}
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-0.5">

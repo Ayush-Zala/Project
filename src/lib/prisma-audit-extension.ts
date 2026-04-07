@@ -376,10 +376,39 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                        auditDescription = `Team ${tName} marked as ${newStatus}`;
                     } else auditDescription = `Team ${tName} details were updated`;
                  } else if (safeModel === "teamrole") {
-                    const trName = payload.name || "Unknown";
-                    if (finalAction === "CREATE") auditDescription = `Team role ${trName} was created`;
-                    else if (finalAction === "DELETE") auditDescription = `Team role ${trName} was deleted`;
-                    else auditDescription = `Team role ${trName} was updated`;
+                     let trName = payload.name || "Unknown";
+                     let tName = "Unknown Team";
+                     
+                     // 🛡️ Resolve Team Context (all actions)
+                     try {
+                        const trId = payload.id;
+                        if (trId) {
+                           const record = await (client as any).teamRole.findUnique({
+                              where: { id: trId },
+                              include: { team: { select: { name: true } } }
+                           }) || oldData; // Fallback to oldData if record is already gone
+
+                           if (record) {
+                              trName = record.name;
+                              if (record.team?.name) tName = record.team.name;
+                              else if (record.teamId) {
+                                 // Manual lookup for Team if not included in oldData/record
+                                 const team = await (client as any).team.findUnique({
+                                    where: { id: record.teamId },
+                                    select: { name: true }
+                                 });
+                                 if (team?.name) tName = team.name;
+                              }
+                           }
+                        }
+                     } catch (e) {}
+
+                     if (finalAction === "CREATE") auditDescription = `Team role ${trName} was created in Team ${tName}`;
+                     else if (finalAction === "DELETE" || baseAction === "DELETE") auditDescription = `Team role ${trName} was deleted in Team ${tName}`;
+                     else if (finalAction === "TOGGLE") {
+                        const newStatus = (result?.isActive === false || payload.isActive === false) ? "inactive" : "active";
+                        auditDescription = `Team role ${trName} marked ${newStatus} in Team ${tName}`;
+                     } else auditDescription = `Team role ${trName} was updated in Team ${tName}`;
                  } else {
                     const name = payload.name || payload.email || payload.slug || payload.id || model;
                     if (finalAction === "CREATE") auditDescription = `${model} ${name} was created`;
