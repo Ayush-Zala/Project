@@ -2,15 +2,24 @@
 
 import * as React from "react"
 import {
-  PlusIcon,
   RefreshCwIcon,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TeamDialog } from "@/components/teams/team-dialog"
 import { DeleteTeamDialog } from "@/components/teams/delete-team-dialog"
+import { BulkDeleteTeamDialog } from "@/components/teams/bulk-delete-team-dialog"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
+import { Separator } from "@/components/ui/separator"
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { useRouter } from "next/navigation"
 
@@ -21,7 +30,6 @@ import { ActionBar } from "@/components/data-table/action-bar"
 import { useDataTable } from "@/hooks/use-data-table"
 import { getTeamsColumns } from "@/components/teams/teams-table-columns"
 import { DataTableFilterField } from "@/types/data-table"
-import { Trash2Icon } from "lucide-react"
 
 export default function TeamsPage() {
   const [teams, setTeams] = React.useState<any[]>([])
@@ -34,6 +42,7 @@ export default function TeamsPage() {
   // Dialog states
   const [isTeamDialogOpen, setIsTeamDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = React.useState(false)
   const [selectedTeam, setSelectedTeam] = React.useState<any>(null)
 
   const router = useRouter()
@@ -124,25 +133,24 @@ export default function TeamsPage() {
     toast.success("Teams manifest synchronized")
   }
 
-  const onBulkDelete = async () => {
+  const onBulkStatusUpdate = async (isActive: boolean) => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
     const ids = selectedRows.map(row => (row.original as any).id)
     
-    if (!confirm(`Are you sure you want to purge ${ids.length} teams? This action is irreversible.`)) return
-
     setIsBulkLoading(true)
-    const toastId = toast.loading(`Purging ${ids.length} teams...`)
-    
     try {
       await Promise.all(ids.map(id => 
-        fetch(`/api/teams/${id}`, { method: "DELETE" })
+        fetch(`/api/teams/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive }),
+        })
       ))
       
-      toast.success(`Successfully purged ${ids.length} teams`, { id: toastId })
       table.toggleAllRowsSelected(false)
       fetchTeams()
     } catch (error: any) {
-      toast.error("Bulk purge failed: " + error.message, { id: toastId })
+      toast.error("Bulk update failed: " + error.message)
     } finally {
       setIsBulkLoading(false)
     }
@@ -152,38 +160,55 @@ export default function TeamsPage() {
     { label: "Name", id: "name", variant: "text" },
   ]
 
+  // Action bar logic
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectionCount = selectedRows.length
+  const firstSelectedTeam = selectedRows.length === 1 ? (selectedRows[0].original as any) : null
+  const selectedTeamsData = selectedRows.map(row => row.original)
+
   return (
     <>
-      <DashboardHeader
-        breadcrumbs={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Teams" }
-        ]}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
-          title="Refresh"
-        >
-          <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
-        {canCreate && (
+      <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-border/40 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 px-4 shadow-sm bg-background/50 backdrop-blur-md sticky top-0 z-50">
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-primary transition-all">Dashboard</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-[10px] font-black uppercase tracking-widest text-foreground">Teams</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        </div>
+
+        <div className="flex items-center gap-2">
           <Button
-            onClick={() => { setSelectedTeam(null); setIsTeamDialogOpen(true); }}
-            size="sm"
-            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+            variant="ghost"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
+            title="Refresh"
           >
-            <PlusIcon className="h-4 w-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Add Team</span>
+            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </Button>
-        )}
-      </DashboardHeader>
+          {canCreate && (
+            <Button
+              onClick={() => { setSelectedTeam(null); setIsTeamDialogOpen(true); }}
+              size="sm"
+              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 px-8"
+            >
+              <span className="text-[11px] font-black uppercase tracking-widest leading-none">Add Team</span>
+            </Button>
+          )}
+        </div>
+      </header>
 
       <PageShell>
-        {/* Advanced Data Table */}
         <DataTable
             table={table}
             className="relative"
@@ -201,25 +226,56 @@ export default function TeamsPage() {
                 search={search}
                 className="mb-4"
             />
-            
         </DataTable>
 
         <ActionBar table={table}>
+           {selectionCount === 1 && canUpdate && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => { setSelectedTeam(firstSelectedTeam); setIsTeamDialogOpen(true); }}
+                className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+              </Button>
+           )}
+
+           {canUpdate && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                disabled={isBulkLoading}
+                onClick={() => {
+                  const allActive = selectedRows.every(row => (row.original as any).isActive)
+                  if (selectionCount === 1) {
+                    handleToggleStatus(firstSelectedTeam)
+                  } else {
+                    onBulkStatusUpdate(!allActive)
+                  }
+                }}
+                className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {selectedRows.every(row => (row.original as any).isActive) ? "Mark Inactive" : "Mark Active"}
+                </span>
+              </Button>
+           )}
+
            {canDelete && (
               <Button 
                 variant="ghost" 
                 size="sm" 
                 disabled={isBulkLoading}
-                onClick={onBulkDelete}
-                className="h-8 gap-2 px-4 hover:bg-destructive/10 text-destructive hover:text-destructive rounded-full transition-all active:scale-95 border border-border/20"
+                onClick={() => setIsBulkDeleteDialogOpen(true)}
+                className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
               >
-                 <Trash2Icon className="size-3.5" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Delete Teams</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
               </Button>
            )}
         </ActionBar>
+        
         <p className="text-[11px] font-medium text-muted-foreground italic text-center mt-2">
-           Displaying {teams.length} of {totalCount} teams
+           Displaying {teams.length} of {totalCount} organizational segments
         </p>
       </PageShell>
 
@@ -229,12 +285,20 @@ export default function TeamsPage() {
         team={selectedTeam}
         onSuccess={fetchTeams}
       />
-
       <DeleteTeamDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
         team={selectedTeam}
         onSuccess={fetchTeams}
+      />
+      <BulkDeleteTeamDialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+        teams={selectedTeamsData}
+        onSuccess={() => {
+            table.toggleAllRowsSelected(false);
+            fetchTeams();
+        }}
       />
     </>
   )

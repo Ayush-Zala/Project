@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import {
-  PlusIcon,
   RefreshCwIcon,
   Trash2Icon,
   PowerIcon
@@ -27,7 +26,10 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { PermissionDialog } from "@/components/permissions/permission-dialog"
+import { DeletePermissionDialog } from "@/components/permissions/delete-permission-dialog"
+import { BulkDeletePermissionDialog } from "@/components/permissions/bulk-delete-permission-dialog"
 import { useHasPermission } from "@/hooks/use-has-permission"
+import { apiClient } from "@/lib/api-client"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DataTable } from "@/components/data-table/data-table"
@@ -47,6 +49,8 @@ export default function PermissionsPage() {
 
   // Dialog states
   const [isPermissionDialogOpen, setIsPermissionDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = React.useState(false)
   const [selectedPermission, setSelectedPermission] = React.useState<any>(null)
 
   // 🛡️ Capability Guards
@@ -56,47 +60,33 @@ export default function PermissionsPage() {
 
   // Function declared with 'function' to allow hoisting for use in handlers
   async function performFetch() {
-     // This will be called by hooks later
+    // This will be called by hooks later
   }
 
   const handleToggleStatus = React.useCallback(async (permission: any) => {
     const newStatus = !permission.isActive;
-    const toastId = toast.loading(`Updating status for ${permission.name}...`);
 
     try {
-      const res = await fetch(`/api/permissions/${permission.id}`, {
+      await apiClient(`/api/permissions/${permission.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: newStatus }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update status");
-      }
-
-      toast.success(`${permission.name} status updated to ${newStatus ? 'Active' : 'Archived'}`, { id: toastId });
       // Functional update to avoid stale closure or circular dependency
       setPermissions(prev => prev.map(p => p.id === permission.id ? { ...p, isActive: newStatus } : p));
     } catch (error: any) {
-      toast.error(error.message, { id: toastId });
+      // apiClient handles toasts
     }
   }, [])
 
-  const handleDelete = React.useCallback(async (permission: any) => {
-    if (!confirm(`Are you sure you want to delete [${permission.name}] permanently? This may break existing role assignments.`)) return;
-    
-    try {
-      const res = await fetch(`/api/permissions/${permission.id}`, { method: "DELETE" })
-      if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Failed to delete permission")
-      }
-      toast.success("Permission deleted permanently")
-      setPermissions(prev => prev.filter(p => p.id !== permission.id));
-    } catch (error: any) {
-      toast.error(error.message)
-    }
+  const handleDelete = React.useCallback((permission: any) => {
+    setSelectedPermission(permission);
+    setIsDeleteDialogOpen(true);
+  }, [])
+
+  const onBulkDelete = React.useCallback(() => {
+    setIsBulkDeleteDialogOpen(true);
   }, [])
 
   // 📋 Data Table Implementation
@@ -107,16 +97,16 @@ export default function PermissionsPage() {
     onToggleStatus: handleToggleStatus,
   }), [canUpdate, canDelete, handleDelete, handleToggleStatus])
 
-  const { 
-    table, 
-    onSearchChange, 
+  const {
+    table,
+    onSearchChange,
     onFilterReset,
-    search, 
-    filters, 
+    search,
+    filters,
     setFilters,
-    sort, 
-    page, 
-    perPage 
+    sort,
+    page,
+    perPage
   } = useDataTable({
     data: permissions,
     columns,
@@ -133,14 +123,16 @@ export default function PermissionsPage() {
       if (search) params.set("search", search)
       if (filters?.length) params.set("filters", JSON.stringify(filters))
 
-      const res = await fetch(`/api/permissions?${params.toString()}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await apiClient(`/api/permissions?${params.toString()}`)
       setPermissions(data.permissions)
       setPageCount(data.pagination.totalPages)
       setTotalCount(data.pagination.total)
     } catch (error: any) {
-      toast.error(error.message || "Failed to load permissions")
+      toast.error(error.message || "Failed to load permissions", {
+        className: "font-normal text-[13px] tracking-tight",
+        duration: 5000,
+        closeButton: true,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -160,71 +152,48 @@ export default function PermissionsPage() {
     setIsRefreshing(true)
     await fetchPermissions()
     setIsRefreshing(false)
-    toast.success("Permissions list updated")
   }
 
   const onBulkStatusUpdate = async (isActive: boolean) => {
     const selectedRows = table.getFilteredSelectedRowModel().rows
     const ids = selectedRows.map(row => (row.original as any).id)
-    
+
     setIsBulkLoading(true)
-    const toastId = toast.loading(`Updating status for ${ids.length} protocols...`)
-    
     try {
-      await Promise.all(ids.map(id => 
-        fetch(`/api/permissions/${id}`, {
+      await Promise.all(ids.map(id =>
+        apiClient(`/api/permissions/${id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive }),
         })
       ))
-      
-      toast.success(`Successfully synchronized ${ids.length} records`, { id: toastId })
+
       table.toggleAllRowsSelected(false)
       fetchPermissions()
     } catch (error: any) {
-      toast.error("Bulk sync failed: " + error.message, { id: toastId })
+      // apiClient handles toasts
     } finally {
       setIsBulkLoading(false)
     }
   }
 
-  const onBulkDelete = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows
-    const ids = selectedRows.map(row => (row.original as any).id)
-    
-    if (!confirm(`Are you sure you want to purge ${ids.length} protocols? This action is irreversible and may impact existing role assignments.`)) return
-
-    setIsBulkLoading(true)
-    const toastId = toast.loading(`Purging ${ids.length} protocols...`)
-    
-    try {
-      await Promise.all(ids.map(id => 
-        fetch(`/api/permissions/${id}`, { method: "DELETE" })
-      ))
-      
-      toast.success(`Successfully deleted ${ids.length} permissions`, { id: toastId })
-      table.toggleAllRowsSelected(false)
-      fetchPermissions()
-    } catch (error: any) {
-      toast.error("Bulk delete failed: " + error.message, { id: toastId })
-    } finally {
-      setIsBulkLoading(false)
-    }
-  }
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectionCount = selectedRows.length
+  const firstSelectedPermission = selectionCount === 1 ? selectedRows[0].original as any : null
+  const selectedRowsData = selectedRows.map(row => row.original)
 
   const filterFields: DataTableFilterField<any>[] = [
     { label: "Name", id: "name", variant: "text" },
     { label: "Resource", id: "resource", variant: "text" },
     { label: "Action", id: "action", variant: "text" },
-    { 
-      label: "Status", 
-      id: "isActive", 
-      variant: "select", 
+    {
+      label: "Status",
+      id: "isActive",
+      variant: "select",
       options: [
         { label: "Active", value: "true" },
         { label: "Inactive", value: "false" }
-      ] 
+      ]
     },
   ]
 
@@ -262,10 +231,9 @@ export default function PermissionsPage() {
             <Button
               onClick={() => { setSelectedPermission(null); setIsPermissionDialogOpen(true); }}
               size="sm"
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all active:scale-95 px-8"
             >
-              <PlusIcon className="h-4 w-4" />
-              <span className="text-[11px] font-bold uppercase tracking-wider">Add Permission</span>
+              <span className="text-[11px] font-black uppercase tracking-widest leading-none">Add Permission</span>
             </Button>
           )}
         </div>
@@ -274,75 +242,77 @@ export default function PermissionsPage() {
       <PageShell>
         {/* Advanced Data Table */}
         <DataTable
-            table={table}
-            className="relative"
-            isLoading={isLoading}
-            isSearchActive={!!search}
-            isRefreshing={isRefreshing}
+          table={table}
+          className="relative"
+          isLoading={isLoading}
+          isSearchActive={!!search}
+          isRefreshing={isRefreshing}
         >
-            <DataTableAdvancedToolbar 
-                table={table} 
-                filterFields={filterFields}
-                filters={filters}
-                setFilters={setFilters}
-                onSearchChange={onSearchChange}
-                onFilterReset={onFilterReset}
-                search={search}
-                className="mb-4"
-            />
-            
+          <DataTableAdvancedToolbar
+            table={table}
+            filterFields={filterFields}
+            filters={filters}
+            setFilters={setFilters}
+            onSearchChange={onSearchChange}
+            onFilterReset={onFilterReset}
+            search={search}
+            className="mb-4"
+          />
+
         </DataTable>
 
         <ActionBar table={table}>
            {canUpdate && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      disabled={isBulkLoading}
-                      className="h-8 gap-2 px-3 hover:bg-muted/50 text-foreground/90 rounded-full transition-all active:scale-95 border border-border/40"
-                    >
-                      <PowerIcon className="size-3.5 text-primary" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Status</span>
-                    </Button>
-                  }
-                />
-                <DropdownMenuContent align="center" className="w-[160px] bg-popover/95 backdrop-blur-xl border border-border/40 rounded-xl p-1 shadow-2xl">
-                   <DropdownMenuItem 
-                     className="gap-2 focus:bg-muted/50 focus:text-foreground rounded-lg py-2 cursor-pointer text-[10px] font-black uppercase tracking-widest"
-                     onClick={() => onBulkStatusUpdate(true)}
-                   >
-                     <div className="size-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(var(--primary),0.8)]" />
-                     Active
-                   </DropdownMenuItem>
-                   <DropdownMenuItem 
-                     className="gap-2 focus:bg-muted/50 focus:text-foreground rounded-lg py-2 cursor-pointer text-[10px] font-black uppercase tracking-widest"
-                     onClick={() => onBulkStatusUpdate(false)}
-                   >
-                     <div className="size-1.5 rounded-full bg-white/20" />
-                     Inactive
-                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+             selectionCount === 1 ? (
+               <Button 
+                 variant="ghost" 
+                 size="sm" 
+                 disabled={isBulkLoading}
+                 onClick={() => onBulkStatusUpdate(!firstSelectedPermission?.isActive)}
+                 className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/40 active:scale-95"
+               >
+                 <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+                   {firstSelectedPermission?.isActive ? "Mark Inactive" : "Mark Active"}
+                 </span>
+               </Button>
+             ) : (
+               <>
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   disabled={isBulkLoading}
+                   onClick={() => onBulkStatusUpdate(true)}
+                   className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/40 active:scale-95"
+                 >
+                   <span className="text-[10px] font-black uppercase tracking-widest leading-none">Mark Active</span>
+                 </Button>
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   disabled={isBulkLoading}
+                   onClick={() => onBulkStatusUpdate(false)}
+                   className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/40 active:scale-95"
+                 >
+                   <span className="text-[10px] font-black uppercase tracking-widest leading-none">Mark Inactive</span>
+                 </Button>
+               </>
+             )
            )}
            {canDelete && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                disabled={isBulkLoading}
-                onClick={onBulkDelete}
-                className="h-8 gap-2 px-4 hover:bg-destructive/10 text-destructive hover:text-destructive rounded-full transition-all active:scale-95 border border-border/40"
-              >
-                 <Trash2Icon className="size-3.5" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Purge Protocols</span>
-              </Button>
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               disabled={isBulkLoading}
+               onClick={onBulkDelete}
+               className="h-8 px-6 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/40 active:scale-95"
+             >
+               <span className="text-[10px] font-black uppercase tracking-widest leading-none">Delete</span>
+             </Button>
            )}
         </ActionBar>
-        
+
         <p className="text-[11px] font-medium text-muted-foreground italic text-center mt-2">
-           Displaying {permissions.length} of {totalCount} organizational protocols
+          Displaying {permissions.length} of {totalCount} organizational protocols
         </p>
       </PageShell>
 
@@ -351,6 +321,23 @@ export default function PermissionsPage() {
         onOpenChange={setIsPermissionDialogOpen}
         permission={selectedPermission}
         onSuccess={fetchPermissions}
+      />
+
+      <DeletePermissionDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        permission={selectedPermission}
+        onSuccess={fetchPermissions}
+      />
+
+      <BulkDeletePermissionDialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+        permissions={selectedRowsData as any[]}
+        onSuccess={() => {
+          table.toggleAllRowsSelected(false)
+          fetchPermissions()
+        }}
       />
     </>
   )

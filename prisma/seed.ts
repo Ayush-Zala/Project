@@ -23,6 +23,10 @@ const PERMISSIONS_MANIFEST: Record<string, string[]> = {
   team_roles: ["create", "read", "update", "delete", "toggle"],
   team_members: ["create", "read", "update", "delete", "toggle", "assign_role"],
   audit: ["read"],
+  organisation: ["create", "read", "update", "delete", "toggle", "manage"],
+  organisation_member: ["manage", "read"],
+  organisation_team: ["manage", "read"],
+  organisation_invite: ["manage", "read"],
 };
 
 async function main() {
@@ -73,50 +77,71 @@ async function main() {
     console.log(`CLEANUP: Purged ${orphanedCount.count} redundant/inactive capabilities from the registry.`);
   }
 
-  // 4. Provision Functional Manifest
-  console.log("PROVISIONING: Syncing functional security policies...");
+  // 4. Adding Permissions
+  console.log("Adding Permissions: Setting up simple action-oriented labels...");
   for (const [resource, actions] of Object.entries(PERMISSIONS_MANIFEST)) {
     for (const action of actions) {
       const slug = `${resource}:${action}`;
       
-      // 🏷️ Human-readable labeling logic
+      // 🏷️ Simple Labeling Logic
       let name = "";
       let description = "";
-      const actionLabel = action.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      
-      // Improved singularization for multi-word resources
-      const resourceLabel = resource
-        .split('_')
-        .map(w => w.charAt(0).toUpperCase() + w.slice(1).replace(/s$/, '')) // Capitalize + Strip trailing 's'
-        .join(' ');
 
-      if (action === "assign_permission") {
-        name = `Assign Permissions to ${resourceLabel}`;
-        description = `Grants the ability to manage granular capability assignments for individual ${resource}.`;
-      } else if (action === "assign_role") {
-        name = resource === "users" ? "Assign Role to User" : `Manage ${resourceLabel} Roles`;
-        description = `Provides the capability to bind users to specific security roles or manage localized hierarchies.`;
-      } else if (action === "toggle") {
-        name = `Toggle ${resourceLabel} Status`;
-        description = `Provides the capability to suspend or activate ${resource} without deleting data.`;
-      } else if (action === "read") {
-        name = resource === "audit" ? "View Forensic Intelligence Logs" : `View ${resourceLabel} Manifest`;
-        description = resource === "audit" ? "Complete forensic record of all industrial transactions and state changes." : `Full read-only access to browse and search the ${resource} registry.`;
-      } else if (action === "read_all") {
-        name = `View All ${resourceLabel} Segments`;
-        description = `Global visibility across all organizational segments, bypassing decentralized isolation.`;
+      const resourceNames: Record<string, string> = {
+        users: "Users",
+        roles: "Roles",
+        permissions: "Permissions",
+        teams: "Teams",
+        team_roles: "Team Roles",
+        team_members: "Team Members",
+        audit: "Logs",
+        organisation: "Organization",
+        organisation_member: "Organization Members",
+        organisation_team: "Organization Teams",
+        organisation_invite: "Invites",
+      };
+
+      const actionLabels: Record<string, string> = {
+        create: "Add",
+        read: "View",
+        update: "Edit",
+        delete: "Delete",
+        toggle: "Status",
+        assign_role: "Assign Roles",
+        assign_permission: "Assign Permissions",
+        read_all: "View All",
+        manage: "Manage",
+      };
+
+      const resLabel = resourceNames[resource] || resource;
+      const actLabel = actionLabels[action] || action;
+
+      name = `${actLabel} ${resLabel}`;
+      
+      if (action === "read") {
+        description = `Allows viewing the ${resLabel.toLowerCase()} list.`;
+      } else if (action === "create") {
+        description = `Allows adding new ${resLabel.toLowerCase()}.`;
+      } else if (action === "update") {
+        description = `Allows editing existing ${resLabel.toLowerCase()}.`;
+      } else if (action === "delete") {
+        description = `Allows deleting ${resLabel.toLowerCase()}.`;
       } else {
-        name = `${actionLabel} ${resourceLabel}`;
-        description = `Grants authorization to ${action} ${resource} within the industrial dashboard.`;
+        description = `Allows the user to ${actLabel.toLowerCase()} ${resLabel.toLowerCase()}.`;
       }
 
       const permission = await prisma.permission.upsert({
         where: { slug },
-        update: { name, description, isActive: true, resource: resource === "audit" ? "Logs" : resource },
+        update: { 
+          name, 
+          description, 
+          isActive: true, 
+          resource: resourceNames[resource] || resource 
+        },
         create: {
           name,
           slug,
-          resource: resource === "audit" ? "Logs" : resource,
+          resource: resourceNames[resource] || resource,
           description,
           action,
           isActive: true,
@@ -125,9 +150,14 @@ async function main() {
         },
       });
 
-      // 5. Authorization: Re-sync Super Admin
+      // 5. Authorization: Ensure Super Admin has this permission
       await prisma.rolePermission.upsert({
-        where: { roleId_permissionId: { roleId: roleIDs["super-admin"], permissionId: permission.id } },
+        where: { 
+          roleId_permissionId: { 
+            roleId: roleIDs["super-admin"], 
+            permissionId: permission.id 
+          } 
+        },
         update: { isActive: true },
         create: {
           roleId: roleIDs["super-admin"],
@@ -140,10 +170,12 @@ async function main() {
     }
   }
 
-  // 6. Bootstrap: Ensure root administrator is elevated
+  // 6. Bootstrap: Ensure first user is Super Admin
   const adminUser = await prisma.user.findFirst({
-    where: { isActive: true }
+    where: { isActive: true },
+    orderBy: { createdAt: 'asc' }
   });
+  
   if (adminUser) {
     await prisma.userRole.upsert({
       where: { userId_roleId: { userId: adminUser.id, roleId: roleIDs["super-admin"] } },
@@ -156,10 +188,10 @@ async function main() {
         updatedAt: epochNow,
       },
     });
-    console.log(`BOOTSTRAP: Verified Super Admin authorization for: ${adminUser.email}`);
+    console.log(`BOOTSTRAP: Assigned Super Admin role to: ${adminUser.email}`);
   }
 
-  console.log("Registry Pruning Completed Successfully.");
+  console.log("Database reset and permissions initialized successfully.");
 }
 
 main()

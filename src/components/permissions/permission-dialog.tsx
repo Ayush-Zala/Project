@@ -24,8 +24,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { toast } from "sonner"
 import { RefreshCwIcon, KeyIcon } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
 
 const permissionSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters").max(50),
@@ -83,20 +83,16 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
       const url = isEditing ? `/api/permissions/${permission.id}` : "/api/permissions";
       const method = isEditing ? "PATCH" : "POST";
 
-      const res = await fetch(url, {
+      await apiClient(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save permission");
-
-      toast.success(isEditing ? "Permission definition updated" : "New permission registered in manifest");
       onSuccess?.();
       onOpenChange(false);
     } catch (error: any) {
-      toast.error(error.message);
+      // apiClient already handled toast
     } finally {
       setIsSubmitting(false);
     }
@@ -104,120 +100,121 @@ export function PermissionDialog({ open, onOpenChange, permission, onSuccess }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] border-input bg-background/95 backdrop-blur-xl shadow-2xl rounded-2xl overflow-hidden">
-        <DialogHeader className="p-6 bg-muted/20 border-b border-input relative">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-full blur-2xl -mr-8 -mt-8" />
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <KeyIcon className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-bold tracking-tight">
-                {isEditing ? "Modify Permission" : "Define Permission"}
-              </DialogTitle>
-              <DialogDescription className="text-xs mt-1">
-                Establish granular access controls for system resources.
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
+        <div className="p-6">
+          <DialogHeader className="mb-6">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
+              {isEditing ? "Edit Permission" : "Create Permission"}
+            </DialogTitle>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Permission Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Create Infrastructure Users" {...field} className="bg-background border-input focus:border-primary/50 rounded-xl" />
-                  </FormControl>
-                  <FormMessage className="text-[10px] font-bold" />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="grid gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Permission Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Create Infrastructure Users" {...field} className="bg-background border-input focus:border-primary/50 font-bold transition-all text-sm h-10" />
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="resource"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Resource</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g. users" 
-                        disabled={isEditing} 
-                        {...field} 
-                        className="bg-background border-input focus:border-primary/50 rounded-xl font-mono text-sm" 
-                      />
-                    </FormControl>
-                    <FormDescription className="text-[9px]">Resource namespace.</FormDescription>
-                    <FormMessage className="text-[10px] font-bold" />
-                  </FormItem>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="resource"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Resource</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. users"
+                            disabled={isEditing}
+                            {...field}
+                            className="bg-background border-input focus:border-primary/50 rounded-xl font-mono font-bold text-sm h-10"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-[10px] font-bold" />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="action"
+                    render={({ field }) => (
+                      <FormItem className="space-y-1.5">
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Action</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="e.g. create"
+                            disabled={isEditing}
+                            {...field}
+                            className="bg-background border-input focus:border-primary/50 rounded-xl font-mono font-bold text-sm h-10"
+                          />
+                        </FormControl>
+                        <FormMessage className="text-[10px] font-bold" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {form.watch("resource") && form.watch("action") && !isEditing && (
+                  <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
+                    <p className="text-[10px] uppercase tracking-widest font-black text-primary mb-1">Generated Slug</p>
+                    <code className="text-sm font-mono font-bold text-foreground opacity-80">
+                      {form.watch("resource").toLowerCase()}:{form.watch("action").toLowerCase()}
+                    </code>
+                  </div>
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="action"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Action</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="e.g. create" 
-                        disabled={isEditing} 
-                        {...field} 
-                        className="bg-background border-input focus:border-primary/50 rounded-xl font-mono text-sm" 
-                      />
-                    </FormControl>
-                    <FormDescription className="text-[9px]">Operation name.</FormDescription>
-                    <FormMessage className="text-[10px] font-bold" />
-                  </FormItem>
-                )}
-              />
-            </div>
 
-            {form.watch("resource") && form.watch("action") && !isEditing && (
-              <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
-                <p className="text-[10px] uppercase tracking-widest font-bold text-primary mb-1">Generated Slug</p>
-                <code className="text-sm font-mono font-bold text-foreground opacity-80">
-                  {form.watch("resource").toLowerCase()}:{form.watch("action").toLowerCase()}
-                </code>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Purpose & Context</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe why this permission exists..."
+                          className="resize-none bg-background border-input focus:border-primary/50 min-h-[80px] font-medium transition-all text-xs py-3"
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold" />
+                    </FormItem>
+                  )}
+                />
               </div>
-            )}
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Purpose & Context</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      placeholder="Describe why this permission exists..." 
-                      className="bg-background border-input focus:border-primary/50 rounded-xl min-h-[80px]" 
-                      {...field} 
-                      value={field.value || ""}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-[10px] font-bold" />
-                </FormItem>
-              )}
-            />
-
-            <DialogFooter className="pt-4 gap-3 border-t border-border/20">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input hover:bg-muted/50 font-bold px-6">
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting} className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 shadow-lg shadow-primary/20 transition-all active:scale-95">
-                {isSubmitting && <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />}
-                {isEditing ? "Seal Changes" : "Commit to Manifest"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all flex gap-2"
+                >
+                  {isSubmitting && <RefreshCwIcon className="h-4 w-4 animate-spin" />}
+                  {isEditing ? "Save Changes" : "Create Permission"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   );

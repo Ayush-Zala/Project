@@ -81,7 +81,10 @@ export async function GET(req: Request) {
         orderBy,
         include: {
           _count: {
-            select: { members: true, roles: true }
+            select: {
+              members: { where: { isActive: true } },
+              roles: { where: { isActive: true } }
+            }
           }
         }
       }),

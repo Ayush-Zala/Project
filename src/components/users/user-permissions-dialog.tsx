@@ -17,7 +17,6 @@ import { KeyIcon, RefreshCwIcon, UserIcon, SearchIcon, FilterIcon, InfoIcon } fr
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface UserPermissionsDialogProps {
   open: boolean;
@@ -67,8 +66,6 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
   }, [open, loadData])
 
   const handleToggle = (id: number) => {
-    // If the user already has it via role, we should inform them or handle it.
-    // The backend cross-checks anyway.
     setDirectIds(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     )
@@ -87,9 +84,6 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
       if (!res.ok) throw new Error(data.error || "Failed to synchronize permissions")
       
       toast.success(`Direct permissions for ${user.name} established`)
-      if (data.ignoredDueToRole > 0) {
-          toast.info(`${data.ignoredDueToRole} permissions were ignored as they are already granted via role.`)
-      }
       onOpenChange(false)
     } catch (error: any) {
       toast.error(error.message)
@@ -124,43 +118,30 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
                 )}
             </div>
             <div>
-              <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
-                Direct Permissions: {user?.name}
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
+                Assign Permission: {user?.name}
               </DialogTitle>
-              <DialogDescription className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground mt-1">
-                Assign specific capabilities beyond the <span className="text-primary font-bold">{user?.role?.name || "Standard"}</span> role.
-              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
-
-        <div className="px-6 py-4 border-b border-border/20 bg-primary/5">
-            <Alert className="bg-transparent border-none p-0 shadow-none">
-                <InfoIcon className="h-4 w-4 text-primary" />
-                <AlertTitle className="text-[10px] font-black uppercase tracking-widest text-primary mb-1">Architecture Protocol</AlertTitle>
-                <AlertDescription className="text-[11px] text-muted-foreground leading-relaxed">
-                    Permissions already included in the user's role are automatically cross-checked. Direct assignments serve as explicit overrides.
-                </AlertDescription>
-            </Alert>
-        </div>
 
         <div className="p-4 border-b border-border/20 flex gap-4 items-center">
              <div className="relative flex-1 group">
                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input 
                     placeholder="Search manifest..." 
-                    className="pl-10 h-10 bg-background/50 border-input rounded-xl focus:ring-1 focus:ring-primary/20 text-sm"
+                    className="pl-10 h-10 bg-background/50 border-input rounded-xl focus:ring-1 focus:ring-primary/20 text-sm font-bold"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                 />
              </div>
-             <Badge variant="outline" className="h-10 px-4 rounded-xl border-input bg-background/50 text-[10px] font-bold tracking-widest text-muted-foreground flex gap-2">
+             <Badge variant="outline" className="h-10 px-4 rounded-xl border-input bg-background/50 text-[10px] font-black uppercase tracking-widest text-muted-foreground flex gap-2">
                 <FilterIcon className="h-3 w-3" />
                 {directIds.length} DIRECT
              </Badge>
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40" style={{ maxHeight: '50vh' }}>
+        <div className="flex-1 min-h-0 overflow-y-auto p-6 scrollbar-thin scrollbar-thumb-primary/20 hover:scrollbar-thumb-primary/40" style={{ maxHeight: '55vh' }}>
           {isLoading ? (
             <div className="space-y-10 animate-pulse">
               {[1, 2].map((group) => (
@@ -238,16 +219,15 @@ export function UserPermissionsDialog({ open, onOpenChange, user }: UserPermissi
         </div>
 
         <DialogFooter className="p-6 bg-muted/20 border-t border-input gap-3">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input font-bold px-6 h-11 hover:bg-background transition-all">
-            Discard
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input font-black uppercase tracking-widest text-[11px] px-8 h-11 hover:bg-background transition-all">
+            Cancel
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={isSaving || isLoading} 
-            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold px-10 h-11 shadow-xl shadow-primary/20 transition-all active:scale-95"
+            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-10 h-11 shadow-xl shadow-primary/20 transition-all active:scale-95"
           >
-            {isSaving && <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />}
-            Provision Direct Access
+            {isSaving ? <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" /> : "Assign"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -4,11 +4,9 @@ import { type ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { 
-  MoreVerticalIcon,
   PencilIcon,
   Trash2Icon,
-  ShieldIcon,
-  TimerIcon
+  ShieldIcon
 } from "lucide-react"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
@@ -74,12 +72,12 @@ export function getRoleColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Role Name" />
       ),
+      meta: { title: "Role Name" },
       cell: ({ row }) => {
         const role = row.original
         return (
           <div className="flex flex-col gap-0.5 py-1">
             <span className="font-bold text-foreground group-hover:text-primary transition-colors text-[0.95rem]">{role.name}</span>
-            <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-tighter opacity-60 italic">{role.slug}</span>
           </div>
         )
       },
@@ -89,6 +87,7 @@ export function getRoleColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Description" />
       ),
+      meta: { title: "Description" },
       cell: ({ row }) => {
         const description = row.getValue("description") as string
         return (
@@ -105,6 +104,7 @@ export function getRoleColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
+      meta: { title: "Status" },
       cell: ({ row }) => {
         const role = row.original
         return (
@@ -124,15 +124,13 @@ export function getRoleColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created" />
       ),
+      meta: { title: "Created" },
       cell: ({ row }) => {
         const date = new Date(Number(row.getValue("createdAt")))
         return (
-          <div className="flex items-center gap-2">
-            <TimerIcon className="size-3.5 text-muted-foreground/40" />
-            <span className="text-[0.8rem] font-mono font-bold text-muted-foreground">
-              {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+            {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         )
       },
     },
@@ -145,12 +143,16 @@ export function getRoleColumns({
 
         const actions = [
           ...(capabilities.canUpdate ? [{
-            label: "Edit Role",
+            label: "Edit",
             onClick: () => onEdit(role),
             icon: PencilIcon
           }] : []),
+          ...(capabilities.canToggle ? [{
+            label: role.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(role)
+          }] : []),
           ...(capabilities.canDelete ? [{
-            label: "Delete Role",
+            label: "Delete",
             onClick: () => onDelete(role),
             variant: "destructive" as const,
             icon: Trash2Icon

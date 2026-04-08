@@ -7,7 +7,6 @@ import * as z from "zod"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -41,7 +40,7 @@ interface AssignRoleDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   user: any
-  roles: { id: number; name: string }[]
+  roles: { id: number; name: string; slug?: string }[]
   onSuccess: () => void
 }
 
@@ -90,69 +89,69 @@ export function AssignRoleDialog({ open, onOpenChange, user, roles, onSuccess }:
     }
   }
 
+  // 🛡️ Hierarchy Filter: Never show Super Admin as a target for reassignment
+  const filteredRoles = React.useMemo(() => {
+    return roles.filter(r => r.slug !== 'super-admin')
+  }, [roles])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-background border-input">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-             <div className="p-2 bg-primary/10 rounded-lg">
-                <ShieldIcon className="h-5 w-5 text-primary" />
-             </div>
-             <DialogTitle className="text-xl font-bold tracking-tight">Modify Security Role</DialogTitle>
-          </div>
-          <DialogDescription className="text-muted-foreground pb-2 border-b border-input">
-            Select a new primary role for 
-            <span className="font-bold text-foreground px-1">"{user?.name}"</span>. 
-            This will immediately update their access level.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[440px] bg-background border-input p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
+        <div className="p-6">
+          <DialogHeader className="mb-6">
+             <DialogTitle className="text-xl font-black uppercase tracking-tight">
+               Modify Role: {user?.name}
+             </DialogTitle>
+          </DialogHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
-            <FormField
-              control={form.control}
-              name="roleId"
-              render={({ field }: { field: ControllerRenderProps<FormValues, "roleId"> }) => (
-                <FormItem>
-                  <FormLabel>Security Role</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="bg-background border-input">
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-popover border-input">
-                      {roles.map((r) => (
-                        <SelectItem key={r.id} value={r.id.toString()}>
-                          {r.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="roleId"
+                render={({ field }: { field: ControllerRenderProps<FormValues, "roleId"> }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Target Security Role</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-background border-input h-10 font-bold text-xs transition-all">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-popover border-input max-h-[250px]">
+                        {filteredRoles.map((r) => (
+                          <SelectItem key={r.id} value={r.id.toString()} className="text-[11px] font-bold uppercase tracking-tight">
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage className="text-[10px] font-bold" />
+                  </FormItem>
+                )}
+              />
 
-            <DialogFooter className="mt-8 gap-2 sm:gap-0 pt-4 border-t border-input">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => onOpenChange(false)}
-                className="border-input hover:bg-muted/50 rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-                className="bg-primary hover:bg-primary/90 text-primary-foreground min-w-[120px] rounded-xl shadow-lg shadow-primary/20"
-              >
-                {isSubmitting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Update Role"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => onOpenChange(false)}
+                    className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                >
+                    {isSubmitting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Update"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
       </DialogContent>
     </Dialog>
   )

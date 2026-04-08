@@ -17,6 +17,7 @@ import { KeyIcon, RefreshCwIcon, ShieldCheckIcon, SearchIcon, FilterIcon } from 
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
+import { apiClient } from "@/lib/api-client"
 
 interface RolePermissionsDialogProps {
   open: boolean;
@@ -35,19 +36,17 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
     if (!role?.id) return;
     setIsLoading(true)
     try {
-      // 1. Fetch all active permissions
-      const allRes = await fetch("/api/permissions/search")
-      const allData = await allRes.json()
-      
+      // GET calls: use native fetch, no auto-toast needed
+      const [allData, roleData] = await Promise.all([
+        fetch("/api/permissions/search").then(r => r.json()),
+        fetch(`/api/roles/${role.id}/permissions`).then(r => r.json()),
+      ])
+
       if (Array.isArray(allData)) {
         setAllPermissions(allData.filter((p: any) => p.isActive))
       } else {
-        throw new Error(allData.error || "Failed to load complete permission manifest")
+        throw new Error(allData.error || "Failed to load permission manifest")
       }
-
-      // 2. Fetch current permissions for this role
-      const roleRes = await fetch(`/api/roles/${role.id}/permissions`)
-      const roleData = await roleRes.json()
 
       if (Array.isArray(roleData)) {
         setSelectedIds(roleData.map((rp: any) => rp.permissionId))
@@ -55,7 +54,11 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
         throw new Error(roleData.error || "Failed to load role assignments")
       }
     } catch (error: any) {
-      toast.error(error.message || "Failed to load permissions manifest")
+      toast.error(error.message || "Failed to load permissions", {
+        className: "font-normal text-[13px] tracking-tight",
+        duration: 5000,
+        closeButton: true,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -74,18 +77,14 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const res = await fetch(`/api/roles/${role.id}/permissions`, {
+      await apiClient(`/api/roles/${role.id}/permissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ permissionIds: selectedIds })
       })
-
-      if (!res.ok) throw new Error("Failed to synchronize permissions")
-      
-      toast.success(`Access manifest for ${role.name} synchronized`)
       onOpenChange(false)
     } catch (error: any) {
-      toast.error(error.message)
+      // apiClient already handled toast
     } finally {
       setIsSaving(false)
     }
@@ -113,12 +112,9 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
               <ShieldCheckIcon className="h-6 w-6" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-black tracking-tight text-foreground">
-                Govern Access: {role?.name}
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
+                Assign Permission: {role?.name}
               </DialogTitle>
-              <DialogDescription className="text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground mt-1">
-                Synchronize permissions for the <span className="text-primary font-bold">#{role?.slug}</span> entity.
-              </DialogDescription>
             </div>
           </div>
         </DialogHeader>
@@ -196,7 +192,7 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
                                {p.slug}
                              </code>
                            </div>
-                        </div>
+                         </div>
                       )
                     })}
                   </div>
@@ -215,15 +211,14 @@ export function RolePermissionsDialog({ open, onOpenChange, role }: RolePermissi
 
         <DialogFooter className="p-6 bg-muted/20 border-t border-input gap-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} className="rounded-xl border-input font-bold px-6 h-11 hover:bg-background">
-            Discard Changes
+            Cancel
           </Button>
           <Button 
             onClick={handleSave} 
             disabled={isSaving || isLoading} 
-            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold px-10 h-11 shadow-xl shadow-primary/20 transition-all active:scale-95"
+            className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest px-10 h-11 shadow-xl shadow-primary/20 transition-all active:scale-95 text-[11px]"
           >
-            {isSaving && <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" />}
-            Deploy Governance Manifest
+            {isSaving ? <RefreshCwIcon className="mr-2 h-4 w-4 animate-spin" /> : "Assign"}
           </Button>
         </DialogFooter>
       </DialogContent>

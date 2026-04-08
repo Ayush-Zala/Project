@@ -17,6 +17,7 @@ import {
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 import { Button } from "@/components/ui/button"
+import { format } from "date-fns"
 
 export function getUsersColumns({
   onEdit,
@@ -112,13 +113,10 @@ export function getUsersColumns({
         
         return (
           <div className="flex items-center gap-2">
-            <Badge 
-              variant="outline" 
-              className="font-medium text-[0.75rem] uppercase tracking-wide px-2 py-0.5 border-primary/20 text-primary bg-primary/5 shadow-sm transition-all"
-            >
-              <ShieldCheckIcon className="h-2.5 w-2.5 mr-1" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70 flex items-center gap-1.5">
+              <ShieldCheckIcon className="h-3 w-3 text-primary/50" />
               {user.role.name}
-            </Badge>
+            </span>
           </div>
         )
       },
@@ -169,6 +167,22 @@ export function getUsersColumns({
       },
     },
     {
+      accessorKey: "createdAt",
+      size: 180,
+      meta: { title: "Created" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const date = Number(row.original.createdAt)
+        return (
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+            {format(date, "MMM dd, yyyy")}
+          </span>
+        )
+      },
+    },
+    {
       id: "actions",
       size: 60,
       cell: ({ row }) => {
@@ -195,6 +209,10 @@ export function getUsersColumns({
           ...(capabilities.canAssignPermission ? [{
             label: "Permissions",
             onClick: () => onDirectPermissions(user)
+          }] : []),
+          ...(capabilities.canToggle && user.isToggleable ? [{
+            label: user.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(user)
           }] : []),
           ...(capabilities.canDelete ? [{
             label: "Delete",

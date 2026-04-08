@@ -171,6 +171,33 @@ export function getPermissionsColumns({
       },
     },
     {
+      accessorKey: "createdAt",
+      size: 180,
+      meta: { title: "Created" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const createdAt = row.getValue("createdAt")
+        if (!createdAt) return <span className="text-muted-foreground/30">—</span>
+        
+        const date = new Date(Number(createdAt))
+        const formattedDate = new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "2-digit",
+          year: "numeric"
+        }).format(date)
+
+        return (
+          <div className="flex flex-col">
+            <span className="text-[0.75rem] font-black font-mono tracking-tight text-foreground/80">
+              {formattedDate}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
       id: "actions",
       size: 60,
       cell: ({ row }) => {
@@ -183,6 +210,10 @@ export function getPermissionsColumns({
           ...(capabilities.canUpdate ? [{
             label: "Edit",
             onClick: () => onEdit(permission)
+          }] : []),
+          ...(capabilities.canToggle !== false ? [{
+            label: permission.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(permission)
           }] : []),
           ...(capabilities.canDelete ? [{
             label: "Delete",

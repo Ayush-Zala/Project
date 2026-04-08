@@ -16,6 +16,7 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 import { Button } from "@/components/ui/button"
 import { StatusIndicator } from "@/components/ui/status-indicator"
+import { format } from "date-fns"
 
 export function getRolesColumns({
   onEdit,
@@ -100,7 +101,7 @@ export function getRolesColumns({
         const description = row.getValue("description") as string
         return (
           <span className="text-[0.85rem] text-muted-foreground font-medium italic line-clamp-1 max-w-[300px] transition-all">
-            {description || "No strategic description provided"}
+            {description || "No description"}
           </span>
         )
       },
@@ -140,7 +141,7 @@ export function getRolesColumns({
                isActive={role.isActive} 
                variant="badge" 
                activeLabel="Active" 
-               inactiveLabel="Archived" 
+               inactiveLabel="Inactive" 
              />
           )
         }
@@ -155,7 +156,7 @@ export function getRolesColumns({
                  isActive={role.isActive} 
                  variant="badge" 
                  activeLabel="Active" 
-                 inactiveLabel="Archived" 
+                 inactiveLabel="Inactive" 
                />
             </div>
           )
@@ -166,9 +167,25 @@ export function getRolesColumns({
              isActive={role.isActive} 
              onToggle={() => onToggleStatus(role)} 
              activeLabel="Active" 
-             inactiveLabel="Archived" 
+             inactiveLabel="Inactive" 
              variant="switch" 
           />
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      size: 180,
+      meta: { title: "Created" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const date = Number(row.original.createdAt)
+        return (
+          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+            {format(date, "MMM dd, yyyy")}
+          </span>
         )
       },
     },
@@ -191,6 +208,10 @@ export function getRolesColumns({
           ...(capabilities.canAssignPermission ? [{
             label: "Permissions",
             onClick: () => onAssignPermission(role)
+          }] : []),
+          ...(capabilities.canToggle && role.slug !== 'super-admin' ? [{
+            label: role.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(role)
           }] : []),
           ...(capabilities.canDelete && role.slug !== 'super-admin' ? [{
             label: "Delete",

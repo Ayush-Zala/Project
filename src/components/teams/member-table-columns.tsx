@@ -72,19 +72,17 @@ export function getMemberColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Team Member" />
       ),
+      meta: { title: "Team Member" },
       cell: ({ row }) => {
         const member = row.original
         return (
-          <div className="flex items-center gap-4 py-1">
-            <div className="relative group/avatar">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs uppercase">
-                {member.user?.name?.charAt(0)}
-              </div>
-            </div>
-            <div className="flex flex-col gap-0">
-              <span className="font-bold text-foreground group-hover:text-primary transition-colors text-[0.9rem] line-clamp-1">{member.user?.name}</span>
-              <span className="text-[10px] text-muted-foreground tracking-tight font-medium uppercase line-clamp-1">{member.user?.email}</span>
-            </div>
+          <div className="flex flex-col gap-0 py-1">
+             <span className="font-bold text-foreground group-hover:text-primary transition-all text-[0.95rem] tracking-tight line-clamp-1">
+               {member.user?.name}
+             </span>
+             <span className="text-[0.8rem] text-muted-foreground flex items-center gap-1.5 font-medium tracking-tight transition-all lowercase line-clamp-1">
+                <span className="opacity-40">✉</span> {member.user?.email}
+             </span>
           </div>
         )
       },
@@ -94,6 +92,7 @@ export function getMemberColumns({
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Roles" />
       ),
+      meta: { title: "Roles" },
       cell: ({ row }) => {
         const member = row.original
         return (
@@ -121,21 +120,37 @@ export function getMemberColumns({
     {
       accessorKey: "isActive",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Membership" />
+        <DataTableColumnHeader column={column} title="Status" />
       ),
+      meta: { title: "Status" },
       cell: ({ row }) => {
         const member = row.original
         return (
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 py-1">
             <Switch
               disabled={!capabilities.canToggle || !isTeamActive}
               checked={member.isActive}
               onCheckedChange={() => onToggleStatus(member)}
             />
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${member.isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
+            <span className={`text-[0.8rem] font-black uppercase tracking-widest ${member.isActive ? 'text-primary' : 'text-muted-foreground/60'}`}>
               {member.isActive ? 'Active' : 'Suspended'}
             </span>
           </div>
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      meta: { title: "Created" },
+      cell: ({ row }) => {
+        const date = new Date(Number(row.getValue("createdAt")))
+        return (
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+            {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+          </span>
         )
       },
     },
@@ -152,12 +167,16 @@ export function getMemberColumns({
 
         const actions = [
           ...(canAssign ? [{
-            label: "Assign Team Role",
+            label: "Assign",
             onClick: () => onAssignRole(member),
             icon: ShieldIcon
           }] : []),
+          ...(capabilities.canToggle ? [{
+            label: member.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(member)
+          }] : []),
           ...(canDelete ? [{
-            label: "Remove from Team",
+            label: "Delete",
             onClick: () => onRemove(member),
             variant: "destructive" as const,
             icon: Trash2Icon

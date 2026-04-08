@@ -58,7 +58,7 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center text-xs font-bold text-muted-foreground uppercase tracking-widest bg-muted/20 px-3 py-1.5 rounded-lg border border-border/20 translate-y-[1px]">
-          Page {table.getState().pagination.pageIndex + 1} of{" "}
+          Page {table.getPageCount() === 0 ? 0 : table.getState().pagination.pageIndex + 1} of{" "}
           <span className="ml-1 text-foreground">{table.getPageCount()}</span>
         </div>
         <div className="flex items-center gap-2">

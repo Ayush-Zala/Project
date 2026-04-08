@@ -63,6 +63,10 @@ model User {
   createdTeamMemberRoles TeamMemberRole[] @relation("TeamMemberRoleCreatedBy")
   updatedTeamMemberRoles TeamMemberRole[] @relation("TeamMemberRoleUpdatedBy")
 
+  // Organisation
+  organisationMembers    OrganisationMember[]
+  organisationTeamMembers OrganisationTeamMember[]
+
   @@map("user")
 }
 
@@ -75,6 +79,9 @@ model Session {
   expiresAt BigInt
   createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
   updatedAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  activeOrganizationId Int?
+  activeTeamId         Int?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -346,4 +353,110 @@ model TeamMemberRole {
 
   @@unique([teamMemberId, teamRoleId])
   @@map("team_member_role")
+}
+
+// ─── ORGANISATION ─────────────────────────────────────────
+
+model Organisation {
+  id          Int      @id @default(autoincrement())
+  name        String
+  slug        String   @unique
+  logo        String?  @db.Text
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  members     OrganisationMember[]
+  invitations OrganisationInvitation[]
+  teams       OrganisationTeam[]
+  roles       OrganisationRole[]
+
+  @@map("organisation")
+}
+
+model OrganisationMember {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  organizationId Int
+  role           String   // owner | admin | member | custom
+  isActive       Boolean  @default(true)
+  createdBy      Int?
+  updatedBy      Int?
+  createdAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organisation_member")
+}
+
+model OrganisationInvitation {
+  id             Int      @id @default(autoincrement())
+  email          String
+  inviterId      Int
+  organizationId Int
+  role           String?
+  status         String   // pending | accepted | rejected | cancelled
+  expiresAt      BigInt
+  isActive       Boolean  @default(true)
+  createdBy      Int?
+  updatedBy      Int?
+  createdAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organisation_invitation")
+}
+
+model OrganisationTeam {
+  id             Int      @id @default(autoincrement())
+  name           String
+  organizationId Int
+  isActive       Boolean  @default(true)
+  createdBy      Int?
+  updatedBy      Int?
+  createdAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        OrganisationTeamMember[]
+
+  @@map("organisation_team")
+}
+
+model OrganisationTeamMember {
+  id        Int      @id @default(autoincrement())
+  teamId    Int
+  userId    Int
+  isActive  Boolean  @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  team      OrganisationTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("organisation_team_member")
+}
+
+model OrganisationRole {
+  id             Int      @id @default(autoincrement())
+  organizationId Int
+  role           String
+  permission     String   // JSON string of permissions
+  isActive       Boolean  @default(true)
+  createdBy      Int?
+  updatedBy      Int?
+  createdAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("organisation_role")
 }

@@ -21,6 +21,7 @@ import {
   Building2Icon,
   ClockIcon
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -300,34 +301,40 @@ export default function ProfilePage() {
 
         {/* Tabbed Configuration Manifest */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
-          <TabsList className="bg-secondary/50 dark:bg-zinc-950/40 p-1.5 rounded-xl h-auto flex flex-wrap gap-1.5 border border-border/40 self-start backdrop-blur-xl relative">
+          <TabsList className="bg-secondary/50 dark:bg-zinc-950/40 p-1 rounded-full h-auto flex flex-wrap gap-1 border border-border/40 self-start backdrop-blur-xl relative shadow-sm">
             <TabsTrigger 
               value="personal" 
-              className="px-6 py-2.5 rounded-lg font-black uppercase tracking-[0.15em] text-[0.7rem] relative z-10 transition-colors duration-300 data-[state=active]:text-foreground text-muted-foreground hover:text-foreground"
+              className={cn(
+                "px-8 py-3 rounded-full font-black uppercase tracking-[0.2em] text-[11px] relative z-20 transition-all duration-300 data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-2 outline-none focus:outline-none",
+                activeTab === "personal" && "!text-white dark:!text-black"
+              )}
             >
               {activeTab === "personal" && (
                 <motion.div
-                  layoutId="active-tab-highlight"
-                  className="absolute inset-0 bg-background dark:bg-zinc-800 rounded-lg -z-10 shadow-md"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  layoutId="profile-tab-highlight"
+                  className="absolute inset-0 bg-foreground dark:bg-white rounded-full -z-10 shadow-lg shadow-foreground/10 dark:shadow-white/10"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                 />
               )}
-              <UserCircleIcon className="h-4 w-4 mr-2" />
-              Personal
+              <UserCircleIcon className="size-4 relative z-20" />
+              <span className="relative z-20">Personal</span>
             </TabsTrigger>
             <TabsTrigger 
               value="security" 
-              className="px-6 py-2.5 rounded-lg font-black uppercase tracking-[0.15em] text-[0.7rem] relative z-10 transition-colors duration-300 data-[state=active]:text-foreground text-muted-foreground hover:text-foreground"
+              className={cn(
+                "px-8 py-3 rounded-full font-black uppercase tracking-[0.2em] text-[11px] relative z-20 transition-all duration-300 data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground flex items-center gap-2 outline-none focus:outline-none",
+                activeTab === "security" && "!text-white dark:!text-black"
+              )}
             >
               {activeTab === "security" && (
                 <motion.div
-                  layoutId="active-tab-highlight"
-                  className="absolute inset-0 bg-background dark:bg-zinc-800 rounded-lg -z-10 shadow-md"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  layoutId="profile-tab-highlight"
+                  className="absolute inset-0 bg-foreground dark:bg-white rounded-full -z-10 shadow-lg shadow-foreground/10 dark:shadow-white/10"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                 />
               )}
-              <KeyIcon className="h-4 w-4 mr-2" />
-              Security
+              <KeyIcon className="size-4 relative z-20" />
+              <span className="relative z-20">Security</span>
             </TabsTrigger>
           </TabsList>
 

@@ -1,27 +1,19 @@
 "use client"
 
 import * as React from "react"
-import { motion } from "framer-motion"
 import {
-  PlusIcon,
   RefreshCwIcon,
-  PowerIcon,
-  Trash2Icon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { RoleDialog } from "@/components/roles/role-dialog"
 import { DeleteRoleDialog } from "@/components/roles/delete-role-dialog"
+import { BulkDeleteRoleDialog } from "@/components/roles/bulk-delete-role-dialog"
 import { RolePermissionsDialog } from "@/components/roles/role-permissions-dialog"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useHasPermission } from "@/hooks/use-has-permission"
+import { apiClient } from "@/lib/api-client"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DataTable } from "@/components/data-table/data-table"
@@ -42,6 +34,7 @@ export default function RolesPage() {
   // Dialog states
   const [isRoleDialogOpen, setIsRoleDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = React.useState(false)
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = React.useState(false)
   const [selectedRole, setSelectedRole] = React.useState<any>(null)
 
@@ -54,24 +47,15 @@ export default function RolesPage() {
 
   const handleToggleStatus = React.useCallback(async (role: any) => {
     const newStatus = !role.isActive;
-    const toastId = toast.loading(`Updating status for ${role.name}...`);
-
     try {
-      const res = await fetch(`/api/roles/${role.id}/toggle`, {
+      await apiClient(`/api/roles/${role.id}/toggle`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive: newStatus }),
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to update status");
-      }
-
-      toast.success(`${role.name} status updated to ${newStatus ? 'Active' : 'Archived'}`, { id: toastId });
-      fetchRoles();
+      setRoles((prev) => prev.map((r) => r.id === role.id ? { ...r, isActive: newStatus } : r));
     } catch (error: any) {
-      toast.error(error.message, { id: toastId });
+      // apiClient already handled toast
     }
   }, [])
 
@@ -110,14 +94,16 @@ export default function RolesPage() {
       if (search) params.set("search", search)
       if (filters?.length) params.set("filters", JSON.stringify(filters))
 
-      const res = await fetch(`/api/roles?${params.toString()}`)
-      const data = await res.json()
-      if (data.error) throw new Error(data.error)
+      const data = await apiClient(`/api/roles?${params.toString()}`)
       setRoles(data.roles)
       setPageCount(data.pagination.totalPages)
       setTotalCount(data.pagination.total)
     } catch (error: any) {
-      toast.error(error.message || "Failed to load roles")
+      toast.error(error.message || "Failed to load roles", {
+        className: "font-normal text-[13px] tracking-tight",
+        duration: 5000,
+        closeButton: true,
+      })
     } finally {
       setIsLoading(false)
     }
@@ -137,7 +123,6 @@ export default function RolesPage() {
     setIsRefreshing(true)
     await fetchRoles()
     setIsRefreshing(false)
-    toast.success("Roles refreshed")
   }
 
   const onBulkStatusUpdate = async (isActive: boolean) => {
@@ -147,57 +132,28 @@ export default function RolesPage() {
       .map(row => (row.original as any).id)
     
     if (ids.length === 0) {
-      toast.error("No valid entries selected. Admin roles are protected.")
+      toast.error("No valid entries selected. System roles are protected.", {
+        className: "font-normal text-[13px] tracking-tight",
+        duration: 5000,
+        closeButton: true
+      })
       return
     }
 
     setIsBulkLoading(true)
-    const toastId = toast.loading(`Updating status for ${ids.length} entries...`)
-    
     try {
-      // Execute parallel updates
       await Promise.all(ids.map(id => 
-        fetch(`/api/roles/${id}/toggle`, {
+        apiClient(`/api/roles/${id}/toggle`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive }),
         })
       ))
       
-      toast.success(`Succesfully synchronized ${ids.length} records`, { id: toastId })
       table.toggleAllRowsSelected(false)
       fetchRoles()
     } catch (error: any) {
-      toast.error("Bulk sync failed: " + error.message, { id: toastId })
-    } finally {
-      setIsBulkLoading(false)
-    }
-  }
-
-  const onBulkDelete = async () => {
-    const selectedRows = table.getFilteredSelectedRowModel().rows
-    const ids = selectedRows
-      .filter(row => (row.original as any).slug !== 'super-admin')
-      .map(row => (row.original as any).id)
-    
-    if (ids.length === 0) {
-      toast.error("No valid entries selected for purging. Apex nodes are protected.")
-      return
-    }
-
-    setIsBulkLoading(true)
-    const toastId = toast.loading(`Purging ${ids.length} entries...`)
-    
-    try {
-      await Promise.all(ids.map(id => 
-        fetch(`/api/roles/${id}`, { method: "DELETE" })
-      ))
-      
-      toast.success(`Successfully purged ${ids.length} records`, { id: toastId })
-      table.toggleAllRowsSelected(false)
-      fetchRoles()
-    } catch (error: any) {
-      toast.error("Bulk purge failed: " + error.message, { id: toastId })
+      // apiClient already handled toast
     } finally {
       setIsBulkLoading(false)
     }
@@ -215,6 +171,13 @@ export default function RolesPage() {
       ] 
     },
   ]
+
+  // Logic for action bar selection
+  const selectedRows = table.getFilteredSelectedRowModel().rows
+  const selectionCount = selectedRows.length
+  const firstSelectedRole = selectedRows.length === 1 ? selectedRows[0].original as any : null
+  const selectedRolesData = selectedRows.map(row => row.original)
+  const hasProtectedRole = selectedRows.some(row => (row.original as any).slug === 'super-admin')
 
   return (
     <>
@@ -238,16 +201,14 @@ export default function RolesPage() {
           <Button
             onClick={() => { setSelectedRole(null); setIsRoleDialogOpen(true); }}
             size="sm"
-            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 px-8"
           >
-            <PlusIcon className="h-4 w-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Add Role</span>
+            <span className="text-[11px] font-black uppercase tracking-widest leading-none">Add Role</span>
           </Button>
         )}
       </DashboardHeader>
 
       <PageShell>
-        {/* Advanced Data Table */}
         <DataTable
             table={table}
             className="relative"
@@ -265,64 +226,76 @@ export default function RolesPage() {
                 search={search}
                 className="mb-4"
             />
-            
         </DataTable>
 
         <ActionBar table={table}>
-           {canToggle && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
+           {!hasProtectedRole && (
+             <>
+               {selectionCount === 1 && canUpdate && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => { setSelectedRole(firstSelectedRole); setIsRoleDialogOpen(true); }}
+                    className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+                  </Button>
+               )}
+
+               {canToggle && (
+                  selectionCount === 1 ? (
                     <Button 
                       variant="ghost" 
                       size="sm" 
                       disabled={isBulkLoading}
-                      className="h-8 gap-2 px-3 hover:bg-primary/10 text-primary rounded-full transition-all active:scale-[0.98] border border-border/20"
+                      onClick={() => onBulkStatusUpdate(!firstSelectedRole?.isActive)}
+                      className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
                     >
-                      <PowerIcon className="size-3.5 text-primary" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Signaling</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">
+                        {firstSelectedRole?.isActive ? "Mark Inactive" : "Mark Active"}
+                      </span>
                     </Button>
-                  }
-                />
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <DropdownMenuContent align="center" className="w-[180px] bg-background/95 backdrop-blur-xl border border-border shadow-2xl rounded-xl p-1.5">
-                     <DropdownMenuItem 
-                       className="gap-2 focus:bg-primary/5 focus:text-primary rounded-lg py-2.5 cursor-pointer text-[10px] font-black uppercase tracking-widest transition-all"
-                       onClick={() => onBulkStatusUpdate(true)}
-                     >
-                       <div className="size-1.5 rounded-full bg-primary" />
-                       Operational
-                     </DropdownMenuItem>
-                     <DropdownMenuItem 
-                       className="gap-2 focus:bg-primary/5 focus:text-primary rounded-lg py-2.5 cursor-pointer text-[10px] font-black uppercase tracking-widest transition-all"
-                       onClick={() => onBulkStatusUpdate(false)}
-                     >
-                       <div className="size-1.5 rounded-full bg-muted-foreground/30" />
-                       Restricted
-                     </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </motion.div>
-              </DropdownMenu>
-           )}
-           {canDelete && (
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                disabled={isBulkLoading}
-                onClick={onBulkDelete}
-                className="h-8 gap-2 px-3 hover:bg-destructive/10 text-destructive hover:text-destructive rounded-full transition-all active:scale-[0.98] border border-border/20"
-              >
-                 <Trash2Icon className="size-3.5" />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Purge Nodes</span>
-              </Button>
+                  ) : (
+                    <>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={isBulkLoading}
+                        onClick={() => onBulkStatusUpdate(true)}
+                        className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                      >
+                        <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        disabled={isBulkLoading}
+                        onClick={() => onBulkStatusUpdate(false)}
+                        className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                      >
+                        <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                      </Button>
+                    </>
+                  )
+               )}
+
+               {canDelete && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    disabled={isBulkLoading}
+                    onClick={() => setIsBulkDeleteDialogOpen(true)}
+                    className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+                  </Button>
+               )}
+             </>
            )}
         </ActionBar>
 
         <p className="text-[11px] font-medium text-muted-foreground italic text-center mt-2">
-           Displaying {roles.length} of {totalCount} operational roles
+           Displaying {roles.length} of {totalCount} roles
         </p>
       </PageShell>
 
@@ -339,6 +312,16 @@ export default function RolesPage() {
         onOpenChange={setIsDeleteDialogOpen}
         role={selectedRole}
         onSuccess={fetchRoles}
+      />
+
+      <BulkDeleteRoleDialog
+        open={isBulkDeleteDialogOpen}
+        onOpenChange={setIsBulkDeleteDialogOpen}
+        roles={selectedRolesData}
+        onSuccess={() => {
+            table.toggleAllRowsSelected(false);
+            fetchRoles();
+        }}
       />
 
       <RolePermissionsDialog

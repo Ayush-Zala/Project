@@ -1,4 +1,5 @@
 import { betterAuth, APIError } from "better-auth";
+import { organization } from "better-auth/plugins";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { prisma } from "./prisma";
@@ -158,6 +159,82 @@ export const auth = betterAuth({
         ],
       },
     },
+    organization({
+      schema: {
+        organization: {
+          modelName: "Organisation",
+          additionalFields: {
+            isActive: { type: "boolean", defaultValue: true, required: false },
+            description: { type: "string", required: false },
+            createdBy: { type: "number", required: false },
+            updatedBy: { type: "number", required: false },
+          },
+        },
+        member: {
+          modelName: "OrganisationMember",
+          additionalFields: {
+            isActive: { type: "boolean", defaultValue: true, required: false },
+            createdBy: { type: "number", required: false },
+            updatedBy: { type: "number", required: false },
+          },
+        },
+        invitation: {
+          modelName: "OrganisationInvitation",
+          additionalFields: {
+            isActive: { type: "boolean", defaultValue: true, required: false },
+            createdBy: { type: "number", required: false },
+            updatedBy: { type: "number", required: false },
+          },
+        },
+        team: {
+          modelName: "OrganisationTeam",
+          additionalFields: {
+            isActive: { type: "boolean", defaultValue: true, required: false },
+            createdBy: { type: "number", required: false },
+            updatedBy: { type: "number", required: false },
+          },
+        },
+        teamMember: {
+          modelName: "OrganisationTeamMember",
+          additionalFields: {
+            isActive: { type: "boolean", defaultValue: true, required: false },
+            createdBy: { type: "number", required: false },
+            updatedBy: { type: "number", required: false },
+          },
+        },
+      },
+      teams: {
+        enabled: true,
+      },
+      dynamicAccessControl: {
+        enabled: true,
+      },
+      sendInvitationEmail: async (data) => {
+        // 🔒 Industrial Invitation Loop
+        const inviteLink = `${process.env.BETTER_AUTH_URL}/accept-invitation/${data.id}`;
+        await sendEmail({
+          to: data.email,
+          subject: `Industrial Invitation: Join ${data.organization.name}`,
+          text: `You have been invited to join ${data.organization.name}. Accept here: ${inviteLink}`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <h2 style="color: #1e293b; margin-top: 0;">Industrial Invitation</h2>
+              <p style="color: #475569; line-height: 1.6;">
+                <strong>${data.inviter.user.name}</strong> has invited you to join the <strong>${data.organization.name}</strong> workspace.
+              </p>
+              <div style="margin: 32px 0;">
+                <a href="${inviteLink}" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; display: inline-block;">
+                  Accept Invitation
+                </a>
+              </div>
+              <p style="color: #64748b; font-size: 14px; margin-bottom: 0;">
+                This invitation will expire in 48 hours.
+              </p>
+            </div>
+          `,
+        });
+      },
+    }),
   ],
   advanced: {
     database: {

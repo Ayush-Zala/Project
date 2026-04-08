@@ -25,7 +25,11 @@ export type RealtimeEvent =
   | "USER_PERMISSIONS_CHANGED" // Mapping permissions to users
   | "TEAMS_CHANGED"          // Team creation / toggle / metadata
   | "TEAM_ROLES_CHANGED"      // Team Role creation / toggle
-  | "TEAM_MEMBERS_CHANGED";    // Team Member assignment / toggle / role_assigned
+  | "TEAM_MEMBERS_CHANGED"    // Team Member assignment / toggle / role_assigned
+  | "ORGANISATIONS_CHANGED"         // Organisation CRUD
+  | "ORGANISATION_MEMBERS_CHANGED" // Member CRUD
+  | "ORGANISATION_TEAM_MEMBERS_CHANGED" // Team Member CRUD
+  | "ORGANISATION_TEAMS_CHANGED"; // Team CRUD
 
 /**
  * Emits a one-shot event to the WebSocket gateway server.

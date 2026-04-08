@@ -35,7 +35,7 @@ function convertToBigInt(obj: any): any {
     return obj;
   }
   if (Array.isArray(obj)) return obj.map(convertToBigInt);
-  if (typeof obj === "object" && obj.constructor === Object) {
+  if (typeof obj === "object" && obj !== null) {
     const res: any = {};
     for (const key in obj) res[key] = convertToBigInt(obj[key]);
     return res;
@@ -50,9 +50,47 @@ function convertToNumber(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj === "bigint") return Number(obj);
   if (Array.isArray(obj)) return obj.map(convertToNumber);
-  if (typeof obj === "object" && obj.constructor === Object) {
+  if (typeof obj === "object" && obj !== null) {
     const res: any = {};
     for (const key in obj) res[key] = convertToNumber(obj[key]);
+    return res;
+  }
+  return obj;
+}
+
+/**
+ * Inbound: Coerce numeric-as-string ID fields to actual Numbers
+ * Target identifiers from Better Auth that should be Int in Postgres
+ */
+const NUMERIC_ID_KEYS = new Set([
+  "userId", "id", "organizationId", "activeOrganizationId", "activeTeamId",
+  "teamId", "roleId", "permissionId", "inviterId", "memberId", "teamRoleId", "teamMemberId"
+]);
+
+function coerceNumericFields(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (Array.isArray(obj)) return obj.map(coerceNumericFields);
+  if (typeof obj === "object" && obj !== null) {
+    const res: any = {};
+    for (const key in obj) {
+      let val = obj[key];
+      // If it's a known numeric key and it's a string, cast it
+      if (NUMERIC_ID_KEYS.has(key) && typeof val === "string") {
+        const num = Number(val);
+        if (!isNaN(num)) val = num;
+      } 
+      // Handle nested update operations like { set: "1" } or { connect: { id: "1" } }
+      else if (typeof val === "object" && val !== null) {
+        val = coerceNumericFields(val);
+        
+        // Extra safety: if the parent key is in the set, and child is { set: "string" }, cast it
+        if (NUMERIC_ID_KEYS.has(key) && val && typeof val.set === "string") {
+          const num = Number(val.set);
+          if (!isNaN(num)) val.set = num;
+        }
+      }
+      res[key] = val;
+    }
     return res;
   }
   return obj;
@@ -65,8 +103,8 @@ const prismaClientSingleton = () => {
     query: {
       $allModels: {
         async $allOperations({ operation, args, query }: any) {
-          if (args.data) args.data = convertToBigInt(args.data);
-          if (args.where) args.where = convertToBigInt(args.where);
+          if (args.data) args.data = coerceNumericFields(convertToBigInt(args.data));
+          if (args.where) args.where = coerceNumericFields(convertToBigInt(args.where));
 
           return convertToNumber(await query(args));
         },
@@ -90,10 +128,10 @@ const prismaClientSingleton = () => {
 
 // Global type declaration
 declare global {
-  var prismaGlobalV17: ReturnType<typeof prismaClientSingleton> | undefined;
+  var prismaGlobalV18: ReturnType<typeof prismaClientSingleton> | undefined;
 }
 
 // Ensure the latest client is used in development
-export const prisma = globalThis.prismaGlobalV17 ?? prismaClientSingleton();
+export const prisma = globalThis.prismaGlobalV18 ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== "production") globalThis.prismaGlobalV17 = prisma;
+if (process.env.NODE_ENV !== "production") globalThis.prismaGlobalV18 = prisma;

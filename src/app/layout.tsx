@@ -12,6 +12,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/providers/socket-provider";
 import { PermissionProvider } from "@/providers/permission-provider";
 
+import { Toaster } from "sonner";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -39,6 +41,17 @@ export default function RootLayout({
               </SocketProvider>
             </TooltipProvider>
           </NuqsAdapter>
+          <Toaster
+            richColors
+            closeButton
+            duration={5000}
+            position="top-right"
+            toastOptions={{
+              classNames: {
+                closeButton: "!left-auto !right-[-10px]",
+              }
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>

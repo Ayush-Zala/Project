@@ -10,11 +10,22 @@ export interface AuditContext {
   ipAddress?: string;
   userAgent?: string;
   reason?: string; // Optional context-specific reason
+  action?: string; // Optional action override (e.g. Toggle)
   skipAudit?: boolean; // 🔒 INTERNAL: Suppress automatic model-level logging
 }
 
-// Global storage singleton
-export const auditStorage = new AsyncLocalStorage<AuditContext>();
+// 🛡️ HMR-SAFE GLOBAL SINGLETON
+// In development, Next.js reloads modules frequently. 
+// We must ensure the 'auditStorage' instance persists to keep context alive across reloads.
+declare global {
+  var auditStorageSingleton: AsyncLocalStorage<AuditContext> | undefined;
+}
+
+export const auditStorage = globalThis.auditStorageSingleton ?? new AsyncLocalStorage<AuditContext>();
+
+if (process.env.NODE_ENV !== "production") {
+  globalThis.auditStorageSingleton = auditStorage;
+}
 
 /**
  * Retrieve the current audit context from the storage.
@@ -38,6 +49,16 @@ export function setAuditReason(reason: string) {
   const context = auditStorage.getStore();
   if (context) {
     context.reason = reason;
+  }
+}
+
+/**
+ * Helper to update the current action intent
+ */
+export function setAuditAction(action: string) {
+  const context = auditStorage.getStore();
+  if (context) {
+    context.action = action;
   }
 }
 

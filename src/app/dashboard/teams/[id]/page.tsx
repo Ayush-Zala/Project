@@ -174,20 +174,18 @@ export default function TeamDetailsPage({
           <Button
             onClick={() => setIsAddMemberOpen(true)}
             size="sm"
-            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 px-8"
           >
-            <UserPlusIcon className="h-4 w-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Add Member</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">Add Member</span>
           </Button>
         )}
         {activeTab === "roles" && canCreateRole && team.isActive && (
           <Button
             onClick={() => setIsAddRoleOpen(true)}
             size="sm"
-            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
+            className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 px-8"
           >
-            <PlusIcon className="h-4 w-4" />
-            <span className="text-[11px] font-bold uppercase tracking-wider">Add Role</span>
+            <span className="text-[11px] font-black uppercase tracking-widest">Add Role</span>
           </Button>
         )}
       </DashboardHeader>

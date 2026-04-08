@@ -1,19 +1,23 @@
 "use client"
 
 import * as React from "react"
-import {
-  UsersIcon,
-  UserPlusIcon,
-  MoreVerticalIcon,
-  Trash2Icon,
-  RefreshCwIcon,
+import { 
+  UsersIcon, 
+  UserPlusIcon, 
+  MoreVerticalIcon, 
+  Trash2Icon, 
+  RefreshCwIcon, 
   ShieldIcon,
   ToggleLeftIcon,
   PowerIcon,
   AlertTriangleIcon,
   Loader2Icon,
+  CircleCheckIcon,
+  CircleOffIcon
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ActionBar } from "@/components/data-table/action-bar"
+import { Separator } from "@/components/ui/separator"
 import {
   Table,
   TableBody,
@@ -70,7 +74,9 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedMember, setSelectedMember] = React.useState<any>(null)
+  const [selectedMembers, setSelectedMembers] = React.useState<any[]>([])
   const [isDeleting, setIsDeleting] = React.useState(false)
+  const [isBulkToggling, setIsBulkToggling] = React.useState(false)
 
   const canManage = useHasPermission("team_members:create")
   const canUpdate = useHasPermission("team_members:update")
@@ -150,21 +156,47 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
   }
 
   const handleRemoveMember = async () => {
-    if (!selectedMember) return
+    const targets = selectedMembers.length > 0 ? selectedMembers : [selectedMember]
+    if (targets.length === 0) return
+    
     setIsDeleting(true)
     try {
-      const res = await fetch(`/api/teams/${teamId}/members/${selectedMember.id}`, { method: "DELETE" })
-      if (!res.ok) {
-        const error = await res.json()
-        throw new Error(error.error || "Failed to remove member")
-      }
-      toast.success(`User ${selectedMember.user?.name} removed from team`)
+      await Promise.all(targets.map(m => 
+        fetch(`/api/teams/${teamId}/members/${m.id}`, { method: "DELETE" })
+      ))
+      
+      toast.success(targets.length === 1 
+        ? `User ${targets[0].user?.name} removed from team`
+        : `${targets.length} members removed from team`
+      )
       setIsDeleteDialogOpen(false)
+      setSelectedMembers([])
+      table.toggleAllRowsSelected(false)
       fetchMembers()
     } catch (error: any) {
-      toast.error(error.message)
+      toast.error(error.message || "Failed to remove members")
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  const handleBulkToggle = async (active: boolean) => {
+    const selected = table.getFilteredSelectedRowModel().rows.map(r => r.original)
+    if (selected.length === 0) return
+    
+    setIsBulkToggling(true)
+    try {
+      await Promise.all(selected.map(m => 
+        fetch(`/api/teams/${teamId}/members/${m.id}/toggle`, { method: "PATCH" })
+      ))
+      
+      toast.success(`${selected.length} members marked as ${active ? 'active' : 'inactive'}`)
+      table.toggleAllRowsSelected(false)
+      fetchMembers()
+    } catch (error: any) {
+      toast.error("Failed to update status for some members")
+    } finally {
+      setIsBulkToggling(false)
     }
   }
 
@@ -211,33 +243,79 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-popover/95 backdrop-blur-xl border-red-500/20 shadow-2xl">
-          <AlertDialogHeader>
-            <div className="flex items-center gap-3 text-red-500 mb-2">
-              <div className="p-2 bg-red-500/10 rounded-lg">
-                <AlertTriangleIcon className="h-6 w-6" />
+        <AlertDialogContent className="sm:max-w-[440px] bg-background border-red-500/10 p-0 overflow-hidden shadow-2xl">
+          <div className="absolute top-0 left-0 w-full h-1 bg-red-500/20" />
+          <div className="p-6">
+            <AlertDialogHeader className="mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-500/10 rounded-lg">
+                  <AlertTriangleIcon className="h-5 w-5 text-red-500" />
+                </div>
+                <AlertDialogTitle className="text-xl font-black uppercase tracking-tight text-red-600 line-clamp-1">
+                  {selectedMembers.length > 0 ? `Delete ${selectedMembers.length} Members` : `Delete: ${selectedMember?.user?.name}`}
+                </AlertDialogTitle>
               </div>
-              <AlertDialogTitle className="text-2xl font-bold tracking-tight">Revoke Membership</AlertDialogTitle>
+            </AlertDialogHeader>
+
+            <div className="space-y-4">
+               <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                  This action is permanent and cannot be reversed. Deleting {selectedMembers.length > 0 ? "these members" : "this member"} will immediately remove all access within this team and purge all localized role assignments.
+               </p>
             </div>
-            <AlertDialogDescription className="text-muted-foreground/80 leading-relaxed">
-              Confirm removal of <span className="font-bold text-foreground">[{selectedMember?.user?.name}]</span> from this organizational unit.
-              <br /><br />
-              All role assignments for this member within this team will be permanently purged.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="pt-4 border-t border-input">
-            <AlertDialogCancel disabled={isDeleting} className="rounded-xl border-input hover:bg-muted/50">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg shadow-red-500/20 transition-all flex gap-2 active:scale-95"
-              disabled={isDeleting}
-              onClick={(e) => { e.preventDefault(); handleRemoveMember(); }}
-            >
-              {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : <Trash2Icon className="h-4 w-4" />}
-              Confirm Removal
-            </AlertDialogAction>
-          </AlertDialogFooter>
+
+            <AlertDialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-red-500/5 mt-6 gap-2 sm:gap-0">
+              <AlertDialogCancel 
+                disabled={isDeleting} 
+                className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-red-500/10 transition-all border-none bg-transparent shadow-none"
+                onClick={() => setSelectedMembers([])}
+              >
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-red-600/20 active:scale-95 transition-all"
+                disabled={isDeleting}
+                onClick={(e) => { e.preventDefault(); handleRemoveMember(); }}
+              >
+                {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ActionBar table={table}>
+        <div className="flex items-center gap-1.5 px-2">
+           <Button
+             variant="ghost"
+             size="sm"
+             className="h-8 text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 hover:text-primary px-3"
+             onClick={() => {
+               const selected = table.getFilteredSelectedRowModel().rows.map(r => r.original)
+               const allActive = selected.every(m => m.isActive)
+               handleBulkToggle(!allActive)
+             }}
+             disabled={isBulkToggling}
+           >
+             {table.getFilteredSelectedRowModel().rows.map(r => r.original).every(m => m.isActive) ? "Mark Inactive" : "Mark Active"}
+           </Button>
+           
+           <Separator orientation="vertical" className="h-4 bg-border/40 mx-1" />
+
+           <Button
+             variant="ghost"
+             size="sm"
+             className="h-8 text-[10px] font-black uppercase tracking-widest hover:bg-destructive/10 hover:text-destructive px-3"
+             onClick={() => {
+               const selected = table.getFilteredSelectedRowModel().rows.map(r => r.original)
+               setSelectedMembers(selected)
+               setIsDeleteDialogOpen(true)
+             }}
+             disabled={isBulkToggling || isDeleting}
+           >
+             Delete
+           </Button>
+        </div>
+      </ActionBar>
     </div>
   )
 }

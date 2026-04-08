@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -48,36 +47,46 @@ export function DeleteUserDialog({ open, onOpenChange, user, onSuccess }: Delete
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-background border-red-900/20">
-        <DialogHeader>
-          <div className="flex items-center gap-2 text-red-500 mb-2">
-            <AlertTriangleIcon className="h-5 w-5" />
-            <DialogTitle className="text-xl font-bold tracking-tight">Destructive Action</DialogTitle>
-          </div>
-          <DialogDescription className="text-muted-foreground pt-2">
-            You are about to permanently delete 
-            <span className="font-bold text-foreground px-1">"{user?.name}"</span> 
-            ({user?.email}). This will immediately invalidate all active sessions and delete the login account. This action cannot be reversed.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[440px] bg-background border-red-500/10 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-red-500/20" />
+        <div className="p-6">
+          <DialogHeader className="mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-500/10 rounded-lg">
+                <AlertTriangleIcon className="h-5 w-5 text-red-500" />
+              </div>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-red-600">
+                Delete User: {user?.name}
+              </DialogTitle>
+            </div>
+          </DialogHeader>
 
-        <DialogFooter className="mt-6 gap-2 sm:gap-0">
-          <Button 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            className="border-input hover:bg-muted/50 rounded-xl"
-          >
-            Cancel
-          </Button>
-          <Button 
-            variant="destructive" 
-            onClick={onDelete}
-            disabled={isDeleting}
-            className="min-w-[120px] bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg shadow-red-600/20"
-          >
-            {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Delete Forever"}
-          </Button>
-        </DialogFooter>
+          <div className="space-y-4">
+             <p className="text-sm font-medium text-muted-foreground leading-relaxed">
+                This action is permanent and cannot be reversed. Deleting this account will immediately invalidate all active sessions and remove the login credentials from the system.
+             </p>
+          </div>
+
+          <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-red-500/5 mt-6 gap-2 sm:gap-0">
+            <Button 
+                type="button" 
+                variant="ghost" 
+                onClick={() => onOpenChange(false)}
+                className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-red-500/10 transition-all"
+            >
+                Cancel
+            </Button>
+            <Button 
+                type="button" 
+                variant="destructive"
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-red-600/20 active:scale-95 transition-all"
+            >
+                {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Delete"}
+            </Button>
+          </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   )

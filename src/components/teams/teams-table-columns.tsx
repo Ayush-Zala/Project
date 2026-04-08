@@ -106,28 +106,35 @@ export function getTeamsColumns({
       },
     },
     {
-      id: "analytics",
-      size: 200,
-      meta: { title: "Members" },
+      id: "members",
+      size: 100,
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Members" />
+        <DataTableColumnHeader column={column} title="Members" className="justify-center" />
       ),
       cell: ({ row }) => {
         const team = row.original
         return (
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col gap-1">
-              <span className="text-[0.7rem] uppercase tracking-tighter font-black text-muted-foreground/60 transition-all">Users</span>
-              <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[0.75rem] px-1.5 py-0.5 font-bold transition-all">
-                {team._count?.members || 0}
-              </Badge>
-            </div>
-            <div className="flex flex-col gap-1">
-              <span className="text-[0.7rem] uppercase tracking-tighter font-black text-muted-foreground/60 transition-all">Roles</span>
-              <Badge variant="outline" className="bg-primary/5 border-primary/20 text-primary text-[0.75rem] px-1.5 py-0.5 font-bold transition-all">
-                {team._count?.roles || 0}
-              </Badge>
-            </div>
+          <div className="flex justify-center w-full">
+            <span className="text-[0.75rem] font-mono font-bold text-primary transition-all">
+              {team._count?.members || 0}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      id: "roles",
+      size: 100,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Roles" className="justify-center" />
+      ),
+      cell: ({ row }) => {
+        const team = row.original
+        return (
+          <div className="flex justify-center w-full">
+            <span className="text-[0.75rem] font-mono font-bold text-primary transition-all">
+              {team._count?.roles || 0}
+            </span>
           </div>
         )
       },
@@ -157,6 +164,7 @@ export function getTeamsColumns({
     {
       accessorKey: "createdAt",
         size: 150,
+        meta: { title: "Created" },
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Created" />
         ),
@@ -164,7 +172,6 @@ export function getTeamsColumns({
           const date = new Date(Number(row.getValue("createdAt")))
           return (
             <div className="flex items-center gap-2">
-              <TimerIcon className="size-3.5 text-muted-foreground/40 transition-all" />
               <span className="text-[0.8rem] font-mono font-bold text-muted-foreground transition-all">
                 {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
               </span>
@@ -192,6 +199,10 @@ export function getTeamsColumns({
               onClick: () => onManageMembers(team)
             }
           ] : []),
+          ...(capabilities.canToggle ? [{
+            label: team.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(team)
+          }] : []),
           ...(capabilities.canDelete ? [{
             label: "Delete",
             onClick: () => onDelete(team),

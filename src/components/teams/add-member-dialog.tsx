@@ -4,19 +4,10 @@ import * as React from "react"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 import {
   Select,
   SelectContent,
@@ -26,7 +17,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
-import { Loader2Icon, UserPlusIcon, SearchIcon } from "lucide-react"
+import { Loader2Icon, SearchIcon } from "lucide-react"
 import { Input } from "@/components/ui/input"
 
 interface AddMemberDialogProps {
@@ -82,7 +73,7 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
         throw new Error(data.error || "Failed to add member")
       }
 
-      toast.success("User added to team manifest")
+      toast.success("Member added successfully")
       onSuccess()
       onOpenChange(false)
       setSelectedUserId("")
@@ -96,72 +87,66 @@ export function AddMemberDialog({ open, onOpenChange, teamId, onSuccess }: AddMe
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] bg-popover/95 backdrop-blur-xl border-input shadow-2xl">
-        <DialogHeader>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <UserPlusIcon className="h-5 w-5 text-primary" />
-            </div>
-            <DialogTitle className="text-2xl font-bold tracking-tight">Add Team Member</DialogTitle>
-          </div>
-          <DialogDescription className="text-muted-foreground/80">
-            Search for an existing user to bind them to this organizational segment.
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
+        <div className="p-6">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">Add Member</DialogTitle>
+          </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Search Account</label>
-            <div className="relative">
-               <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-               <Input 
-                 placeholder="Search by name or email..." 
-                 value={search}
-                 onChange={(e) => setSearch(e.target.value)}
-                 className="pl-10 bg-background/50 border-input focus:border-primary/50 rounded-xl"
-               />
-               {isLoadingUsers && <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Search User</label>
+              <div className="relative">
+                 <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40" />
+                 <Input 
+                   placeholder="Search by name or email..." 
+                   value={search}
+                   onChange={(e) => setSearch(e.target.value)}
+                   className="pl-9 bg-background border-input focus:border-primary/50 font-bold transition-all text-sm h-10"
+                 />
+                 {isLoadingUsers && <Loader2Icon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-primary" />}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">User Result</label>
+              <Select value={selectedUserId} onValueChange={(v) => setSelectedUserId(v || "")} disabled={users.length === 0}>
+                 <SelectTrigger className="w-full bg-background border-input h-10 font-bold text-xs transition-all">
+                    <SelectValue placeholder={users.length === 0 ? "Search for users above..." : "Select a user to add"} />
+                 </SelectTrigger>
+                 <SelectContent className="bg-popover border-input">
+                    {users.map(u => (
+                       <SelectItem key={u.id} value={u.id.toString()} className="cursor-pointer">
+                          <div className="flex flex-col">
+                             <span className="font-bold text-[11px]">{u.name}</span>
+                             <span className="text-[9px] text-muted-foreground uppercase font-black tracking-tight">{u.email}</span>
+                          </div>
+                       </SelectItem>
+                    ))}
+                 </SelectContent>
+              </Select>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">Select User</label>
-            <Select value={selectedUserId} onValueChange={(v) => setSelectedUserId(v || "")} disabled={users.length === 0}>
-               <SelectTrigger className="bg-background/50 border-input rounded-xl">
-                  <SelectValue placeholder={users.length === 0 ? "Search for users above..." : "Select a user to add"} />
-               </SelectTrigger>
-               <SelectContent className="bg-popover border-input">
-                  {users.map(u => (
-                     <SelectItem key={u.id} value={u.id.toString()} className="cursor-pointer">
-                        <div className="flex flex-col">
-                           <span className="font-bold">{u.name}</span>
-                           <span className="text-[10px] text-muted-foreground italic">{u.email}</span>
-                        </div>
-                     </SelectItem>
-                  ))}
-               </SelectContent>
-            </Select>
-          </div>
+          <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+             <Button
+               type="button"
+               variant="ghost"
+               onClick={() => onOpenChange(false)}
+               className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+             >
+               Cancel
+             </Button>
+             <Button 
+               onClick={handleAdd}
+               disabled={isSubmitting || !selectedUserId}
+               className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+             >
+               {isSubmitting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Add to Team"}
+             </Button>
+          </DialogFooter>
         </div>
-
-        <DialogFooter className="pt-4 border-t border-input">
-           <Button
-             type="button"
-             variant="ghost"
-             onClick={() => onOpenChange(false)}
-             className="rounded-xl hover:bg-muted/50"
-           >
-             Cancel
-           </Button>
-           <Button 
-             onClick={handleAdd}
-             disabled={isSubmitting || !selectedUserId}
-             className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95"
-           >
-             {isSubmitting && <Loader2Icon className="h-4 w-4 animate-spin" />}
-             Add to Team
-           </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
