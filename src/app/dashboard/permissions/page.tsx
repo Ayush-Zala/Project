@@ -262,6 +262,16 @@ export default function PermissionsPage() {
         </DataTable>
 
         <ActionBar table={table}>
+           {selectionCount === 1 && canUpdate && (
+             <Button 
+               variant="ghost" 
+               size="sm" 
+               onClick={() => { setSelectedPermission(firstSelectedPermission); setIsPermissionDialogOpen(true); }}
+               className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/40 active:scale-95"
+             >
+               <span className="text-[10px] font-black uppercase tracking-widest leading-none">Edit</span>
+             </Button>
+           )}
            {canUpdate && (
              selectionCount === 1 ? (
                <Button 
