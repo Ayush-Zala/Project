@@ -3,6 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import { format } from "date-fns"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
 import { 
   Building2, 
@@ -24,11 +25,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { StatusIndicator } from "@/components/ui/status-indicator"
+import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 
 export interface OrganisationTeamCapabilities {
   canUpdate: boolean
   canDelete: boolean
-  canManage: boolean
+  canToggle: boolean
+  canViewTeamMembers: boolean
 }
 
 interface GetColumnsProps {
@@ -50,31 +53,37 @@ export function getOrganisationTeamColumns({
     {
       id: "select",
       header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-        />
+        (capabilities.canToggle || capabilities.canDelete) ? (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+            className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+        ) : null
       ),
       cell: ({ row, table }) => {
         const isSelected = row.getIsSelected()
         const { pageIndex, pageSize } = table.getState().pagination
         const serialNumber = (pageIndex * pageSize) + row.index + 1
 
+        const canPerformBulk = capabilities.canToggle || capabilities.canDelete;
+
         return (
           <div className="group flex items-center justify-center w-8 h-8 relative">
-            {!isSelected && (
+            {(!isSelected || !canPerformBulk) && (
               <span className="text-[10px] font-mono font-black text-muted-foreground/40 group-hover:hidden transition-all duration-200 uppercase tracking-tighter">
                 {String(serialNumber).padStart(2, '0')}
               </span>
             )}
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-              className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
-            />
+            {canPerformBulk && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+                className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
+              />
+            )}
           </div>
         )
       },
@@ -83,6 +92,7 @@ export function getOrganisationTeamColumns({
     },
     {
       accessorKey: "name",
+      id: "Team",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Team" />
       ),
@@ -98,7 +108,7 @@ export function getOrganisationTeamColumns({
       },
     },
     {
-        id: "membersCount",
+        id: "Members",
         header: ({ column }) => (
           <DataTableColumnHeader column={column} title="Members" />
         ),
@@ -106,18 +116,19 @@ export function getOrganisationTeamColumns({
         const count = row.original._count?.members || 0
         return (
           <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-widest whitespace-nowrap">
-            {count} Members
+            {count}
           </span>
         )
       },
     },
     {
       accessorKey: "isActive",
+      id: "Status",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
       cell: ({ row }) => {
-        const isActive = !!row.getValue("isActive")
+        const isActive = !!row.getValue("Status")
         const team = row.original
         
         return (
@@ -127,8 +138,25 @@ export function getOrganisationTeamColumns({
              activeLabel="Active"
              inactiveLabel="Inactive"
              variant="switch"
-             disabled={!capabilities.canManage}
+             disabled={!capabilities.canToggle}
           />
+        )
+      },
+    },
+    {
+      accessorKey: "createdAt",
+      id: "Created",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Created" />
+      ),
+      cell: ({ row }) => {
+        const date = row.getValue("Created")
+        if (!date) return <span className="text-[10px] text-muted-foreground/30 font-bold uppercase">N/A</span>
+        
+        return (
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none">
+            {format(new Date(Number(date)), "MMM dd, yyyy")}
+          </span>
         )
       },
     },
@@ -137,53 +165,39 @@ export function getOrganisationTeamColumns({
       cell: ({ row }) => {
         const team = row.original
 
+        const actions = []
+
+        if (capabilities.canUpdate) {
+          actions.push({
+            label: "Edit",
+            onClick: () => onEdit(team)
+          })
+        }
+        if (capabilities.canToggle) {
+          actions.push({
+            label: team.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(team)
+          })
+        }
+        if (capabilities.canViewTeamMembers) {
+          actions.push({
+            label: "View Members",
+            onClick: () => onViewMembers(team)
+          })
+        }
+
+        if (capabilities.canDelete) {
+          actions.push({
+            label: "Delete",
+            onClick: () => onDelete(team),
+            variant: "destructive" as const
+          })
+        }
+
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button
-                variant="ghost"
-                className="flex h-8 w-8 p-0 hover:bg-primary/10 transition-colors"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-popover border-border/40 shadow-2xl">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-2 py-1.5">
-                  Actions
-                </DropdownMenuLabel>
-                {capabilities.canManage && (
-                  <>
-                    <DropdownMenuItem onClick={() => onEdit(team)} className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 group">
-                      <Pencil className="size-3.5 text-primary group-hover:scale-110 transition-transform" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onToggleStatus(team)} className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 group">
-                      <ToggleLeft className="size-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                      Status
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => onViewMembers(team)} className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 group">
-                      <Users2 className="size-3.5 text-blue-500 group-hover:scale-110 transition-transform" />
-                      View Members
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              {capabilities.canDelete && (
-                <DropdownMenuGroup>
-                  <DropdownMenuItem 
-                    onClick={() => onDelete(team)} 
-                    className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 text-destructive focus:bg-destructive/10 focus:text-destructive group"
-                  >
-                    <Trash2 className="size-3.5 group-hover:scale-110 transition-transform" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex justify-end transition-all opacity-40 hover:opacity-100 pr-2">
+            <DataTableRowActions actions={actions} />
+          </div>
         )
       },
     },

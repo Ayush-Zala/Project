@@ -57,8 +57,32 @@ export async function GET(req: Request) {
     const advancedWhere = getPrismaWhere(filters);
 
     // 3. Global Filter Context
+    // Verify Super Admin status via database (more reliable than session type)
+    const userWithRoles = await (prisma as any).user.findUnique({
+      where: { id: userId },
+      include: { userRoles: { include: { role: true } } }
+    });
+    const reallyIsSuperAdmin = userWithRoles?.userRoles.some((ur: any) => ur.role.slug === "super-admin");
+
     const where = {
-        AND: [searchWhere, advancedWhere]
+        AND: [
+            searchWhere, 
+            advancedWhere,
+            !reallyIsSuperAdmin ? {
+                OR: [
+                    { createdBy: userId },
+                    { 
+                        isActive: true, // Only show inactive organisations to creator/superadmin
+                        members: {
+                            some: {
+                                userId: userId,
+                                isActive: true
+                            }
+                        }
+                    }
+                ]
+            } : {}
+        ]
     };
 
     const orderBy = getPrismaOrderBy(sort) || { createdAt: 'desc' };

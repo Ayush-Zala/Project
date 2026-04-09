@@ -20,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:update");
+  const allowed = await hasPermission(userId, "organisation:toggle", Number(id));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

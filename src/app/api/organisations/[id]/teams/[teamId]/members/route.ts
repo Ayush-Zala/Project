@@ -25,7 +25,26 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const teamId = Number(resolvedParams.teamId);
 
   const userId = Number(session.user.id);
-  const canRead = await hasPermission(userId, "organisation:read");
+
+  // 🛡️ Team Status Guard: Block non-creators/non-admins from inactive teams
+  const team = await (prisma as any).organisationTeam.findUnique({
+    where: { id: teamId },
+    select: { isActive: true, createdBy: true }
+  });
+
+  if (team && !team.isActive) {
+    const isCreator = team.createdBy === userId;
+    const isSuperAdmin = session.user.role === "super-admin" || 
+      (await (prisma as any).userRole.findFirst({
+        where: { userId, role: { slug: "super-admin" }, isActive: true }
+      }));
+
+    if (!isCreator && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
+    }
+  }
+
+  const canRead = await hasPermission(userId, "organisation_team_member:read", orgId);
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -113,7 +132,25 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const teamId = Number(resolvedParams.teamId);
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:team:manage");
+
+  // 🛡️ Team Status Guard: Block non-creators/non-admins from inactive teams
+  const team = await (prisma as any).organisationTeam.findUnique({
+    where: { id: teamId },
+    select: { isActive: true, createdBy: true }
+  });
+
+  if (team && !team.isActive) {
+    const isCreator = team.createdBy === userId;
+    const isSuperAdmin = session.user.role === "super-admin" || 
+      (await (prisma as any).userRole.findFirst({
+        where: { userId, role: { slug: "super-admin" }, isActive: true }
+      }));
+
+    if (!isCreator && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
+    }
+  }
+  const allowed = await hasPermission(userId, "organisation_team_member:assign", orgId);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

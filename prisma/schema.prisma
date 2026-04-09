@@ -391,6 +391,7 @@ model OrganisationMember {
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, organizationId])
   @@map("organisation_member")
 }
 
@@ -442,6 +443,7 @@ model OrganisationTeamMember {
   team      OrganisationTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([teamId, userId])
   @@map("organisation_team_member")
 }
 

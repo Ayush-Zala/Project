@@ -22,7 +22,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const canRead = await hasPermission(userId, "organisation:read");
+  const canRead = await hasPermission(userId, "organisation_team:read", Number(id));
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -48,12 +48,31 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       : {};
 
     const advancedWhere = getPrismaWhere(filters);
+    
+    // 🛡️ Data-Level Visibility Filtering
+    // Verify Super Admin status via database (more reliable than session type)
+    const userWithRoles = await (prisma as any).user.findUnique({
+      where: { id: userId },
+      include: { userRoles: { include: { role: true } } }
+    });
+    const reallyIsSuperAdmin = userWithRoles?.userRoles.some((ur: any) => ur.role.slug === "super-admin");
+
+    const visibilityWhere = !reallyIsSuperAdmin ? {
+        OR: [
+            { createdBy: userId },
+            { 
+                isActive: true, // Hide inactive teams from regular members
+                members: { some: { userId: userId, isActive: true } } 
+            }
+        ]
+    } : {};
 
     const where = {
         AND: [
             { organizationId: Number(id) },
             searchWhere,
-            advancedWhere
+            advancedWhere,
+            visibilityWhere
         ]
     };
 
@@ -98,7 +117,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:team:manage");
+  const allowed = await hasPermission(userId, "organisation_team:create", Number(id));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

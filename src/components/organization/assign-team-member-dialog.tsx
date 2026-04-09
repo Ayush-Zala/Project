@@ -27,7 +27,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 interface AssignTeamMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  organizationId: number
+  organizationId: string
   teamId: number
   teamName: string
   onSuccess: () => void
@@ -105,109 +105,92 @@ export function AssignTeamMemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden bg-background border-border/50 shadow-2xl">
-        <DialogHeader className="p-6 pb-0">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <UserPlus2 className="size-5 text-primary" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Assign Members</DialogTitle>
-              <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-0.5">
-                Add members to {teamName}
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
+        <div className="p-6 pb-0">
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
+              Assign Members
+            </DialogTitle>
+            <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-1">
+              Add members to {teamName}
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="p-6 space-y-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
-            <Input
-              placeholder="Search organisation members..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-11 bg-muted/20 border-border/50 rounded-xl font-medium"
-            />
-          </div>
+          <div className="space-y-4 py-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
+              <Input
+                placeholder="Search organisation members..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-10 bg-muted/20 border-border/50 rounded-lg font-bold text-xs transition-all focus:border-primary/50"
+              />
+            </div>
 
-          <div className="rounded-xl border border-border/50 bg-muted/5 overflow-hidden">
-            <ScrollArea className="h-[280px]">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground gap-3">
-                  <Loader2 className="size-8 animate-spin text-primary/40" />
-                  <p className="text-[10px] font-black uppercase tracking-widest">Fetching members...</p>
-                </div>
-              ) : availableMembers.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground/30 p-8 text-center">
-                  <Users2 className="size-12 mb-4 opacity-20" />
-                  <p className="text-[11px] font-bold uppercase tracking-widest leading-tight">
-                    {search ? "No matching members found" : "All organisation members are already in this team"}
-                  </p>
-                </div>
-              ) : (
-                <div className="p-2 space-y-1">
-                  {availableMembers.map((m) => (
-                    <div
-                      key={m.id}
-                      onClick={() => toggleUser(m.userId)}
-                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                        selectedUserIds.has(m.userId) 
-                          ? 'bg-primary/10 border-primary/20' 
-                          : 'hover:bg-muted/50 border-transparent'
-                      } border`}
-                    >
-                      <Checkbox 
-                        checked={selectedUserIds.has(m.userId)}
-                        className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                      />
-                      <div className="flex flex-col flex-1 min-w-0">
-                        <span className="text-sm font-black text-foreground uppercase tracking-tight truncate">{m.user.name}</span>
-                        <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-wider truncate">{m.user.email}</span>
+            <div className="rounded-lg border border-border/50 bg-muted/5 overflow-hidden">
+              <ScrollArea className="h-[280px]">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground gap-3">
+                    <Loader2 className="size-6 animate-spin text-primary/40" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Fetching data...</p>
+                  </div>
+                ) : availableMembers.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground/30 p-8 text-center">
+                    <Users2 className="size-10 mb-4 opacity-20" />
+                    <p className="text-[11px] font-bold uppercase tracking-widest leading-tight">
+                      {search ? "No matching records" : "All members assigned"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {availableMembers.map((m) => (
+                      <div
+                        key={m.id}
+                        onClick={() => toggleUser(m.userId)}
+                        className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer transition-all ${
+                          selectedUserIds.has(m.userId) 
+                            ? 'bg-primary/10 border-primary/20' 
+                            : 'hover:bg-muted/50 border-transparent'
+                        } border`}
+                      >
+                        <Checkbox 
+                          checked={selectedUserIds.has(m.userId)}
+                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                        />
+                        <div className="flex flex-col flex-1 min-w-0">
+                          <span className="text-xs font-black text-foreground uppercase tracking-tight truncate">{m.user.name}</span>
+                          <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">{m.user.email}</span>
+                        </div>
                       </div>
-                      {selectedUserIds.has(m.userId) && (
-                        <CheckCircle2 className="size-4 text-primary" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
           </div>
         </div>
 
-        <DialogFooter className="p-6 pt-0 flex items-center justify-between gap-4">
-          <div className="flex flex-col flex-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40 leading-none">
-              Selection
-            </span>
-            <span className="text-sm font-black text-primary tracking-tight">
-              {selectedUserIds.size} Members Ready
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              onClick={() => onOpenChange(false)}
-              className="font-bold uppercase tracking-wider text-[10px] h-10 px-6"
-            >
-              Cancel
-            </Button>
-            <Button
-              disabled={selectedUserIds.size === 0 || isSaving}
-              onClick={handleAssign}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[10px] h-10 px-8 shadow-lg shadow-primary/20 transition-all active:scale-95"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 size-3 animate-spin" />
-                  Syncing...
-                </>
-              ) : (
-                "Sync Members"
-              )}
-            </Button>
-          </div>
+        <DialogFooter className="pt-6 pb-6 border-t border-border/10 bg-muted/5 mt-2 px-6 gap-2 sm:gap-0">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50 transition-all font-bold"
+          >
+            Cancel
+          </Button>
+          <Button
+            disabled={selectedUserIds.size === 0 || isSaving}
+            onClick={handleAssign}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
+          >
+            {isSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              "Assign"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

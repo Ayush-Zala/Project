@@ -20,19 +20,21 @@ interface DataTableColumnHeaderProps<TData, TValue>
   extends React.HTMLAttributes<HTMLDivElement> {
   column: Column<TData, TValue>
   title: string
+  justify?: "start" | "center" | "end"
 }
 
 export function DataTableColumnHeader<TData, TValue>({
   column,
   title,
+  justify = "start",
   className,
 }: DataTableColumnHeaderProps<TData, TValue>) {
   if (!column.getCanSort() && !column.getCanHide()) {
-    return <div className={cn(className)}>{title}</div>
+    return <div className={cn(justify === "center" && "text-center", justify === "end" && "text-right", className)}>{title}</div>
   }
 
   return (
-    <div className={cn("flex items-center space-x-2", className)}>
+    <div className={cn("flex items-center space-x-2", justify === "center" && "justify-center", justify === "end" && "justify-end", className)}>
       <DropdownMenu>
         <DropdownMenuTrigger
           render={
@@ -46,7 +48,10 @@ export function DataTableColumnHeader<TData, TValue>({
               }
               variant="ghost"
               size="sm"
-              className="-ml-3 h-8 data-state-open:bg-accent hover:bg-primary/5 transition-all group/header"
+              className={cn(
+                "h-8 data-state-open:bg-accent hover:bg-primary/5 transition-all group/header",
+                justify === "start" && "-ml-3"
+              )}
             >
               <span className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground group-hover/header:text-primary transition-colors">{title}</span>
               {column.getCanSort() && (

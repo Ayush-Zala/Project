@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const canRead = await hasPermission(userId, "organisation:read");
+  const canRead = await hasPermission(userId, "organisation:read", Number(id));
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
@@ -52,7 +52,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:update");
+  const allowed = await hasPermission(userId, "organisation:update", Number(id));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
@@ -88,7 +88,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:delete");
+  const allowed = await hasPermission(userId, "organisation:delete", Number(id));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

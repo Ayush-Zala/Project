@@ -34,7 +34,7 @@ type TeamFormValues = z.infer<typeof teamFormSchema>
 interface TeamDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  organizationId: number
+  organizationId: string
   team?: any
   onSuccess?: () => void
 }
@@ -91,20 +91,13 @@ export function TeamDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px] bg-background border-border/40 shadow-2xl overflow-hidden p-0">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 to-primary" />
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
         <div className="p-6">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-               <Layers className="size-5 text-primary" />
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
                {team ? "Edit Team" : "Add Team"}
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 italic leading-tight">
-              {team 
-                ? `Edit team: ${team.name}` 
-                : "Add a new team to the organization."
-              }
-            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
@@ -113,33 +106,42 @@ export function TeamDialog({
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Team Name</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                        Team Name <span className="text-red-500 font-bold">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Industrial Logistics Hub" 
                         {...field} 
                         disabled={isSubmitting}
-                        className="bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-bold text-sm"
+                        className="bg-background border-input focus:border-primary/50 font-bold transition-all text-sm h-10"
                       />
                     </FormControl>
-                    <FormMessage className="text-[10px] font-bold" />
+                    <FormMessage className="text-[10px] font-bold text-red-500" />
                   </FormItem>
                 )}
               />
 
-              <DialogFooter className="pt-4 border-t border-border/40 mt-8 -mx-6 px-6 bg-muted/5">
+              <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => onOpenChange(false)}
+                    className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+                >
+                    Cancel
+                </Button>
                 <Button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] h-10 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <FolderPlus className="mr-2 h-4 w-4" />
+                    team ? "Save Changes" : "Add Team"
                   )}
-                  {team ? "Save" : "Add Team"}
                 </Button>
               </DialogFooter>
             </form>

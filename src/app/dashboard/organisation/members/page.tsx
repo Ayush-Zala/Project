@@ -16,7 +16,10 @@ import { Separator } from "@/components/ui/separator"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { authClient } from "@/lib/auth-client"
 import { MemberDialog } from "@/components/organization/member-dialog"
+import { DeleteMemberDialog } from "@/components/organization/delete-member-dialog"
 import { OrgTabs } from "@/components/organization/org-tabs"
+import { BulkDeleteMemberDialog } from "@/components/organization/bulk-delete-member-dialog"
+import { ActionBar } from "@/components/data-table/action-bar"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -32,7 +35,9 @@ import { apiClient } from "@/lib/api-client"
 export default function OrganisationMembersPage() {
   // 1. Auth & Context Hooks
   const { data: activeOrg, isPending: isOrgPending } = authClient.useActiveOrganization()
-  const canManage = useHasPermission("organisation:member:manage")
+  const canCreate = useHasPermission("organisation_member:create")
+  const canDelete = useHasPermission("organisation_member:delete")
+  const canToggle = useHasPermission("organisation_member:toggle")
   
   // 2. State Hooks
   const [members, setMembers] = React.useState<any[]>([])
@@ -41,7 +46,10 @@ export default function OrganisationMembersPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [isMemberDialogOpen, setIsMemberDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedMember, setSelectedMember] = React.useState<any>(null)
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = React.useState(false)
+  const [isBulkLoading, setIsBulkLoading] = React.useState(false)
 
   // 3. Data Table Hook
   const { 
@@ -57,11 +65,11 @@ export default function OrganisationMembersPage() {
   } = useDataTable({
     data: members,
     columns: React.useMemo(() => getOrganisationMemberColumns({
-      capabilities: { canUpdate: canManage, canDelete: canManage, canManage },
+      capabilities: { canDelete, canToggle },
       onEdit: (m) => { setSelectedMember(m); setIsMemberDialogOpen(true); },
-      onRemove: (m) => handleRemove(m),
+      onRemove: (m) => { setSelectedMember(m); setIsDeleteDialogOpen(true); },
       onToggleStatus: (m) => handleToggleStatus(m),
-    }), [canManage]),
+    }), [canDelete, canToggle]),
     pageCount,
   })
 
@@ -109,13 +117,33 @@ export default function OrganisationMembersPage() {
 
   async function handleRemove(member: any) {
     if (!activeOrg) return
-    if (!confirm(`Are you sure you want to remove ${member.user.name}?`)) return
+    setSelectedMember(member)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const onBulkStatusUpdate = async (isActive: boolean) => {
+    if (!activeOrg) return
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const ids = selectedRows.map(row => (row.original as any).id)
     
+    if (ids.length === 0) return
+
+    setIsBulkLoading(true)
     try {
-      await apiClient(`/api/organisations/${activeOrg.id}/members/${member.id}`, { method: "DELETE" })
+      await Promise.all(ids.map(id => 
+        apiClient(`/api/organisations/${activeOrg.id}/members/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive }),
+        })
+      ))
+      
+      table.toggleAllRowsSelected(false)
       fetchMembers()
     } catch (error: any) {
       // apiClient already handled toast
+    } finally {
+      setIsBulkLoading(false)
     }
   }
 
@@ -140,7 +168,14 @@ export default function OrganisationMembersPage() {
     if (activeOrg) fetchMembers()
   }, [activeOrg, fetchMembers])
 
-  if (isOrgPending) return <div className="flex items-center justify-center h-screen font-black uppercase tracking-widest text-primary animate-pulse">Loading...</div>
+  // 7. Global Refresh Hardware Listener
+  React.useEffect(() => {
+    const handleGlobalRefresh = () => fetchMembers()
+    window.addEventListener("ORG_MODULE_REFRESH", handleGlobalRefresh)
+    return () => window.removeEventListener("ORG_MODULE_REFRESH", handleGlobalRefresh)
+  }, [fetchMembers])
+
+  if (isOrgPending) return null
   if (!activeOrg) return (
     <div className="flex flex-col items-center justify-center h-screen gap-4">
         <ShieldAlert className="size-16 text-destructive/50" />
@@ -174,49 +209,7 @@ export default function OrganisationMembersPage() {
 
   return (
     <>
-      <DashboardHeader 
-        breadcrumbs={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Organization", href: "/dashboard/organisation" },
-            { label: "Members" }
-        ]}
-      >
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
-            title="Refresh"
-        >
-            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
-        {canManage && (
-            <Button
-              size="sm"
-              onClick={() => { setSelectedMember(null); setIsMemberDialogOpen(true); }}
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 font-bold uppercase tracking-wider text-[10px]"
-            >
-              <MailPlus className="h-4 w-4" />
-              Add Member
-            </Button>
-        )}
-      </DashboardHeader>
-
-      <PageShell>
-        <div className="flex items-center gap-3 mb-8 bg-muted/20 p-4 rounded-2xl border border-border/50">
-            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Building2 className="size-5 text-primary" />
-            </div>
-            <div className="flex flex-col">
-                <h2 className="text-sm font-black uppercase tracking-tight text-foreground">{activeOrg.name}</h2>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-0.5">Organization Members</p>
-            </div>
-            <div className="ml-auto">
-                <OrgTabs />
-            </div>
-        </div>
-
+      <div className="w-full">
         <DataTable
             table={table}
             isLoading={isLoading}
@@ -238,14 +231,113 @@ export default function OrganisationMembersPage() {
         <p className="text-[11px] font-medium text-muted-foreground/60 text-center mt-8 italic tracking-tight">
            Displaying {members.length} of {totalCount} members
         </p>
-      </PageShell>
-      <MemberDialog 
-         open={isMemberDialogOpen}
-         onOpenChange={setIsMemberDialogOpen}
-         organizationId={Number(activeOrg.id)}
-         member={selectedMember}
-         onSuccess={() => fetchMembers()}
-      />
+
+        <MemberDialog 
+          open={isMemberDialogOpen}
+          onOpenChange={setIsMemberDialogOpen}
+          organizationId={activeOrg?.id?.toString() || ""}
+          member={selectedMember}
+          onSuccess={fetchMembers}
+        />
+
+        <DeleteMemberDialog 
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          member={selectedMember}
+          organizationId={activeOrg?.id?.toString() || ""}
+          onSuccess={fetchMembers}
+        />
+
+        <DeleteMemberDialog 
+          open={isDeleteDialogOpen}
+          onOpenChange={setIsDeleteDialogOpen}
+          member={selectedMember}
+          organizationId={activeOrg?.id?.toString() || ""}
+          onSuccess={fetchMembers}
+        />
+
+        <BulkDeleteMemberDialog
+          open={isBulkDeleteDialogOpen}
+          onOpenChange={setIsBulkDeleteDialogOpen}
+          members={table.getFilteredSelectedRowModel().rows.map(row => row.original)}
+          organizationId={activeOrg?.id?.toString() || ""}
+          onSuccess={() => {
+            table.toggleAllRowsSelected(false)
+            fetchMembers()
+          }}
+        />
+
+        <ActionBar table={table}>
+           {((canToggle || canDelete) && !table.getFilteredSelectedRowModel().rows.some(row => (row.original as any).role === 'owner')) && (
+             <>
+               {table.getFilteredSelectedRowModel().rows.length === 1 ? (
+                 table.getFilteredSelectedRowModel().rows[0].original.isActive ? (
+                   canToggle && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       disabled={isBulkLoading}
+                       onClick={() => onBulkStatusUpdate(false)}
+                       className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                     >
+                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                     </Button>
+                   )
+                 ) : (
+                   canToggle && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       disabled={isBulkLoading}
+                       onClick={() => onBulkStatusUpdate(true)}
+                       className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                     >
+                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                     </Button>
+                   )
+                 )
+               ) : (
+                 <>
+                   {canToggle && (
+                     <>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isBulkLoading}
+                          onClick={() => onBulkStatusUpdate(true)}
+                          className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isBulkLoading}
+                          onClick={() => onBulkStatusUpdate(false)}
+                          className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                        </Button>
+                     </>
+                   )}
+                 </>
+               )}
+               {canDelete && (
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   disabled={isBulkLoading}
+                   onClick={() => setIsBulkDeleteDialogOpen(true)}
+                   className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                 >
+                   <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+                 </Button>
+               )}
+             </>
+           )}
+        </ActionBar>
+      </div>
     </>
   )
 }
+

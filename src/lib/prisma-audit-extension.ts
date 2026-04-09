@@ -316,8 +316,15 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                      } else if (safeModel === "organisationmember") {
                         const oName = await resolveName("organisation", payload);
                         const uName = await resolveName("user", payload);
-                        if (baseAction === "DELETE") auditDescription = `Member ${uName} removed from Organisation ${oName}`;
-                        else auditDescription = `Member ${uName} role updated to ${result?.role || payload.role} in Organisation ${oName}`;
+                        
+                        if (baseAction === "DELETE") {
+                           auditDescription = `Organisation Member ${uName} removed from Organisation ${oName}`;
+                        } else if (finalAction === "Toggle" || finalAction === "TOGGLE") {
+                           const newStatus = (result?.isActive === false || payload.isActive === false) ? "inactive" : "active";
+                           auditDescription = `Organisation Member ${uName} marked as ${newStatus} in Organisation ${oName}`;
+                        } else {
+                           auditDescription = `Organisation Member ${uName} role updated to ${result?.role || payload.role} in Organisation ${oName}`;
+                        }
                      } else if (safeModel === "organisationinvitation") {
                         const oName = await resolveName("organisation", payload);
                         const targetEmail = payload.email || "Unknown";

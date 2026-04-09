@@ -3,46 +3,43 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
-import { 
-  MoreHorizontal, 
+import {
   Trash2,
-  User
+  Mail,
+  ToggleLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { format } from "date-fns"
 import { StatusIndicator } from "@/components/ui/status-indicator"
-import { ToggleLeft } from "lucide-react"
+import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 
 interface GetColumnsProps {
-  canManage: boolean
+  capabilities: {
+    canDelete: boolean
+    canToggle: boolean
+  }
   onRemove: (member: any) => void
   onToggleStatus: (member: any) => void
 }
 
 export function getOrganisationTeamMemberColumns({
-  canManage,
+  capabilities,
   onRemove,
   onToggleStatus,
 }: GetColumnsProps): ColumnDef<any>[] {
+  const canPerformBulk = capabilities.canToggle || capabilities.canDelete;
   return [
     {
       id: "select",
       header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-        />
+        canPerformBulk ? (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+            className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+        ) : null
       ),
       cell: ({ row, table }) => {
         const isSelected = row.getIsSelected()
@@ -51,17 +48,19 @@ export function getOrganisationTeamMemberColumns({
 
         return (
           <div className="group flex items-center justify-center w-8 h-8 relative">
-            {!isSelected && (
+            {(!isSelected || !canPerformBulk) && (
               <span className="text-[10px] font-mono font-black text-muted-foreground/40 group-hover:hidden transition-all duration-200 uppercase tracking-tighter">
                 {String(serialNumber).padStart(2, '0')}
               </span>
             )}
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-              className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
-            />
+            {canPerformBulk && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+                className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
+              />
+            )}
           </div>
         )
       },
@@ -69,6 +68,7 @@ export function getOrganisationTeamMemberColumns({
       enableHiding: false,
     },
     {
+      id: "Member",
       accessorKey: "user",
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Member" />
@@ -76,19 +76,13 @@ export function getOrganisationTeamMemberColumns({
       cell: ({ row }) => {
         const user = row.original.user
         return (
-          <div className="flex items-center gap-3">
-             <div className="flex size-8 items-center justify-center rounded-full bg-muted border border-border">
-                {user.image ? (
-                    <img src={user.image} alt={user.name} className="size-8 rounded-full object-cover" />
-                ) : (
-                    <User className="size-4 text-muted-foreground" />
-                )}
-             </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black text-foreground tracking-tight uppercase line-clamp-1">
-                {user.name}
-              </span>
-              <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-widest leading-none mt-1">
+          <div className="flex flex-col py-1">
+            <span className="text-sm font-bold text-foreground tracking-tight leading-none mb-1">
+              {user.name}
+            </span>
+            <div className="flex items-center gap-1.5 text-muted-foreground/60">
+              <Mail className="size-3 text-muted-foreground/40" />
+              <span className="text-[11px] font-medium leading-none font-mono">
                 {user.email}
               </span>
             </div>
@@ -97,9 +91,32 @@ export function getOrganisationTeamMemberColumns({
       },
     },
     {
+      id: "Status",
+      accessorKey: "isActive",
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Status" />
+      ),
+      cell: ({ row }) => {
+        const isActive = !!row.original.isActive
+        const member = row.original
+
+        return (
+          <StatusIndicator
+            isActive={isActive}
+            onToggle={() => onToggleStatus(member)}
+            activeLabel="Active"
+            inactiveLabel="Inactive"
+            variant="switch"
+            disabled={!capabilities.canToggle}
+          />
+        )
+      },
+    },
+    {
+      id: "Assigned",
       accessorKey: "createdAt",
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Assigned At" />
+        <DataTableColumnHeader column={column} title="Assigned" />
       ),
       cell: ({ row }) => {
         const date = Number(row.original.createdAt)
@@ -111,68 +128,30 @@ export function getOrganisationTeamMemberColumns({
       },
     },
     {
-      accessorKey: "isActive",
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Status" />
-      ),
-      cell: ({ row }) => {
-        const isActive = !!row.original.isActive
-        const member = row.original
-        
-        return (
-          <StatusIndicator 
-             isActive={isActive}
-             onToggle={() => onToggleStatus(member)}
-             activeLabel="Active"
-             inactiveLabel="Inactive"
-             variant="switch"
-             disabled={!canManage}
-          />
-        )
-      },
-    },
-    {
       id: "actions",
       cell: ({ row }) => {
         const member = row.original
 
+        const actions = []
+
+        if (capabilities.canToggle) {
+          actions.push({
+            label: member.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(member)
+          })
+        }
+        if (capabilities.canDelete) {
+          actions.push({
+            label: "Delete",
+            onClick: () => onRemove(member),
+            variant: "destructive" as const
+          })
+        }
+
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button
-                variant="ghost"
-                className="flex h-8 w-8 p-0 hover:bg-primary/10 transition-colors"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-popover border-border/40 shadow-2xl">
-              <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/50 px-2 py-1.5">
-                  Actions
-                </DropdownMenuLabel>
-                {canManage && (
-                  <DropdownMenuItem onClick={() => onToggleStatus(member)} className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 group">
-                    <ToggleLeft className="size-3.5 text-emerald-500 group-hover:scale-110 transition-transform" />
-                    Status
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              {canManage && (
-                <DropdownMenuGroup>
-                  <DropdownMenuItem 
-                    onClick={() => onRemove(member)} 
-                    className="gap-2 font-bold text-[10px] uppercase tracking-wider py-2 text-destructive focus:bg-destructive/10 focus:text-destructive group"
-                  >
-                    <Trash2 className="size-3.5 group-hover:scale-110 transition-transform" />
-                    Remove from Team
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex justify-end transition-all opacity-40 hover:opacity-100 pr-2">
+            <DataTableRowActions actions={actions} />
+          </div>
         )
       },
     },

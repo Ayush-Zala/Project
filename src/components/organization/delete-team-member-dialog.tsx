@@ -4,42 +4,44 @@ import * as React from "react"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { toast } from "sonner"
 import { Loader2Icon, AlertTriangleIcon } from "lucide-react"
-import { authClient } from "@/lib/auth-client"
+import { apiClient } from "@/lib/api-client"
 
-interface DeleteOrganisationDialogProps {
+interface DeleteTeamMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  organisation: any
-  onSuccess?: () => void
+  member: any
+  organizationId: string
+  teamId: number
+  onSuccess: () => void
 }
 
-export function DeleteOrganisationDialog({ open, onOpenChange, organisation, onSuccess }: DeleteOrganisationDialogProps) {
+export function DeleteTeamMemberDialog({
+  open,
+  onOpenChange,
+  member,
+  organizationId,
+  teamId,
+  onSuccess
+}: DeleteTeamMemberDialogProps) {
   const [isDeleting, setIsDeleting] = React.useState(false)
 
   async function onDelete() {
-    if (!organisation) return
+    if (!member || !organizationId || !teamId) return
     setIsDeleting(true)
-    const toastId = toast.loading(`Deleting ${organisation.name}...`)
     try {
-      const { error } = await authClient.organization.delete({
-        organizationId: String(organisation.id)
+      await apiClient(`/api/organisations/${organizationId}/teams/${teamId}/members/${member.userId}`, {
+        method: "DELETE"
       })
-
-      if (error) throw new Error(error.message)
-
-      toast.success("Organization permanently deleted", { id: toastId })
-      onSuccess?.()
+      onSuccess()
       onOpenChange(false)
     } catch (error: any) {
-      toast.error(error.message, { id: toastId })
+      // apiClient already handles the toast
     } finally {
       setIsDeleting(false)
     }
@@ -53,21 +55,21 @@ export function DeleteOrganisationDialog({ open, onOpenChange, organisation, onS
           <DialogHeader className="mb-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-red-500/10 rounded-lg">
-                <AlertTriangleIcon className="h-5 w-5 text-red-500" />
+                <AlertTriangleIcon className="size-5 text-red-500" />
               </div>
               <DialogTitle className="text-xl font-black uppercase tracking-tight text-red-600">
-                Delete Organization: {organisation?.name}
+                DELETE: {member?.user?.name}
               </DialogTitle>
             </div>
           </DialogHeader>
 
           <div className="space-y-4">
             <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-              This action is permanent. Deleting this organization will immediately revoke access for all assigned members and teams and cannot be reversed.
+              This action is permanent and cannot be reversed. Deleting this member will immediately remove all access within this team and purge all localized role assignments.
             </p>
           </div>
 
-          <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-red-500/5 mt-6 gap-2 sm:gap-0">
+          <DialogFooter className="pt-6 pb-6 border-t border-border/10 -mx-6 px-6 bg-red-500/5 mt-6 gap-2 sm:gap-0">
             <Button
               type="button"
               variant="ghost"
@@ -83,7 +85,7 @@ export function DeleteOrganisationDialog({ open, onOpenChange, organisation, onS
               disabled={isDeleting}
               className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-red-600/20 active:scale-95 transition-all"
             >
-              {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "Delete"}
+              {isDeleting ? <Loader2Icon className="h-4 w-4 animate-spin" /> : "DELETE"}
             </Button>
           </DialogFooter>
         </div>

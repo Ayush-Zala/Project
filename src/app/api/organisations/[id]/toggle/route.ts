@@ -14,19 +14,19 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:toggle");
+  const allowed = await hasPermission(userId, "organisation:toggle", Number(id));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
     const current = await (prisma as any).organisation.findUnique({
-        where: { id: params.id },
+        where: { id },
         select: { isActive: true }
     });
 
     if (!current) return NextResponse.json({ error: "Not Found" }, { status: 404 });
 
     const organisation = await (prisma as any).organisation.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         isActive: !current.isActive,
         updatedBy: userId,
@@ -34,7 +34,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     });
 
-    await emitEvent("ORGANISATIONS_CHANGED", { action: "toggle", organisationId: params.id, isActive: organisation.isActive });
+    await emitEvent("ORGANISATIONS_CHANGED", { action: "toggle", organisationId: id, isActive: organisation.isActive });
     return NextResponse.json(organisation);
   } catch (error) {
     console.error("[ORGANISATION_TOGGLE]", error);

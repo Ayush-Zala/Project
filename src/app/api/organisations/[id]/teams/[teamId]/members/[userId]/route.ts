@@ -21,7 +21,26 @@ export async function DELETE(
   const targetUserId = Number(resolvedParams.userId);
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:team:manage");
+
+  // 🛡️ Team Status Guard: Block non-creators/non-admins from inactive teams
+  const team = await (prisma as any).organisationTeam.findUnique({
+    where: { id: teamId },
+    select: { isActive: true, createdBy: true }
+  });
+
+  if (team && !team.isActive) {
+    const isCreator = team.createdBy === userId;
+    const isSuperAdmin = session.user.role === "super-admin" || 
+      (await (prisma as any).userRole.findFirst({
+        where: { userId, role: { slug: "super-admin" }, isActive: true }
+      }));
+
+    if (!isCreator && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
+    }
+  }
+
+  const allowed = await hasPermission(userId, "organisation_team_member:delete", orgId);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

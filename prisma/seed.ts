@@ -23,10 +23,10 @@ const PERMISSIONS_MANIFEST: Record<string, string[]> = {
   team_roles: ["create", "read", "update", "delete", "toggle"],
   team_members: ["create", "read", "update", "delete", "toggle", "assign_role"],
   audit: ["read"],
-  organisation: ["create", "read", "update", "delete", "toggle", "manage"],
-  organisation_member: ["manage", "read"],
-  organisation_team: ["manage", "read"],
-  organisation_invite: ["manage", "read"],
+  organisation: ["create", "read", "update", "delete", "toggle"],
+  organisation_member: ["create", "read", "delete", "toggle"],
+  organisation_team: ["create", "read", "update", "delete", "toggle"],
+  organisation_team_member: ["assign", "read", "delete", "toggle"],
 };
 
 async function main() {
@@ -98,7 +98,7 @@ async function main() {
         organisation: "Organization",
         organisation_member: "Organization Members",
         organisation_team: "Organization Teams",
-        organisation_invite: "Invites",
+        organisation_team_member: "Organisation Team Members",
       };
 
       const actionLabels: Record<string, string> = {
@@ -111,6 +111,7 @@ async function main() {
         assign_permission: "Assign Permissions",
         read_all: "View All",
         manage: "Manage",
+        assign: "Assign",
       };
 
       const resLabel = resourceNames[resource] || resource;

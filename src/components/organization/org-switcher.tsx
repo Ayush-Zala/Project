@@ -35,29 +35,57 @@ import { useSocket } from "@/providers/socket-provider"
 export function OrgSwitcher() {
   const { isMobile } = useSidebar()
   const router = useRouter()
-  const { data: organisations, isPending } = authClient.useListOrganizations()
+  
   const { data: activeOrg } = authClient.useActiveOrganization()
   const { data: activeMember } = authClient.useActiveMember()
 
+  const [organisations, setOrganisations] = React.useState<any[]>([])
+  const [isLoading, setIsLoading] = React.useState(true)
+
+  const fetchOrganisations = React.useCallback(async () => {
+    try {
+      // Use our hardened API which handles status filtering and Super Admin bypass
+      const response = await fetch("/api/organisations?per_page=100")
+      if (response.ok) {
+        const data = await response.json()
+        setOrganisations(data.organisations || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch organisations", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    fetchOrganisations()
+  }, [fetchOrganisations])
+
   // 🔌 Real-time WebSocket sync
   const { useEvent } = useSocket()
-  useEvent("ORGANISATIONS_CHANGED", React.useCallback(() => {
+  
+  const handleRefresh = React.useCallback(() => {
+    fetchOrganisations()
     router.refresh()
-  }, [router]))
+  }, [fetchOrganisations, router])
+
+  useEvent("ORGANISATIONS_CHANGED", handleRefresh)
+  useEvent("ORGANISATION_MEMBERS_CHANGED", handleRefresh)
 
   const [open, setOpen] = React.useState(false)
 
   const handleSwitch = async (orgId: string) => {
     try {
       await authClient.organization.setActive({ organizationId: orgId })
-      toast.success(`Switched to ${organisations?.find(o => o.id === orgId)?.name}`)
+      const orgName = organisations?.find(o => String(o.id) === String(orgId))?.name
+      toast.success(`Switched to ${orgName || "Organisation"}`)
       router.refresh()
     } catch (error) {
       toast.error("Failed to switch organisation")
     }
   }
 
-  const active = organisations?.find((org) => org.id === activeOrg?.id) || organisations?.[0]
+  const active = organisations?.find((org) => String(org.id) === String(activeOrg?.id)) || organisations?.[0]
 
   return (
     <SidebarMenu>

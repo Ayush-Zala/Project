@@ -45,7 +45,7 @@ type MemberFormValues = z.infer<typeof memberFormSchema>
 interface MemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  organizationId: number
+  organizationId: string
   member?: any // For editing
   onSuccess?: () => void
 }
@@ -113,20 +113,13 @@ export function MemberDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-background border-border/40 shadow-2xl overflow-hidden p-0">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 to-primary" />
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
         <div className="p-6">
           <DialogHeader className="mb-4">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-               <Shield className="size-5 text-primary" />
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
                {member ? "Edit Member" : "Add Member"}
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 italic leading-tight">
-              {member 
-                ? `Edit role for ${member.user.email}` 
-                : "Add a new member to the organization."
-              }
-            </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
@@ -135,17 +128,19 @@ export function MemberDialog({
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Email</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                      Email address <span className="text-red-500 font-bold">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="operator@obsidian-noir.com" 
                         {...field} 
                         disabled={!!member || isSubmitting}
-                        className="bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-medium text-sm"
+                        className="bg-background border-input focus:border-primary/50 font-bold transition-all text-sm h-10"
                       />
                     </FormControl>
-                    <FormMessage className="text-[10px] font-bold" />
+                    <FormMessage className="text-[10px] font-bold text-red-500" />
                   </FormItem>
                 )}
               />
@@ -154,26 +149,26 @@ export function MemberDialog({
                 control={form.control}
                 name="role"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70">Role</FormLabel>
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                      Administrative Role <span className="text-red-500 font-bold">*</span>
+                    </FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value} 
                       disabled={isSubmitting || !!member}
                     >
                       <FormControl>
-                        <SelectTrigger className="bg-muted/10 border-border/50 font-bold uppercase text-[10px] tracking-widest disabled:opacity-70 disabled:bg-muted/20">
+                        <SelectTrigger className="bg-background border-input focus:border-primary/50 font-bold uppercase text-[10px] tracking-widest h-10 disabled:opacity-70 disabled:bg-muted/10">
                           <SelectValue placeholder="Select Role" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="bg-popover border-border">
+                      <SelectContent className="bg-popover border-input">
                         {getAvailableRoles(!!member, member?.role).map((role) => (
                           <SelectItem 
                             key={role} 
                             value={role} 
-                            className={`font-bold text-[10px] uppercase tracking-wider focus:bg-primary/10 ${
-                              role === 'owner' ? 'text-amber-600 focus:bg-amber-500/10' : 'text-emerald-600 focus:bg-emerald-500/10'
-                            }`}
+                            className="font-black text-[10px] uppercase tracking-widest focus:bg-primary/10 transition-colors"
                           >
                             {role}
                           </SelectItem>
@@ -181,28 +176,34 @@ export function MemberDialog({
                       </SelectContent>
                     </Select>
                     {member && (
-                        <p className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground/50 uppercase italic tracking-tighter mt-1">
-                            <Info className="size-2.5" />
+                        <p className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground/40 uppercase italic tracking-tighter mt-1.5">
                             Security Protocol: Role stays fixed after assignment.
                         </p>
                     )}
-                    <FormMessage className="text-[10px] font-bold" />
+                    <FormMessage className="text-[10px] font-bold text-red-500" />
                   </FormItem>
                 )}
               />
 
-              <DialogFooter className="pt-4 border-t border-border/40 mt-6 -mx-6 px-6 bg-muted/5">
+              <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => onOpenChange(false)}
+                    className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+                >
+                    Cancel
+                </Button>
                 <Button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] h-10 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <MailPlus className="mr-2 h-4 w-4" />
+                    member ? "Save Changes" : "Add"
                   )}
-                  {member ? "Save" : "Add"}
                 </Button>
               </DialogFooter>
             </form>

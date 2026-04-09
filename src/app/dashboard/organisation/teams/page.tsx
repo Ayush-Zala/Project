@@ -17,7 +17,10 @@ import { Separator } from "@/components/ui/separator"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { authClient } from "@/lib/auth-client"
 import { TeamDialog } from "@/components/organization/team-dialog"
+import { DeleteTeamDialog } from "@/components/organization/delete-team-dialog"
 import { OrgTabs } from "@/components/organization/org-tabs"
+import { BulkDeleteTeamDialog } from "@/components/organization/bulk-delete-team-dialog"
+import { ActionBar } from "@/components/data-table/action-bar"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -34,7 +37,11 @@ export default function OrganisationTeamsPage() {
   const router = useRouter()
   // 1. Auth & Context Hooks
   const { data: activeOrg, isPending: isOrgPending } = authClient.useActiveOrganization()
-  const canManage = useHasPermission("organisation:team:manage")
+  const canCreate = useHasPermission("organisation_team:create")
+  const canUpdate = useHasPermission("organisation_team:update")
+  const canDelete = useHasPermission("organisation_team:delete")
+  const canToggle = useHasPermission("organisation_team:toggle")
+  const canViewTeamMembers = useHasPermission("organisation_team_member:read")
   
   // 2. State Hooks
   const [teams, setTeams] = React.useState<any[]>([])
@@ -43,7 +50,10 @@ export default function OrganisationTeamsPage() {
   const [isLoading, setIsLoading] = React.useState(true)
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [isTeamDialogOpen, setIsTeamDialogOpen] = React.useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [selectedTeam, setSelectedTeam] = React.useState<any>(null)
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = React.useState(false)
+  const [isBulkLoading, setIsBulkLoading] = React.useState(false)
 
   // 3. Data Table Hook
   const { 
@@ -59,12 +69,12 @@ export default function OrganisationTeamsPage() {
   } = useDataTable({
     data: teams,
     columns: React.useMemo(() => getOrganisationTeamColumns({
-      capabilities: { canUpdate: canManage, canDelete: canManage, canManage },
+      capabilities: { canUpdate, canDelete, canToggle, canViewTeamMembers },
       onEdit: (t) => { setSelectedTeam(t); setIsTeamDialogOpen(true); },
-      onDelete: (t) => handleDelete(t),
+      onDelete: (t) => { setSelectedTeam(t); setIsDeleteDialogOpen(true); },
       onToggleStatus: (t) => handleToggleStatus(t),
       onViewMembers: (t) => router.push(`/dashboard/organisation/teams/${t.id}/members`),
-    }), [canManage, router]),
+    }), [canUpdate, canDelete, canToggle, canViewTeamMembers, router]),
     pageCount,
   })
 
@@ -112,13 +122,33 @@ export default function OrganisationTeamsPage() {
 
   async function handleDelete(team: any) {
     if (!activeOrg) return
-    if (!confirm(`Are you sure you want to delete team ${team.name}?`)) return
+    setSelectedTeam(team)
+    setIsDeleteDialogOpen(true)
+  }
+
+  const onBulkStatusUpdate = async (isActive: boolean) => {
+    if (!activeOrg) return
+    const selectedRows = table.getFilteredSelectedRowModel().rows
+    const ids = selectedRows.map(row => (row.original as any).id)
     
+    if (ids.length === 0) return
+
+    setIsBulkLoading(true)
     try {
-      await apiClient(`/api/organisations/${activeOrg.id}/teams/${team.id}`, { method: "DELETE" })
+      await Promise.all(ids.map(id => 
+        apiClient(`/api/organisations/${activeOrg.id}/teams/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isActive }),
+        })
+      ))
+      
+      table.toggleAllRowsSelected(false)
       fetchTeams()
     } catch (error: any) {
       // apiClient already handled toast
+    } finally {
+      setIsBulkLoading(false)
     }
   }
 
@@ -139,11 +169,22 @@ export default function OrganisationTeamsPage() {
     fetchTeams()
   }, [fetchTeams]))
 
+  useEvent("ORGANISATION_TEAM_MEMBERS_CHANGED", React.useCallback(() => {
+    fetchTeams()
+  }, [fetchTeams]))
+
   React.useEffect(() => {
     if (activeOrg) fetchTeams()
   }, [activeOrg, fetchTeams])
 
-  if (isOrgPending) return <div className="flex items-center justify-center h-screen font-black uppercase tracking-widest text-primary animate-pulse">Loading...</div>
+  // 7. Global Refresh Hardware Listener
+  React.useEffect(() => {
+    const handleGlobalRefresh = () => fetchTeams()
+    window.addEventListener("ORG_MODULE_REFRESH", handleGlobalRefresh)
+    return () => window.removeEventListener("ORG_MODULE_REFRESH", handleGlobalRefresh)
+  }, [fetchTeams])
+
+  if (isOrgPending) return null
   if (!activeOrg) return (
     <div className="flex flex-col items-center justify-center h-screen gap-4">
         <ShieldAlert className="size-16 text-destructive/50" />
@@ -167,79 +208,147 @@ export default function OrganisationTeamsPage() {
   ]
 
   return (
-    <>
-      <DashboardHeader 
-        breadcrumbs={[
-            { label: "Dashboard", href: "/dashboard" },
-            { label: "Organization", href: "/dashboard/organisation" },
-            { label: "Teams" }
-        ]}
+    <div className="w-full">
+      <DataTable
+          table={table}
+          isLoading={isLoading}
+          isSearchActive={!!search}
+          isRefreshing={isRefreshing}
       >
-        <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="h-8 w-8 text-muted-foreground hover:text-primary transition-all active:scale-95"
-            title="Refresh"
-        >
-            <RefreshCwIcon className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </Button>
-        {canManage && (
-            <Button
-              size="sm"
-              onClick={() => { setSelectedTeam(null); setIsTeamDialogOpen(true); }}
-              className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-lg shadow-lg shadow-primary/20 transition-all flex gap-2 active:scale-95 font-bold uppercase tracking-wider text-[10px]"
-            >
-              <FolderPlus className="h-4 w-4" />
-              Add Team
-            </Button>
-        )}
-      </DashboardHeader>
+          <DataTableAdvancedToolbar 
+              table={table} 
+              filterFields={filterFields}
+              filters={filters}
+              setFilters={setFilters}
+              onSearchChange={onSearchChange}
+              onFilterReset={onFilterReset}
+              search={search}
+              className="mb-4"
+          />
+      </DataTable>
+      
+      <p className="text-[11px] font-medium text-muted-foreground/60 text-center mt-8 italic tracking-tight">
+         Displaying {teams.length} of {totalCount} teams
+      </p>
 
-      <PageShell>
-        <div className="flex items-center gap-3 mb-8 bg-muted/20 p-4 rounded-2xl border border-border/50">
-            <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                <Building2 className="size-5 text-primary" />
-            </div>
-            <div className="flex flex-col">
-                <h2 className="text-sm font-black uppercase tracking-tight text-foreground">{activeOrg.name}</h2>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-0.5">Organization Teams</p>
-            </div>
-            <div className="ml-auto">
-                <OrgTabs />
-            </div>
-        </div>
-
-        <DataTable
-            table={table}
-            isLoading={isLoading}
-            isSearchActive={!!search}
-            isRefreshing={isRefreshing}
-        >
-            <DataTableAdvancedToolbar 
-                table={table} 
-                filterFields={filterFields}
-                filters={filters}
-                setFilters={setFilters}
-                onSearchChange={onSearchChange}
-                onFilterReset={onFilterReset}
-                search={search}
-                className="mb-4"
-            />
-        </DataTable>
-        
-        <p className="text-[11px] font-medium text-muted-foreground/60 text-center mt-8 italic tracking-tight">
-           Displaying {teams.length} of {totalCount} teams
-        </p>
-      </PageShell>
       <TeamDialog 
-         open={isTeamDialogOpen}
-         onOpenChange={setIsTeamDialogOpen}
-         organizationId={Number(activeOrg.id)}
-         team={selectedTeam}
-         onSuccess={() => fetchTeams()}
+        open={isTeamDialogOpen}
+        onOpenChange={(open: boolean) => {
+          setIsTeamDialogOpen(open)
+          if (!open) setSelectedTeam(null)
+        }}
+        organizationId={activeOrg.id.toString()}
+        team={selectedTeam}
+        onSuccess={fetchTeams}
       />
-    </>
+
+      <DeleteTeamDialog 
+        open={isDeleteDialogOpen}
+        onOpenChange={(open: boolean) => {
+          setIsDeleteDialogOpen(open)
+          if (!open) setSelectedTeam(null)
+        }}
+        organizationId={activeOrg.id.toString()}
+        team={selectedTeam}
+        onSuccess={fetchTeams}
+      />
+
+        <BulkDeleteTeamDialog
+          open={isBulkDeleteDialogOpen}
+          onOpenChange={setIsBulkDeleteDialogOpen}
+          teams={table.getFilteredSelectedRowModel().rows.map(row => row.original)}
+          organizationId={activeOrg?.id?.toString() || ""}
+          onSuccess={() => {
+            table.toggleAllRowsSelected(false)
+            fetchTeams()
+          }}
+        />
+
+        <ActionBar table={table}>
+           {((canUpdate || canToggle || canDelete)) && (
+             <>
+               {table.getFilteredSelectedRowModel().rows.length === 1 && canUpdate && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => { 
+                      const t = table.getFilteredSelectedRowModel().rows[0].original
+                      setSelectedTeam(t); 
+                      setIsTeamDialogOpen(true); 
+                    }}
+                    className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+                  </Button>
+               )}
+
+               {table.getFilteredSelectedRowModel().rows.length === 1 ? (
+                 table.getFilteredSelectedRowModel().rows[0].original.isActive ? (
+                   canToggle && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       disabled={isBulkLoading}
+                       onClick={() => onBulkStatusUpdate(false)}
+                       className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                     >
+                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                     </Button>
+                   )
+                 ) : (
+                   canToggle && (
+                     <Button 
+                       variant="ghost" 
+                       size="sm" 
+                       disabled={isBulkLoading}
+                       onClick={() => onBulkStatusUpdate(true)}
+                       className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                     >
+                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                     </Button>
+                   )
+                 )
+               ) : (
+                 <>
+                   {canToggle && (
+                     <>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isBulkLoading}
+                          onClick={() => onBulkStatusUpdate(true)}
+                          className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={isBulkLoading}
+                          onClick={() => onBulkStatusUpdate(false)}
+                          className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                        >
+                          <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                        </Button>
+                     </>
+                   )}
+                 </>
+               )}
+               {canDelete && (
+                 <Button 
+                   variant="ghost" 
+                   size="sm" 
+                   disabled={isBulkLoading}
+                   onClick={() => setIsBulkDeleteDialogOpen(true)}
+                   className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                 >
+                   <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+                 </Button>
+               )}
+             </>
+           )}
+        </ActionBar>
+    </div>
   )
 }
+

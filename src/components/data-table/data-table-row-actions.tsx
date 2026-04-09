@@ -45,7 +45,7 @@ export function DataTableRowActions({
             key={`${action.label}-${index}`}
             onClick={action.onClick}
             className={`
-              cursor-pointer px-3 py-2 text-xs font-bold transition-all rounded-lg
+              cursor-pointer px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all rounded-lg
               ${action.variant === "destructive" 
                 ? "text-destructive focus:text-destructive focus:bg-destructive/10" 
                 : "text-muted-foreground focus:text-foreground focus:bg-muted/50"}

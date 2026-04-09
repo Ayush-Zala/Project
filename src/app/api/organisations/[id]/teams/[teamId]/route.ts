@@ -23,16 +23,43 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:team:manage");
-  if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const canUpdate = await hasPermission(userId, "organisation_team:update", Number(orgIdStr));
+  const canToggle = await hasPermission(userId, "organisation_team:toggle", Number(orgIdStr));
+  
+  if (!canUpdate && !canToggle) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const orgId = Number(orgIdStr);
   const teamId = Number(teamIdStr);
+
+  // 🛡️ Team Status Guard: Block non-creators/non-admins from inactive teams
+  const team = await (prisma as any).organisationTeam.findUnique({
+    where: { id: teamId },
+    select: { isActive: true, createdBy: true }
+  });
+
+  if (team && !team.isActive) {
+    const isCreator = team.createdBy === userId;
+    const isSuperAdmin = session.user.role === "super-admin" || 
+      (await (prisma as any).userRole.findFirst({
+        where: { userId, role: { slug: "super-admin" }, isActive: true }
+      }));
+
+    if (!isCreator && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
+    }
+  }
 
   try {
     const body = await req.json();
     const result = updateSchema.safeParse(body);
     if (!result.success) return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
+
+    // 🛡️ Security Guard: Prevent name updates if the user only has 'toggle' capability
+    if (!canUpdate && canToggle && result.data.name !== undefined) {
+      return NextResponse.json({ error: "Forbidden: You only have permission to toggle status, not update names" }, { status: 403 });
+    }
 
     const team = await (prisma as any).organisationTeam.update({
       where: { 
@@ -71,11 +98,29 @@ export async function DELETE(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:team:manage");
+  const allowed = await hasPermission(userId, "organisation_team:delete", Number(orgIdStr));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const orgId = Number(orgIdStr);
   const teamId = Number(teamIdStr);
+
+  // 🛡️ Team Status Guard: Block non-creators/non-admins from inactive teams
+  const team = await (prisma as any).organisationTeam.findUnique({
+    where: { id: teamId },
+    select: { isActive: true, createdBy: true }
+  });
+
+  if (team && !team.isActive) {
+    const isCreator = team.createdBy === userId;
+    const isSuperAdmin = session.user.role === "super-admin" || 
+      (await (prisma as any).userRole.findFirst({
+        where: { userId, role: { slug: "super-admin" }, isActive: true }
+      }));
+
+    if (!isCreator && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
+    }
+  }
 
   try {
     await (prisma as any).organisationTeam.delete({

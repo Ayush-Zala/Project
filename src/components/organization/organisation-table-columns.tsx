@@ -3,20 +3,20 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header"
-import { MoreHorizontal } from "lucide-react"
+import { DataTableRowActions } from "@/components/data-table/data-table-row-actions"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { StatusIndicator } from "@/components/ui/status-indicator"
 
 import { format } from "date-fns"
 
 interface GetColumnsProps {
+  capabilities: {
+    canUpdate: boolean
+    canDelete: boolean
+    canToggle: boolean
+    canViewMembers: boolean
+    canViewTeams: boolean
+  }
   onEdit: (org: any) => void
   onDelete: (org: any) => void
   onToggleStatus: (org: any) => void
@@ -24,21 +24,26 @@ interface GetColumnsProps {
 }
 
 export function getOrganisationColumns({
+  capabilities,
   onEdit,
   onDelete,
   onToggleStatus,
   onViewWorkspace,
 }: GetColumnsProps): ColumnDef<any>[] {
+  const canPerformBulk = capabilities.canToggle || capabilities.canDelete;
+
   return [
     {
       id: "select",
       header: ({ table }) => (
-        <Checkbox
-          checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-          className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-        />
+        canPerformBulk ? (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select all"
+            className="translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+          />
+        ) : null
       ),
       cell: ({ row, table }) => {
         const isSelected = row.getIsSelected()
@@ -47,17 +52,19 @@ export function getOrganisationColumns({
 
         return (
           <div className="group flex items-center justify-center w-8 h-8 relative">
-            {!isSelected && (
+            {(!isSelected || !canPerformBulk) && (
               <span className="text-[10px] font-mono font-black text-muted-foreground/40 group-hover:hidden transition-all duration-200 uppercase tracking-tighter">
                 {String(serialNumber).padStart(2, '0')}
               </span>
             )}
-            <Checkbox
-              checked={isSelected}
-              onCheckedChange={(value) => row.toggleSelected(!!value)}
-              aria-label="Select row"
-              className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
-            />
+            {canPerformBulk && (
+              <Checkbox
+                checked={isSelected}
+                onCheckedChange={(value) => row.toggleSelected(!!value)}
+                aria-label="Select row"
+                className={`translate-y-[2px] border-muted-foreground/30 data-[state=checked]:bg-primary data-[state=checked]:border-primary transition-all duration-200 ${isSelected ? 'scale-110 shadow-lg shadow-primary/20' : 'hidden group-hover:block'}`}
+              />
+            )}
           </div>
         )
       },
@@ -66,6 +73,7 @@ export function getOrganisationColumns({
     },
     {
       accessorKey: "name",
+      meta: { title: "Organization" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Organization" />
       ),
@@ -91,6 +99,7 @@ export function getOrganisationColumns({
     },
     {
       accessorKey: "description",
+      meta: { title: "Description" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Description" />
       ),
@@ -105,34 +114,41 @@ export function getOrganisationColumns({
     },
     {
       id: "membersCount",
+      meta: { title: "Members" },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Members" />
+        <DataTableColumnHeader column={column} title="Members" justify="center" />
       ),
       cell: ({ row }) => {
         const count = row.original._count?.members || 0
         return (
-          <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-widest leading-none">
-            {count} Members
-          </span>
+          <div className="flex justify-center">
+            <span className="text-[11px] font-black font-mono text-muted-foreground/70 transition-colors group-hover:text-primary">
+              {count}
+            </span>
+          </div>
         )
       },
     },
     {
       id: "teamsCount",
+      meta: { title: "Teams" },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Teams" />
+        <DataTableColumnHeader column={column} title="Teams" justify="center" />
       ),
       cell: ({ row }) => {
         const count = row.original._count?.teams || 0
         return (
-          <span className="text-[11px] font-medium text-muted-foreground/70 uppercase tracking-widest leading-none">
-            {count} Teams
-          </span>
+          <div className="flex justify-center">
+            <span className="text-[11px] font-black font-mono text-muted-foreground/70 transition-colors group-hover:text-primary">
+              {count}
+            </span>
+          </div>
         )
       },
     },
     {
       accessorKey: "isActive",
+      meta: { title: "Status" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Status" />
       ),
@@ -147,20 +163,28 @@ export function getOrganisationColumns({
              activeLabel="Active"
              inactiveLabel="Inactive"
              variant="switch"
+             disabled={!capabilities.canToggle}
           />
         )
       },
     },
     {
       accessorKey: "createdAt",
+      meta: { title: "Created" },
       header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Created" />
       ),
       cell: ({ row }) => {
-        const date = Number(row.original.createdAt)
+        const date = new Date(Number(row.original.createdAt))
+        const formattedDate = new Intl.DateTimeFormat("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric"
+        }).format(date)
+
         return (
-          <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-            {format(date, "MMM dd, yyyy")}
+          <span className="text-[10px] font-black font-mono uppercase tracking-widest text-muted-foreground/60 transition-colors group-hover:text-foreground/80">
+            {formattedDate}
           </span>
         )
       },
@@ -169,39 +193,42 @@ export function getOrganisationColumns({
       id: "actions",
       cell: ({ row }) => {
         const org = row.original
+        
+        const actions = [];
+
+        if (capabilities.canViewMembers || capabilities.canViewTeams) {
+          actions.push({
+            label: "View Workspace",
+            onClick: () => onViewWorkspace(org)
+          });
+        }
+
+        if (capabilities.canUpdate) {
+          actions.push({
+            label: "Edit",
+            onClick: () => onEdit(org)
+          });
+        }
+
+        if (capabilities.canToggle) {
+          actions.push({
+            label: org.isActive ? "Mark Inactive" : "Mark Active",
+            onClick: () => onToggleStatus(org)
+          });
+        }
+
+        if (capabilities.canDelete) {
+          actions.push({
+            label: "Delete",
+            onClick: () => onDelete(org),
+            variant: "destructive" as const
+          });
+        }
 
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button
-                variant="ghost"
-                className="flex h-8 w-8 p-0 hover:bg-primary/10 transition-colors"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-popover border-border/40 shadow-2xl">
-              <DropdownMenuItem 
-                onClick={() => onViewWorkspace(org)}
-                className="font-bold text-[10px] uppercase tracking-wider py-2 cursor-pointer"
-              >
-                View Workspace
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => onEdit(org)} 
-                className="font-bold text-[10px] uppercase tracking-wider py-2 cursor-pointer"
-              >
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => onDelete(org)} 
-                className="font-bold text-[10px] uppercase tracking-wider py-2 text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
-              >
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex justify-end pr-4 transition-all opacity-40 hover:opacity-100">
+            <DataTableRowActions actions={actions} />
+          </div>
         )
       },
     },

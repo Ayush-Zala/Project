@@ -142,123 +142,101 @@ export function OrganisationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] bg-background border-border/40 shadow-2xl overflow-hidden p-0">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary/50 to-primary" />
+      <DialogContent className="sm:max-w-[480px] bg-background border-input selection:bg-primary/30 p-0 overflow-hidden shadow-2xl">
+        <div className="absolute top-0 left-0 w-full h-1 bg-primary/20" />
         <div className="p-6">
-          <DialogHeader className="mb-6">
-            <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-               <Building2 className="size-5 text-primary" />
+          <DialogHeader className="mb-4">
+            <DialogTitle className="text-xl font-black uppercase tracking-tight">
                {organisation ? "Edit Organization" : "Add Organization"}
             </DialogTitle>
-            <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 italic leading-tight">
-              {organisation 
-                ? `Update settings for ${organisation.name}` 
-                : "Add a new organization to your workspace."
-              }
-            </DialogDescription>
           </DialogHeader>
-
+          
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
-                        Name <span className="text-red-500 font-bold">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Obsidianoir Industries" 
-                        {...field} 
-                        disabled={isSubmitting}
-                        className="bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-bold text-sm tracking-tight"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
-                  </FormItem>
-                )}
-              />
+              <div className="grid gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                        Organization Name <span className="text-red-500 font-bold">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Obsidianoir Industries" 
+                          {...field} 
+                          disabled={isSubmitting}
+                          className="bg-background border-input focus:border-primary/50 font-bold transition-all text-sm h-10"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold text-red-500" />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="slug"
-                render={({ field }) => (
-                  <FormItem>
-                    <div className="flex items-center justify-between">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70 flex items-center gap-1.5">
-                            <Hash className="size-3" /> Slug <span className="text-red-500 font-bold">*</span>
-                        </FormLabel>
-                    </div>
-                    <FormControl>
-                      <Input 
-                        placeholder="obsidian-noir" 
-                        {...field} 
-                        readOnly={!organisation}
-                        disabled={isSubmitting}
-                        className={`bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-mono text-xs font-bold ${!organisation ? 'cursor-not-allowed opacity-70 border-dashed' : ''}`}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                        Description
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Industrial-grade workspace for autonomous manufacturing..." 
+                          {...field} 
+                          disabled={isSubmitting}
+                          className="resize-none bg-background border-input focus:border-primary/50 min-h-[80px] font-medium transition-all text-xs py-3"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold text-red-500" />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70 flex items-center gap-1.5">
-                        <Info className="size-3" /> Description
-                    </FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Industrial-grade workspace for autonomous manufacturing..." 
-                        {...field} 
-                        disabled={isSubmitting}
-                        className="bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-medium text-xs min-h-[80px] resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="logo"
+                  render={({ field }) => (
+                    <FormItem className="space-y-1.5">
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">
+                        Logo URL
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="https://cdn.industries.com/logo.png" 
+                          {...field} 
+                          disabled={isSubmitting}
+                          className="bg-background border-input focus:border-primary/50 font-medium transition-all text-xs h-10"
+                        />
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-bold text-red-500" />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-              <FormField
-                control={form.control}
-                name="logo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-foreground/70 flex items-center gap-1.5">
-                        <Globe className="size-3" /> Logo URL
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="https://cdn.industries.com/logo.png" 
-                        {...field} 
-                        disabled={isSubmitting}
-                        className="bg-muted/10 border-border/50 focus:border-primary/50 transition-all font-medium text-xs"
-                      />
-                    </FormControl>
-                    <FormMessage className="text-[10px] font-bold text-red-500" />
-                  </FormItem>
-                )}
-              />
-
-              <DialogFooter className="pt-4 border-t border-border/40 mt-8 -mx-6 px-6 bg-muted/5">
+              <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
+                <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => onOpenChange(false)}
+                    className="h-10 text-[11px] font-black uppercase tracking-widest hover:bg-muted/50"
+                >
+                    Cancel
+                </Button>
                 <Button 
                     type="submit" 
                     disabled={isSubmitting}
-                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] h-11 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
                 >
                   {isSubmitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
-                    <Building2 className="mr-2 h-4 w-4" />
+                    organisation ? "Save Changes" : "Create Organization"
                   )}
-                  {organisation ? "Save Changes" : "Create Organization"}
                 </Button>
               </DialogFooter>
             </form>

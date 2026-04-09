@@ -11,9 +11,9 @@ import { createActivityEntry } from "./activity-logger";
  * 
  * Note: Discrete permissions (no inheritance from parent roles per user request).
  */
-export async function hasPermission(userId: number, permissionSlug: string): Promise<boolean> {
+export async function hasPermission(userId: number, permissionSlug: string, orgId?: number): Promise<boolean> {
   try {
-    // 1. Fetch user roles and direct permissions in one go or sequentially
+    // 1. Fetch user roles and direct permissions
     const user = await (prisma as any).user.findUnique({
       where: { id: userId },
       select: {
@@ -47,15 +47,26 @@ export async function hasPermission(userId: number, permissionSlug: string): Pro
 
     if (!user || !user.isActive) return false;
 
-    // 2. Super Admin check
+    // 2. Super Admin Bypass (Highest Priority)
     const isSuperAdmin = user.userRoles.some((ur: any) => ur.role.slug === "super-admin");
     if (isSuperAdmin) return true;
 
-    // 3. Role-based permission check
+    // 3. Organisation Membership Status Check
+    if (orgId) {
+      const membership = await (prisma as any).organisationMember.findFirst({
+        where: { userId: userId, organizationId: orgId },
+        select: { isActive: true }
+      });
+      
+      // If they are explicitly marked as inactive for this org, block access
+      if (membership && !membership.isActive) return false;
+    }
+
+    // 4. Role-based permission check
     const hasViaRole = user.userRoles.some((ur: any) => ur.role.rolePermissions.length > 0);
     if (hasViaRole) return true;
 
-    // 4. Direct user permission check
+    // 5. Direct user permission check
     const hasDirect = user.userPermissions.length > 0;
     if (hasDirect) return true;
 
@@ -69,8 +80,8 @@ export async function hasPermission(userId: number, permissionSlug: string): Pro
 /**
  * Higher-order function or helper for API routes to enforce permissions.
  */
-export async function validatePermission(userId: number, permissionSlug: string) {
-  const allowed = await hasPermission(userId, permissionSlug);
+export async function validatePermission(userId: number, permissionSlug: string, orgId?: number) {
+  const allowed = await hasPermission(userId, permissionSlug, orgId);
   if (!allowed) {
     // 🛡️ Log Permission Denied Server Event
     await createActivityEntry({

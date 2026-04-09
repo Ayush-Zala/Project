@@ -6,6 +6,7 @@ import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
 import { validateRoleTransition } from "@/lib/security-rules";
+import { runWithAuditContext } from "@/lib/audit-context";
 
 const memberUpdateSchema = z.object({
   role: z.enum(["owner", "member"]).optional(),
@@ -24,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const memberId = parseInt(resolvedParams.memberId);
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:member:manage");
+  const allowed = await hasPermission(userId, "organisation_member:toggle", Number(orgId));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
@@ -48,17 +49,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       }
     }
 
-    const member = await (prisma as any).organisationMember.update({
-      where: { id: memberId },
-      data: {
-        ...result.data,
-        updatedBy: userId,
-        updatedAt: BigInt(Date.now()),
-      }
-    });
+    return await runWithAuditContext({ 
+      userId, 
+      action: result.data.isActive !== undefined && Object.keys(result.data).length === 1 ? "Toggle" : undefined 
+    }, async () => {
+      const member = await (prisma as any).organisationMember.update({
+        where: { id: memberId },
+        data: {
+          ...result.data,
+          updatedBy: userId,
+          updatedAt: BigInt(Date.now()),
+        }
+      });
 
-    await emitEvent("ORGANISATION_MEMBERS_CHANGED", { action: "updated", organisationId: orgId, memberId: String(memberId) });
-    return NextResponse.json(member);
+      await emitEvent("ORGANISATION_MEMBERS_CHANGED", { action: "updated", organisationId: orgId, memberId: String(memberId) });
+      return NextResponse.json(member);
+    });
   } catch (error) {
     console.error("[MEMBER_PATCH]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
@@ -77,7 +83,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const memberId = parseInt(resolvedParams.memberId);
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:member:manage");
+  const allowed = await hasPermission(userId, "organisation_member:delete", Number(orgId));
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {

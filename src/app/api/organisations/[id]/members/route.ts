@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const orgId = parseInt(resolvedParams.id);
 
   const userId = Number(session.user.id);
-  const canRead = await hasPermission(userId, "organisation:read");
+  const canRead = await hasPermission(userId, "organisation_member:read", orgId);
   if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -113,7 +113,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const orgId = parseInt(resolvedParams.id);
 
   const userId = Number(session.user.id);
-  const allowed = await hasPermission(userId, "organisation:member:manage");
+  const allowed = await hasPermission(userId, "organisation_member:create", orgId);
   if (!allowed) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   try {
