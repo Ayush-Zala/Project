@@ -40,7 +40,7 @@ export function OrgSwitcher() {
   const router = useRouter()
 
   // 🛡️ Use our unified Workspace Hook instead of standard Better Auth hooks
-  const { data: activeOrg, isExternal, refresh: refreshWorkspace } = useWorkspace()
+  const { data: activeOrg, isExternal, refresh: refreshWorkspace, clearOverride } = useWorkspace()
   const { hasPermission } = usePermissions()
   const canReadAll = hasPermission("organisation:read_all")
   const { data: activeMember } = authClient.useActiveMember()
@@ -95,11 +95,18 @@ export function OrgSwitcher() {
         toast.success(`Switched to ${org.name}`, { id: toastId })
       } else {
         // Standard Switch for members
+        // 🧪 Optimistic Transition: Clear overrides immediately
+        clearOverride()
+        // Delete ghost cookie manually to be extra safe during transition
+        document.cookie = "ghost_active_org_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
+        
         await authClient.organization.setActive({ organizationId: String(org.id) })
         toast.success(`Switched to ${org.name}`, { id: toastId })
       }
-
+      
+      // Ensure state is fully fresh before dispatching refresh events
       await refreshWorkspace()
+      
       router.refresh()
       // Force a full layout effect sync
       window.dispatchEvent(new Event("ORG_MODULE_REFRESH"))

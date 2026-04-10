@@ -10,6 +10,7 @@ interface WorkspaceContextType {
   isLoading: boolean
   isExternal: boolean
   refresh: () => Promise<void>
+  clearOverride: () => void
 }
 
 const WorkspaceContext = React.createContext<WorkspaceContextType>({
@@ -17,6 +18,7 @@ const WorkspaceContext = React.createContext<WorkspaceContextType>({
   isLoading: true,
   isExternal: false,
   refresh: async () => {},
+  clearOverride: () => {},
 })
 
 /**
@@ -73,6 +75,11 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
       await fetchActiveOrgFallback()
   }, [fetchActiveOrgFallback])
 
+  const clearOverride = React.useCallback(() => {
+    console.log("[WORKSPACE] Explicitly clearing administrative override.");
+    setGhostOrg(null);
+  }, []);
+
   // Combined State
   // 🚀 For Super Admins, we PRIORITIZE ghostOrg (our custom resolver) 
   const data = isSuperAdmin ? (ghostOrg || activeOrg) : activeOrg
@@ -86,8 +93,9 @@ export function WorkspaceProvider({ children }: { children: React.ReactNode }) {
     data,
     isLoading,
     isExternal,
-    refresh
-  }), [data, isLoading, isExternal, refresh])
+    refresh,
+    clearOverride
+  }), [data, isLoading, isExternal, refresh, clearOverride])
 
   return (
     <WorkspaceContext.Provider value={value}>
