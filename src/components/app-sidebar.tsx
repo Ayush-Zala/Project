@@ -19,6 +19,8 @@ import {
   LibraryIcon,
   HistoryIcon,
   Building2,
+  Building,
+  Contact,
 } from "lucide-react"
 
 const data = {
@@ -57,6 +59,18 @@ const data = {
       url: "/dashboard/organisation",
       icon: <Building2 />,
       permission: "organisation:read",
+    },
+    {
+      title: "Companies",
+      url: "/dashboard/companies",
+      icon: <Building />,
+      permission: "company:read",
+    },
+    {
+      title: "Clients",
+      url: "/dashboard/clients",
+      icon: <Contact />,
+      permission: "company_client:read",
     },
     {
       title: "Profile",

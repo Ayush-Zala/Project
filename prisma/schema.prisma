@@ -373,6 +373,7 @@ model Organisation {
   invitations OrganisationInvitation[]
   teams       OrganisationTeam[]
   roles       OrganisationRole[]
+  companies   Company[]
 
   @@map("organisation")
 }
@@ -461,4 +462,158 @@ model OrganisationRole {
   organisation   Organisation @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@map("organisation_role")
+}
+
+// ─── COMPANY & CLIENT MODULE ─────────────────────────────
+
+enum CompanySource {
+  REFERRAL
+  COLD_CALL
+  COLD_EMAIL
+  LINKEDIN
+  WEBSITE
+  CONFERENCE
+  PAID_AD
+  CONTENT_MARKETING
+  PARTNER
+  OTHER
+}
+
+enum ContactType {
+  MOBILE
+  LANDLINE
+  WORK_PHONE
+  FAX
+  EMAIL
+  WORK_EMAIL
+  WHATSAPP
+  TELEGRAM
+  SIGNAL
+  SKYPE
+  ZOOM
+  OTHER
+}
+
+enum SocialPlatform {
+  LINKEDIN
+  TWITTER_X
+  FACEBOOK
+  INSTAGRAM
+  YOUTUBE
+  TIKTOK
+  GITHUB
+  GITLAB
+  WEBSITE
+  BLOG
+  OTHER
+}
+
+model Industry {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  companies   Company[]
+
+  @@map("industry")
+}
+
+model Company {
+  id              Int           @id @default(autoincrement())
+  organisationId  Int
+  industryId      Int
+  name            String
+  website         String?
+  source          CompanySource @default(OTHER)
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  country         String?
+  postalCode      String?
+  isActive        Boolean       @default(true)
+  createdBy       Int?
+  updatedBy       Int?
+  createdAt       BigInt        @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt       BigInt        @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  industry        Industry      @relation(fields: [industryId], references: [id])
+  contacts        CompanyContact[]
+  clients         CompanyClient[]
+
+  @@map("company")
+}
+
+model CompanyContact {
+  id        Int         @id @default(autoincrement())
+  companyId Int
+  type      ContactType @default(MOBILE)
+  value     String
+  isPrimary Boolean     @default(false)
+  isActive  Boolean     @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt BigInt      @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt      @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("company_contact")
+}
+
+model CompanyClient {
+  id          Int                  @id @default(autoincrement())
+  companyId   Int
+  fullName    String
+  designation String?
+  isActive    Boolean              @default(true)
+  createdBy   Int?
+  updatedBy   Int?
+  createdAt   BigInt               @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt   BigInt               @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  company     Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contacts    CompanyClientContact[]
+  socials     CompanyClientSocialProfile[]
+
+  @@map("company_client")
+}
+
+model CompanyClientContact {
+  id        Int         @id @default(autoincrement())
+  clientId  Int
+  type      ContactType @default(MOBILE)
+  value     String
+  isPrimary Boolean     @default(false)
+  isActive  Boolean     @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt BigInt      @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt      @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  client    CompanyClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("company_client_contact")
+}
+
+model CompanyClientSocialProfile {
+  id        Int            @id @default(autoincrement())
+  clientId  Int
+  platform  SocialPlatform @default(LINKEDIN)
+  url       String
+  isActive  Boolean        @default(true)
+  createdBy Int?
+  updatedBy Int?
+  createdAt BigInt         @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt BigInt         @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  client    CompanyClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@map("company_client_social_profile")
 }

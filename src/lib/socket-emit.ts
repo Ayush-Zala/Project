@@ -29,7 +29,9 @@ export type RealtimeEvent =
   | "ORGANISATIONS_CHANGED"         // Organisation CRUD
   | "ORGANISATION_MEMBERS_CHANGED" // Member CRUD
   | "ORGANISATION_TEAM_MEMBERS_CHANGED" // Team Member CRUD
-  | "ORGANISATION_TEAMS_CHANGED"; // Team CRUD
+  | "ORGANISATION_TEAMS_CHANGED" // Team CRUD
+  | "COMPANIES_CHANGED"          // Company CRUD
+  | "CLIENTS_CHANGED";           // Client CRUD
 
 /**
  * Emits a one-shot event to the WebSocket gateway server.

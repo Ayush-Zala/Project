@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
@@ -33,13 +34,15 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <NuqsAdapter>
-            <TooltipProvider>
-              <SocketProvider>
-                <PermissionProvider>
-                  {children}
-                </PermissionProvider>
-              </SocketProvider>
-            </TooltipProvider>
+            <React.Suspense fallback={null}>
+              <TooltipProvider>
+                <SocketProvider>
+                  <PermissionProvider>
+                    {children}
+                  </PermissionProvider>
+                </SocketProvider>
+              </TooltipProvider>
+            </React.Suspense>
           </NuqsAdapter>
           <Toaster
             richColors

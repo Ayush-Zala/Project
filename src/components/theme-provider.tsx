@@ -9,9 +9,7 @@ export function ThemeProvider({
 }: React.ComponentProps<typeof NextThemesProvider>) {
   return (
     <NextThemesProvider {...props}>
-      <div className="contents" suppressHydrationWarning>
-        {children}
-      </div>
+      {children}
     </NextThemesProvider>
-  );
+  )
 }
