@@ -29,20 +29,20 @@ const clientSchema = z.object({
   fullName: z.string().min(2, "Client full name is required"),
   designation: z.string().min(1, "Client designation is required"),
   contacts: z.array(clientContactSchema).min(1, "At least one client contact is required"),
-  socials: z.array(clientSocialSchema).optional().default([]),
+  socials: z.array(clientSocialSchema).min(1, "At least one social profile is required"),
 });
 
 const companySchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().url("Valid website URL is required"),
   industryId: z.number().positive("Industry is required"),
-  source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]),
-  addressLine1: z.string().optional(),
+  source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]).optional(),
+  addressLine1: z.string().min(1, "Address Line 1 is required"),
   addressLine2: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  postalCode: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  country: z.string().min(1, "Country is required"),
+  postalCode: z.string().min(1, "Postal Code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one company contact is required"),
   client: clientSchema, // 🛡️ Now Compulsory
 });
@@ -146,7 +146,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const body = await req.json();
     const result = companySchema.safeParse(body);
-    if (!result.success) return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
+    if (!result.success) {
+        const errors = result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join(" | ");
+        return NextResponse.json({ error: `Validation Failed: ${errors}` }, { status: 400 });
+    }
 
     const { contacts, client: clientData, ...companyData } = result.data;
     const { contacts: clientContacts, socials: clientSocials, ...clientBase } = clientData;
