@@ -32,13 +32,24 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
 import { authClient } from "@/lib/auth-client"
-import { Loader2, Plus, Trash2, Building, Globe, MapPin, Contact2, Phone, Mail, Link as LinkIcon } from "lucide-react"
+import { Loader2, Plus, Trash2, Building, Globe, MapPin, Contact2, Phone, Mail, Link as LinkIcon, UserPlus } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
 const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   value: z.string().min(1, "Value is required"),
   isPrimary: z.boolean(),
+})
+
+const clientContactSchema = z.object({
+  type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  value: z.string().min(1, "Value is required"),
+  isPrimary: z.boolean(),
+})
+
+const clientSocialSchema = z.object({
+  platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  url: z.string().url("Valid URL is required"),
 })
 
 const companyFormSchema = z.object({
@@ -53,6 +64,13 @@ const companyFormSchema = z.object({
   country: z.string().optional(),
   postalCode: z.string().optional(),
   contacts: z.array(companyContactSchema).min(1, "At least one contact is required"),
+  // 🛡️ Compulsory Client Section
+  client: z.object({
+    fullName: z.string().min(2, "Client name must be at least 2 characters"),
+    designation: z.string().min(1, "Designation is required"),
+    contacts: z.array(clientContactSchema).min(1, "Required"),
+    socials: z.array(clientSocialSchema),
+  })
 })
 
 type CompanyFormValues = z.infer<typeof companyFormSchema>
@@ -70,6 +88,9 @@ const SOURCES = [
 
 const CONTACT_TYPES = [
   "MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"
+]
+const SOCIAL_PLATFORMS = [
+  "LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"
 ]
 
 export function CompanyDialog({
@@ -96,12 +117,31 @@ export function CompanyDialog({
       country: "",
       postalCode: "",
       contacts: [{ type: "MOBILE", value: "", isPrimary: true }],
+      client: {
+        fullName: "",
+        designation: "",
+        contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+        socials: [{ platform: "LINKEDIN", url: "" }],
+      }
     },
   })
 
-  const { fields, append, remove } = useFieldArray({
+  // Company Contacts
+  const { fields: companyContacts, append: appendCompanyContact, remove: removeCompanyContact } = useFieldArray({
     control: form.control,
     name: "contacts",
+  })
+
+  // Client Contacts
+  const { fields: clientContacts, append: appendClientContact, remove: removeClientContact } = useFieldArray({
+    control: form.control,
+    name: "client.contacts",
+  })
+
+  // Client Socials
+  const { fields: clientSocials, append: appendClientSocial, remove: removeClientSocial } = useFieldArray({
+    control: form.control,
+    name: "client.socials",
   })
 
   // Load industries
@@ -128,6 +168,12 @@ export function CompanyDialog({
         contacts: company.contacts?.length > 0
           ? company.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
           : [{ type: "MOBILE", value: "", isPrimary: true }],
+        client: {
+          fullName: "",
+          designation: "",
+          contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+          socials: [{ platform: "LINKEDIN", url: "" }],
+        }
       })
     } else if (!company && open) {
       form.reset({
@@ -142,6 +188,12 @@ export function CompanyDialog({
         country: "",
         postalCode: "",
         contacts: [{ type: "MOBILE", value: "", isPrimary: true }],
+        client: {
+          fullName: "",
+          designation: "",
+          contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+          socials: [{ platform: "LINKEDIN", url: "" }],
+        }
       })
     }
   }, [company, open, form])
@@ -158,9 +210,12 @@ export function CompanyDialog({
 
     try {
       if (company) {
+        // Note: For now, edit company doesn't edit the client via this modal
+        // since we only require client on CREATE as per current instruction.
+        const { client, ...updatePayload } = payload;
         await apiClient(`/api/companies/${company.id}`, {
           method: "PUT",
-          body: JSON.stringify(payload),
+          body: JSON.stringify(updatePayload),
         })
       } else {
         await apiClient(`/api/organisations/${activeOrg.id}/companies`, {
@@ -353,20 +408,20 @@ export function CompanyDialog({
 
               <div className="pt-4 border-t border-border/10">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70">Contacts</h3>
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/70">Company Contacts</h3>
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => append({ type: "MOBILE", value: "", isPrimary: fields.length === 0 })}
-                    className="h-6 px-2 text-[9px] font-black uppercase tracking-widest"
+                    onClick={() => appendCompanyContact({ type: "MOBILE", value: "", isPrimary: companyContacts.length === 0 })}
+                    className="h-6 px-2 text-[9px] font-black uppercase tracking-widest font-bold"
                   >
-                    + Add Channel
+                    + Add
                   </Button>
                 </div>
 
                 <div className="space-y-3">
-                  {fields.map((field, index) => (
+                  {companyContacts.map((field, index) => (
                     <div key={field.id} className="flex gap-2 items-end">
                       <FormField
                         control={form.control}
@@ -416,19 +471,19 @@ export function CompanyDialog({
                                       form.setValue('contacts', form.getValues('contacts').map((c, i) => ({ ...c, isPrimary: i === index })))
                                     }
                                   }}
-                                  className="size-3 accent-primary"
+                                  className="size-3 accent-primary cursor-pointer"
                                 />
                               </FormControl>
                               <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/60">Primary</span>
                             </FormItem>
                           )}
                         />
-                        {fields.length > 1 && (
+                        {companyContacts.length > 1 && (
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => remove(index)}
+                            onClick={() => removeCompanyContact(index)}
                             className="size-6 text-muted-foreground/30 hover:text-destructive"
                           >
                             <Trash2 className="size-3" />
@@ -439,6 +494,191 @@ export function CompanyDialog({
                   ))}
                 </div>
               </div>
+
+              {/* 🛡️ Compulsory Primary Client Section */}
+              {!company && (
+                <div className="pt-8 border-t-2 border-primary/20 bg-primary/5 -mx-6 px-6 pb-6 space-y-6">
+                  <div className="flex items-center gap-2">
+                    <UserPlus className="size-4 text-primary" />
+                    <h2 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Primary Client Registration</h2>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="client.fullName"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/70">Full Name *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Lead Contact" {...field} className="h-9 text-xs font-bold uppercase border-primary/20 bg-background" />
+                          </FormControl>
+                          <FormMessage className="text-[9px] font-bold" />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="client.designation"
+                      render={({ field }) => (
+                        <FormItem className="space-y-1.5">
+                          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/70">Designation *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Decision Maker" {...field} className="h-9 text-xs font-bold uppercase border-primary/20 bg-background" />
+                          </FormControl>
+                          <FormMessage className="text-[9px] font-bold" />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Client Contacts */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        <Mail className="size-3" /> Communication Channels *
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => appendClientContact({ type: "EMAIL", value: "", isPrimary: clientContacts.length === 0 })}
+                        className="h-6 px-2 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                      >
+                        + Add Channel
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {clientContacts.map((field, index) => (
+                        <div key={field.id} className="flex gap-2 items-end">
+                          <FormField
+                            control={form.control}
+                            name={`client.contacts.${index}.type` as const}
+                            render={({ field }) => (
+                              <FormItem className="flex-1 max-w-[90px] space-y-0">
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-8 text-[9px] font-black uppercase bg-background border-primary/10">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {CONTACT_TYPES.map((t) => (
+                                      <SelectItem key={t} value={t} className="text-[9px] font-black uppercase">
+                                        {t.replace("_", " ")}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`client.contacts.${index}.value` as const}
+                            render={({ field }) => (
+                              <FormItem className="flex-[2] space-y-0">
+                                <FormControl>
+                                  <Input placeholder="Contact Value" {...field} className="h-8 text-xs font-bold bg-background border-primary/10" />
+                                </FormControl>
+                                <FormMessage className="text-[8px]" />
+                              </FormItem>
+                            )}
+                          />
+                          <div className="flex items-center gap-2 h-8">
+                            <FormField
+                              control={form.control}
+                              name={`client.contacts.${index}.isPrimary` as const}
+                              render={({ field }) => (
+                                <FormItem className="flex items-center gap-1.5">
+                                  <FormControl>
+                                    <input
+                                      type="checkbox"
+                                      checked={field.value}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          form.setValue('client.contacts', form.getValues('client.contacts').map((c, i) => ({ ...c, isPrimary: i === index })))
+                                        }
+                                      }}
+                                      className="size-3 accent-primary cursor-pointer"
+                                    />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                            {clientContacts.length > 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeClientContact(index)} className="size-6 text-muted-foreground/30 hover:text-destructive">
+                                <Trash2 className="size-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Client Socials */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[9px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+                        <Globe className="size-3" /> Social Profiles
+                      </h3>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => appendClientSocial({ platform: "LINKEDIN", url: "" })}
+                        className="h-6 px-2 text-[8px] font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+                      >
+                        + Add Social
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      {clientSocials.map((field, index) => (
+                        <div key={field.id} className="flex gap-2 items-end">
+                          <FormField
+                            control={form.control}
+                            name={`client.socials.${index}.platform` as const}
+                            render={({ field }) => (
+                              <FormItem className="flex-1 max-w-[110px] space-y-0">
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-8 text-[9px] font-black uppercase bg-background border-primary/10">
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {SOCIAL_PLATFORMS.map((p) => (
+                                      <SelectItem key={p} value={p} className="text-[9px] font-black uppercase">
+                                        {p.replace("_", " ")}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`client.socials.${index}.url` as const}
+                            render={({ field }) => (
+                              <FormItem className="flex-[3] space-y-0">
+                                <FormControl>
+                                  <Input placeholder="Profile URL" {...field} className="h-8 text-xs font-medium bg-background border-primary/10" />
+                                </FormControl>
+                                <FormMessage className="text-[8px]" />
+                              </FormItem>
+                            )}
+                          />
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeClientSocial(index)} className="size-8 text-muted-foreground/30 hover:text-destructive h-8">
+                            <Trash2 className="size-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <DialogFooter className="pt-6 border-t border-border/10 -mx-6 px-6 bg-muted/5 mt-6 gap-2 sm:gap-0">
                 <Button

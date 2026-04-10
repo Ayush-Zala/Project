@@ -10,8 +10,26 @@ import { type ExtendedColumnFilter } from "@/types/data-table";
 
 const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
-  value: z.string().min(1, "Contact value is required"),
+  value: z.string().min(1, "Company contact value is required"),
   isPrimary: z.boolean().default(false),
+});
+
+const clientContactSchema = z.object({
+  type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  value: z.string().min(1, "Client contact value is required"),
+  isPrimary: z.boolean().default(false),
+});
+
+const clientSocialSchema = z.object({
+  platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  url: z.string().url("Valid client social URL is required"),
+});
+
+const clientSchema = z.object({
+  fullName: z.string().min(2, "Client full name is required"),
+  designation: z.string().min(1, "Client designation is required"),
+  contacts: z.array(clientContactSchema).min(1, "At least one client contact is required"),
+  socials: z.array(clientSocialSchema).optional().default([]),
 });
 
 const companySchema = z.object({
@@ -25,7 +43,8 @@ const companySchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
   postalCode: z.string().optional(),
-  contacts: z.array(companyContactSchema).min(1, "At least one contact is required"),
+  contacts: z.array(companyContactSchema).min(1, "At least one company contact is required"),
+  client: clientSchema, // 🛡️ Now Compulsory
 });
 
 /**
@@ -113,7 +132,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 /**
- * POST: Create a Company
+ * POST: Create a Company with Compulsory Client
  */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: organisationId } = await params;
@@ -129,10 +148,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const result = companySchema.safeParse(body);
     if (!result.success) return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
 
-    const { contacts, ...companyData } = result.data;
+    const { contacts, client: clientData, ...companyData } = result.data;
+    const { contacts: clientContacts, socials: clientSocials, ...clientBase } = clientData;
 
     const epochNow = BigInt(Date.now());
 
+    // 🚀 Execution: Transactional Nested Creation
     const company = await (prisma as any).company.create({
       data: {
         ...companyData,
@@ -151,14 +172,53 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             createdAt: epochNow,
             updatedAt: epochNow,
           }))
+        },
+        clients: {
+          create: [{
+            ...clientBase,
+            isActive: true,
+            createdBy: userId,
+            updatedBy: userId,
+            createdAt: epochNow,
+            updatedAt: epochNow,
+            contacts: {
+              create: clientContacts.map(cc => ({
+                ...cc,
+                isActive: true,
+                createdBy: userId,
+                updatedBy: userId,
+                createdAt: epochNow,
+                updatedAt: epochNow,
+              }))
+            },
+            socials: {
+              create: clientSocials.map(cs => ({
+                ...cs,
+                isActive: true,
+                createdBy: userId,
+                updatedBy: userId,
+                createdAt: epochNow,
+                updatedAt: epochNow,
+              }))
+            }
+          }]
         }
       },
       include: {
-        contacts: true
+        contacts: true,
+        clients: {
+          include: {
+            contacts: true,
+            socials: true
+          }
+        }
       }
     });
 
+    // 📣 Notify both modules
     await emitEvent("COMPANIES_CHANGED", { action: "created", organisationId, companyId: String(company.id) });
+    await emitEvent("CLIENTS_CHANGED", { action: "created", organisationId, companyId: String(company.id), clientId: String(company.clients[0].id) });
+
     return NextResponse.json(company, { status: 201 });
   } catch (error) {
     console.error("[COMPANIES_POST]", error);
