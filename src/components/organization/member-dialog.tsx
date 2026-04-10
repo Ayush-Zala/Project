@@ -103,6 +103,7 @@ export function MemberDialog({
       }
 
       onSuccess?.()
+      form.reset() // 🧹 Clear form after successful industrial member addition
       onOpenChange(false)
     } catch (error: any) {
       // apiClient already handled the toast for non-GET errors
