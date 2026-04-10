@@ -127,6 +127,7 @@ export function UserDialog({ open, onOpenChange, user, roles, onSuccess }: UserD
 
       toast.success(user ? "User updated successfully" : "User created successfully")
       onSuccess()
+      form.reset() // 🧹 Clear the form after successful industrial creation
       onOpenChange(false)
     } catch (error: any) {
       toast.error(error.message)
