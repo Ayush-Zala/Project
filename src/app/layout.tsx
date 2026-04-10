@@ -12,6 +12,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SocketProvider } from "@/providers/socket-provider";
 import { PermissionProvider } from "@/providers/permission-provider";
+import { WorkspaceProvider } from "@/providers/workspace-provider";
 
 import { Toaster } from "sonner";
 
@@ -38,7 +39,9 @@ export default function RootLayout({
               <TooltipProvider>
                 <SocketProvider>
                   <PermissionProvider>
-                    {children}
+                    <WorkspaceProvider>
+                      {children}
+                    </WorkspaceProvider>
                   </PermissionProvider>
                 </SocketProvider>
               </TooltipProvider>

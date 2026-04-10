@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation"
 import { useSocket } from "@/providers/socket-provider"
 import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
+import { usePermissions } from "@/providers/permission-provider"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PageShell } from "@/components/dashboard/page-shell"
@@ -26,7 +28,7 @@ import { DataTableFilterField } from "@/types/data-table"
 
 export default function OrganisationsPage() {
   const router = useRouter()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg, refresh: refreshWorkspace } = useWorkspace()
 
   // 1. State Hooks
   const [organisations, setOrganisations] = React.useState<any[]>([])
@@ -110,19 +112,24 @@ export default function OrganisationsPage() {
     }
   }
 
+  const { isSuperAdmin } = usePermissions()
+
   const handleViewWorkspace = async (org: any) => {
     const toastId = toast.loading(`Switching to ${org.name}...`)
     try {
-      await authClient.organization.setActive({ organizationId: String(org.id) })
-      toast.success(`Switched to ${org.name}`, { id: toastId })
-      
-      if (canViewMembers) {
-        router.push("/dashboard/organisation/members")
-      } else if (canViewTeams) {
-        router.push("/dashboard/organisation/teams")
+      if (isSuperAdmin && !org.isMember) {
+        // 🚀 Ghost Mode Protocol: Use God Switch for external organizations
+        await apiClient(`/api/organisations/${org.id}/god-switch`, { method: "POST" })
+        toast.success(`Switched to ${org.name}`, { id: toastId })
       } else {
-        toast.error("Insufficient permissions to access dashboard sections", { id: toastId })
+        // 🛡️ Standard Protocol: Use Better Auth for joined organizations
+        await authClient.organization.setActive({ organizationId: String(org.id) })
+        toast.success(`Switched to ${org.name}`, { id: toastId })
       }
+
+      await refreshWorkspace()
+      router.push("/dashboard/organisation/members")
+      router.refresh()
     } catch (error: any) {
       toast.error("Failed to switch workspace", { id: toastId })
     }
@@ -171,7 +178,7 @@ export default function OrganisationsPage() {
 
   // 5. Real-time WebSocket sync
   const { useEvent } = useSocket()
-  
+
   const handleWebSocketUpdate = React.useCallback(() => {
     fetchOrganisations()
   }, [fetchOrganisations])

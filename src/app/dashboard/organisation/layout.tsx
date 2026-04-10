@@ -3,7 +3,6 @@
 import * as React from "react"
 import { usePathname } from "next/navigation"
 import { Building2 } from "lucide-react"
-import { authClient } from "@/lib/auth-client"
 import { OrgTabs } from "@/components/organization/org-tabs"
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
@@ -19,10 +18,13 @@ import { useHasPermission } from "@/hooks/use-has-permission"
 import { OrganisationDialog } from "@/components/organization/organisation-dialog"
 import { MemberDialog } from "@/components/organization/member-dialog"
 import { TeamDialog } from "@/components/organization/team-dialog"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 export default function OrganisationLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  
+  // 🛡️ Use unified Workspace Hook instead of standard Better Auth
+  const { data: activeOrg, isExternal } = useWorkspace()
 
   // 1. Dialog State Manifest
   const [isOrgOpen, setIsOrgOpen] = React.useState(false)
@@ -103,7 +105,7 @@ export default function OrganisationLayout({ children }: { children: React.React
           {/* Secondary Tier: Organization Hub Header */}
           {!isRegistry && !isTeamMembersPath && activeOrg && (
             <div className="flex items-center gap-3 bg-muted/20 p-4 rounded-2xl border border-border/50 backdrop-blur-sm shadow-sm transition-all animate-in fade-in slide-in-from-top-2 duration-500">
-              <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <div className="size-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center relative">
                 <Building2 className="size-5 text-primary" />
               </div>
               <div className="flex flex-col">
@@ -119,12 +121,12 @@ export default function OrganisationLayout({ children }: { children: React.React
           )}
 
           {/* Base Tier: Component Content */}
-          <div className="flex-1 w-full">
+          <div className="flex-1 w-full text-foreground">
             {children}
           </div>
         </PageShell>
       ) : (
-        <div className="flex-1 w-full h-full">
+        <div className="flex-1 w-full h-full text-foreground text-foreground">
           {children}
         </div>
       )}

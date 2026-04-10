@@ -56,19 +56,12 @@ export async function GET(req: Request) {
     // 2. Advanced filters
     const advancedWhere = getPrismaWhere(filters);
 
-    // 3. Global Filter Context
-    // Verify Super Admin status via database (more reliable than session type)
-    const userWithRoles = await (prisma as any).user.findUnique({
-      where: { id: userId },
-      include: { userRoles: { include: { role: true } } }
-    });
-    const reallyIsSuperAdmin = userWithRoles?.userRoles.some((ur: any) => ur.role.slug === "super-admin");
-
+    const canReadAll = await hasPermission(userId, "organisation:read_all");
     const where = {
         AND: [
             searchWhere, 
             advancedWhere,
-            !reallyIsSuperAdmin ? {
+            !canReadAll ? {
                 OR: [
                     { createdBy: userId },
                     { 
@@ -87,7 +80,7 @@ export async function GET(req: Request) {
 
     const orderBy = getPrismaOrderBy(sort) || { createdAt: 'desc' };
 
-    const [total, organisations] = await Promise.all([
+    const [total, organisationsRaw] = await Promise.all([
       (prisma as any).organisation.count({ where }),
       (prisma as any).organisation.findMany({
         where,
@@ -97,10 +90,21 @@ export async function GET(req: Request) {
         include: {
           _count: {
             select: { members: true, teams: true }
+          },
+          members: {
+            where: { userId: userId },
+            select: { id: true, role: true, isActive: true }
           }
         }
       }),
     ]);
+
+    const organisations = organisationsRaw.map((org: any) => ({
+        ...org,
+        isMember: org.members.length > 0,
+        myRole: org.members[0]?.role || null,
+        members: undefined // Remove members array to keep payload light
+    }));
 
     return NextResponse.json({
       organisations,

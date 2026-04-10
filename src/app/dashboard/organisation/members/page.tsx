@@ -31,10 +31,11 @@ import { useDataTable } from "@/hooks/use-data-table"
 import { getOrganisationMemberColumns } from "@/components/organization/members-table-columns"
 import { DataTableFilterField } from "@/types/data-table"
 import { apiClient } from "@/lib/api-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 export default function OrganisationMembersPage() {
   // 1. Auth & Context Hooks
-  const { data: activeOrg, isPending: isOrgPending } = authClient.useActiveOrganization()
+  const { data: activeOrg, isLoading: isOrgPending, isExternal } = useWorkspace()
   const canCreate = useHasPermission("organisation_member:create")
   const canDelete = useHasPermission("organisation_member:delete")
   const canToggle = useHasPermission("organisation_member:toggle")
@@ -248,14 +249,6 @@ export default function OrganisationMembersPage() {
           onSuccess={fetchMembers}
         />
 
-        <DeleteMemberDialog 
-          open={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          member={selectedMember}
-          organizationId={activeOrg?.id?.toString() || ""}
-          onSuccess={fetchMembers}
-        />
-
         <BulkDeleteMemberDialog
           open={isBulkDeleteDialogOpen}
           onOpenChange={setIsBulkDeleteDialogOpen}
@@ -340,4 +333,3 @@ export default function OrganisationMembersPage() {
     </>
   )
 }
-

@@ -50,14 +50,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     const advancedWhere = getPrismaWhere(filters);
     
     // 🛡️ Data-Level Visibility Filtering
-    // Verify Super Admin status via database (more reliable than session type)
-    const userWithRoles = await (prisma as any).user.findUnique({
-      where: { id: userId },
-      include: { userRoles: { include: { role: true } } }
+    const myMembership = await (prisma as any).organisationMember.findFirst({
+        where: { userId, organizationId: Number(id) },
+        select: { role: true }
     });
-    const reallyIsSuperAdmin = userWithRoles?.userRoles.some((ur: any) => ur.role.slug === "super-admin");
 
-    const visibilityWhere = !reallyIsSuperAdmin ? {
+    const isOwner = myMembership?.role === "owner";
+    const canReadAll = isOwner || await hasPermission(userId, "organisation_team:read_all", Number(id));
+
+    const visibilityWhere = !canReadAll ? {
         OR: [
             { createdBy: userId },
             { 

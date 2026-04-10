@@ -8,6 +8,7 @@ import {
   Check,
   Settings,
   ShieldCheck,
+  ExternalLink,
 } from "lucide-react"
 
 import {
@@ -17,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
@@ -31,12 +31,18 @@ import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { useSocket } from "@/providers/socket-provider"
+import { useWorkspace } from "@/hooks/use-workspace"
+import { apiClient } from "@/lib/api-client"
+import { usePermissions } from "@/providers/permission-provider"
 
 export function OrgSwitcher() {
   const { isMobile } = useSidebar()
   const router = useRouter()
-  
-  const { data: activeOrg } = authClient.useActiveOrganization()
+
+  // 🛡️ Use our unified Workspace Hook instead of standard Better Auth hooks
+  const { data: activeOrg, isExternal, refresh: refreshWorkspace } = useWorkspace()
+  const { hasPermission } = usePermissions()
+  const canReadAll = hasPermission("organisation:read_all")
   const { data: activeMember } = authClient.useActiveMember()
 
   const [organisations, setOrganisations] = React.useState<any[]>([])
@@ -63,29 +69,41 @@ export function OrgSwitcher() {
 
   // 🔌 Real-time WebSocket sync
   const { useEvent } = useSocket()
-  
+
   const handleRefresh = React.useCallback(() => {
     fetchOrganisations()
-    router.refresh()
-  }, [fetchOrganisations, router])
+    refreshWorkspace()
+  }, [fetchOrganisations, refreshWorkspace])
 
   useEvent("ORGANISATIONS_CHANGED", handleRefresh)
   useEvent("ORGANISATION_MEMBERS_CHANGED", handleRefresh)
 
   const [open, setOpen] = React.useState(false)
 
-  const handleSwitch = async (orgId: string) => {
+  const handleSwitch = async (org: any) => {
+    const toastId = toast.loading(`Switching to ${org.name}...`)
     try {
-      await authClient.organization.setActive({ organizationId: orgId })
-      const orgName = organisations?.find(o => String(o.id) === String(orgId))?.name
-      toast.success(`Switched to ${orgName || "Organisation"}`)
+      if (canReadAll && !org.isMember) {
+        // 🚀 Professional Path: Use God Switch for external organizations
+        await apiClient(`/api/organisations/${org.id}/god-switch`, { method: "POST" })
+        toast.success(`Switched to ${org.name}`, { id: toastId })
+      } else {
+        // Standard Switch for members
+        await authClient.organization.setActive({ organizationId: String(org.id) })
+        toast.success(`Switched to ${org.name}`, { id: toastId })
+      }
+
+      await refreshWorkspace()
       router.refresh()
-    } catch (error) {
-      toast.error("Failed to switch organisation")
+      // Force a full layout effect sync
+      window.dispatchEvent(new Event("ORG_MODULE_REFRESH"))
+    } catch (error: any) {
+      toast.error(error.message || "Failed to switch organisation", { id: toastId })
     }
   }
 
-  const active = organisations?.find((org) => String(org.id) === String(activeOrg?.id)) || organisations?.[0]
+  // Determine which organization is currently "active" in the UI
+  const active = activeOrg || organisations?.find((org) => String(org.id) === String(activeOrg?.id)) || organisations?.[0]
 
   return (
     <SidebarMenu>
@@ -97,7 +115,7 @@ export function OrgSwitcher() {
                 size="lg"
                 className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
               >
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground relative">
                   {active?.logo ? (
                     <img src={active.logo} alt={active.name} className="size-5 rounded-sm object-cover" />
                   ) : (
@@ -108,8 +126,12 @@ export function OrgSwitcher() {
                   <span className="truncate font-semibold text-primary">
                     {active?.name || "Select Organisation"}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground uppercase tracking-wider font-bold">
-                    {activeMember?.role || "Workspace"}
+                  <span className="truncate text-[10px] text-muted-foreground uppercase tracking-wider font-bold flex items-center gap-1">
+                    {isExternal ? (
+                      "External"
+                    ) : (
+                      activeMember?.role || activeOrg?.myRole || "Workspace"
+                    )}
                   </span>
                 </div>
                 <ChevronsUpDown className="ml-auto size-4" />
@@ -124,7 +146,7 @@ export function OrgSwitcher() {
           >
             <DropdownMenuGroup>
               <DropdownMenuLabel className="text-xs text-muted-foreground font-bold uppercase tracking-widest px-2 py-1.5">
-                Available Organisations
+                {canReadAll ? "All Organisations" : "Available Organisations"}
               </DropdownMenuLabel>
               <AnimatePresence mode="popLayout">
                 {organisations?.map((org, index) => (
@@ -135,17 +157,26 @@ export function OrgSwitcher() {
                     transition={{ delay: index * 0.05 }}
                   >
                     <DropdownMenuItem
-                      onClick={() => handleSwitch(String(org.id))}
+                      onClick={() => handleSwitch(org)}
                       className="gap-2 p-2 hover:bg-primary/10 transition-colors duration-200"
                     >
-                      <div className="flex size-6 items-center justify-center rounded-sm border border-sidebar-border">
+                      <div className="flex size-6 items-center justify-center rounded-sm border border-sidebar-border relative">
                         {org.logo ? (
                           <img src={org.logo} alt={org.name} className="size-4 rounded-sm object-cover" />
                         ) : (
                           <Building2 className="size-4 text-muted-foreground" />
                         )}
                       </div>
-                      <span className="font-medium text-sidebar-foreground">{org.name}</span>
+                      <div className="flex flex-col">
+                        <span className="font-medium text-sidebar-foreground">{org.name}</span>
+                        {org.isMember ? (
+                          <span className="text-[8px] text-muted-foreground uppercase font-black tracking-tighter -mt-0.5">{org.myRole || "Member"}</span>
+                        ) : (
+                          canReadAll && (
+                            <span className="text-[8px] text-muted-foreground uppercase font-black tracking-tighter -mt-0.5">External</span>
+                          )
+                        )}
+                      </div>
                       {active?.id === org.id && (
                         <Check className="ml-auto size-4 text-primary" />
                       )}

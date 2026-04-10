@@ -27,7 +27,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const userId = Number(session.user.id);
   const canRead = await hasPermission(userId, "organisation_member:read", orgId);
-  if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const canReadAll = await hasPermission(userId, "organisation_member:read_all", orgId);
+
+  // If they can't read at all, or if they aren't a super/all-reader and we need to check membership...
+  // Wait, the current routes don't even check membership for 'read'. 
+  // We are adding 'read_all' to formalize this for Super Admins.
+  if (!canRead && !canReadAll) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const page = parseInt(searchParams.get("page") || "1");
   const limit = parseInt(searchParams.get("per_page") || "10");

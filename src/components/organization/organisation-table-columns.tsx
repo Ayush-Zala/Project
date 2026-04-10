@@ -89,9 +89,11 @@ export function getOrganisationColumns({
                 )}
              </div>
             <div className="flex flex-col">
-              <span className="text-sm font-black text-foreground tracking-tight uppercase line-clamp-1">
-                {org.name}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-foreground tracking-tight uppercase line-clamp-1">
+                  {org.name}
+                </span>
+              </div>
             </div>
           </div>
         )

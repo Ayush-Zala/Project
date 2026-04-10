@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
 import { useRouter, useParams } from "next/navigation"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { apiClient } from "@/lib/api-client"
 
@@ -37,7 +37,7 @@ export default function TeamMembersPage() {
   const params = useParams()
   const teamId = Number(params.teamId)
 
-  const { data: activeOrg, isPending: isOrgPending } = authClient.useActiveOrganization()
+  const { data: activeOrg, isLoading: isOrgPending } = useWorkspace()
   const canAssign = useHasPermission("organisation_team_member:assign")
   const canDelete = useHasPermission("organisation_team_member:delete")
   const canToggle = useHasPermission("organisation_team_member:toggle")
