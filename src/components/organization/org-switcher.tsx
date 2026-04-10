@@ -77,6 +77,12 @@ export function OrgSwitcher() {
 
   useEvent("ORGANISATIONS_CHANGED", handleRefresh)
   useEvent("ORGANISATION_MEMBERS_CHANGED", handleRefresh)
+  
+  // 🔐 Permissions Security Sync
+  useEvent("PERMISSIONS_CHANGED", handleRefresh)
+  useEvent("ROLE_PERMISSIONS_CHANGED", handleRefresh)
+  useEvent("USER_PERMISSIONS_CHANGED", handleRefresh)
+  useEvent("ROLES_CHANGED", handleRefresh)
 
   const [open, setOpen] = React.useState(false)
 
