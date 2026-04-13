@@ -8,13 +8,16 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DataTableViewOptions } from "./data-table-view-options"
+import { DataTableExportButton } from "./data-table-export-button"
 
 interface DataTableToolbarProps<TData> extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>
+  exportFilename?: string
 }
 
 export function DataTableToolbar<TData>({
   table,
+  exportFilename,
   className,
   children,
   ...props
@@ -55,6 +58,7 @@ export function DataTableToolbar<TData>({
         )}
       </div>
       <div className="flex items-center gap-2">
+        <DataTableExportButton table={table} filename={exportFilename} />
         <DataTableViewOptions table={table} />
       </div>
     </div>

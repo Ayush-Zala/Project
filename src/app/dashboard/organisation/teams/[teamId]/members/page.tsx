@@ -128,19 +128,19 @@ export default function TeamMembersPage() {
     if (!activeOrg) return
     const selectedRows = table.getFilteredSelectedRowModel().rows
     const ids = selectedRows.map(row => (row.original as any).userId)
-    
+
     if (ids.length === 0) return
 
     setIsBulkLoading(true)
     try {
-      await Promise.all(ids.map(id => 
+      await Promise.all(ids.map(id =>
         apiClient(`/api/organisations/${activeOrg.id}/teams/${teamId}/members/${id}/toggle`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive })
         })
       ))
-      
+
       table.toggleAllRowsSelected(false)
       fetchMembers()
     } catch (error: any) {
@@ -252,6 +252,7 @@ export default function TeamMembersPage() {
             onSearchChange={onSearchChange}
             onFilterReset={onFilterReset}
             search={search}
+            exportFilename="organisation-team-members"
             className="mb-4"
           />
         </DataTable>
@@ -296,73 +297,73 @@ export default function TeamMembersPage() {
       />
 
       <ActionBar table={table}>
-         {((canToggle || canDelete)) && (
-           <>
-             {table.getFilteredSelectedRowModel().rows.length === 1 ? (
-                table.getFilteredSelectedRowModel().rows[0].original.isActive ? (
-                  canToggle && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      disabled={isBulkLoading}
-                      onClick={() => onBulkStatusUpdate(false)}
-                      className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
-                    >
-                      <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
-                    </Button>
-                  )
-                ) : (
-                  canToggle && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      disabled={isBulkLoading}
-                      onClick={() => onBulkStatusUpdate(true)}
-                      className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
-                    >
-                      <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
-                    </Button>
-                  )
+        {((canToggle || canDelete)) && (
+          <>
+            {table.getFilteredSelectedRowModel().rows.length === 1 ? (
+              table.getFilteredSelectedRowModel().rows[0].original.isActive ? (
+                canToggle && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isBulkLoading}
+                    onClick={() => onBulkStatusUpdate(false)}
+                    className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
+                  </Button>
                 )
-             ) : (
-               <>
-                 {canToggle && (
-                   <>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+              ) : (
+                canToggle && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={isBulkLoading}
+                    onClick={() => onBulkStatusUpdate(true)}
+                    className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
+                  >
+                    <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
+                  </Button>
+                )
+              )
+            ) : (
+              <>
+                {canToggle && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={isBulkLoading}
                       onClick={() => onBulkStatusUpdate(true)}
                       className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20 active:scale-[0.98]"
                     >
                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Active</span>
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       disabled={isBulkLoading}
                       onClick={() => onBulkStatusUpdate(false)}
                       className="h-8 px-4 hover:bg-muted/10 text-muted-foreground rounded-full transition-all border border-border/20 active:scale-[0.98]"
                     >
                       <span className="text-[10px] font-black uppercase tracking-widest">Mark Inactive</span>
                     </Button>
-                   </>
-                 )}
-               </>
-             )}
-             {canDelete && (
-               <Button 
-                 variant="ghost" 
-                 size="sm" 
-                 disabled={isBulkLoading}
-                 onClick={() => setIsBulkDeleteDialogOpen(true)}
-                 className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
-               >
-                 <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
-               </Button>
-             )}
-           </>
-         )}
+                  </>
+                )}
+              </>
+            )}
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={isBulkLoading}
+                onClick={() => setIsBulkDeleteDialogOpen(true)}
+                className="h-8 px-4 hover:bg-destructive/10 text-destructive rounded-full transition-all border border-border/20 active:scale-[0.98]"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+              </Button>
+            )}
+          </>
+        )}
       </ActionBar>
     </>
   )

@@ -224,6 +224,7 @@ export default function TeamsPage() {
                 onSearchChange={onSearchChange}
                 onFilterReset={onFilterReset}
                 search={search}
+                exportFilename="teams"
                 className="mb-4"
             />
         </DataTable>

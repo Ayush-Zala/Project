@@ -223,6 +223,7 @@ export function TeamRolesTab({ teamId, isActive }: TeamRolesTabProps) {
               onSearchChange={onSearchChange}
               onFilterReset={onFilterReset}
               search={search}
+              exportFilename="team-roles"
               className="mb-4"
           />
       </DataTable>

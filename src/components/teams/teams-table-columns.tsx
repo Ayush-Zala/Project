@@ -182,7 +182,7 @@ export function getTeamsColumns({
     {
       id: "actions",
       size: 60,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
         const team = row.original
         const hasAnyAction = capabilities.canUpdate || capabilities.canDelete
 

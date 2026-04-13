@@ -224,6 +224,7 @@ export default function RolesPage() {
                 onSearchChange={onSearchChange}
                 onFilterReset={onFilterReset}
                 search={search}
+                exportFilename="roles"
                 className="mb-4"
             />
         </DataTable>

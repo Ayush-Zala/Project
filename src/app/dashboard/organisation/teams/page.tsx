@@ -225,6 +225,7 @@ export default function OrganisationTeamsPage() {
                 onSearchChange={onSearchChange}
                 onFilterReset={onFilterReset}
                 search={search}
+                exportFilename="organisation-teams"
                 className="mb-4"
             />
         </DataTable>

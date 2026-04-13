@@ -194,7 +194,7 @@ export function getCompanyColumns({
     },
     {
       id: "actions",
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
         const company = row.original
 
         const actions: Action[] = [

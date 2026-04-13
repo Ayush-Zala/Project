@@ -256,6 +256,7 @@ export default function PermissionsPage() {
             onSearchChange={onSearchChange}
             onFilterReset={onFilterReset}
             search={search}
+            exportFilename="permissions"
             className="mb-4"
           />
 

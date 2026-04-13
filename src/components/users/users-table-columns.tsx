@@ -185,7 +185,7 @@ export function getUsersColumns({
     {
       id: "actions",
       size: 60,
-      cell: ({ row }) => {
+      cell: ({ row, table }) => {
         const user = row.original
         if (!user.isToggleable) return null
         

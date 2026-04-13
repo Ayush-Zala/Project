@@ -196,6 +196,7 @@ export default function CompaniesPage() {
               onSearchChange={onSearchChange}
               onFilterReset={onFilterReset}
               search={search}
+              exportFilename="companies"
               className="mb-4"
             />
           </DataTable>

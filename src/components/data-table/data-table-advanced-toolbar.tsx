@@ -23,6 +23,7 @@ import { DataTableFilterField, ExtendedColumnFilter } from "@/types/data-table"
 import { DataTableFilterItem } from "./data-table-filter-item"
 import { DataTableViewOptions } from "./data-table-view-options"
 import { useDebounce } from "@/hooks/use-debounce"
+import { DataTableExportButton } from "./data-table-export-button"
 
 interface DataTableAdvancedToolbarProps<TData> extends React.HTMLAttributes<HTMLDivElement> {
   table: Table<TData>
@@ -32,6 +33,7 @@ interface DataTableAdvancedToolbarProps<TData> extends React.HTMLAttributes<HTML
   onSearchChange?: (value: string) => void
   onFilterReset?: () => void
   search?: string
+  exportFilename?: string
 }
 
 export function DataTableAdvancedToolbar<TData>({
@@ -42,6 +44,7 @@ export function DataTableAdvancedToolbar<TData>({
   onSearchChange,
   onFilterReset,
   search,
+  exportFilename,
   className,
   children,
   ...props
@@ -216,6 +219,7 @@ export function DataTableAdvancedToolbar<TData>({
 
       </div>
       <div className="flex items-center gap-2">
+        <DataTableExportButton table={table} filename={exportFilename} />
         <DataTableViewOptions table={table} />
       </div>
     </div>

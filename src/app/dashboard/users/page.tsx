@@ -270,6 +270,7 @@ export default function UsersPage() {
             onSearchChange={onSearchChange}
             onFilterReset={onFilterReset}
             search={search}
+            exportFilename="users"
             className="mb-4"
           />
         </DataTable>

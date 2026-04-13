@@ -229,6 +229,7 @@ export function TeamMembersTab({ teamId, isActive }: TeamMembersTabProps) {
               onSearchChange={onSearchChange}
               onFilterReset={onFilterReset}
               search={search}
+              exportFilename="team-members"
               className="mb-4"
           />
       </DataTable>

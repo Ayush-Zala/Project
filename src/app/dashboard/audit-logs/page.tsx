@@ -162,6 +162,7 @@ export default function AuditLogsPage() {
             onSearchChange={onSearchChange}
             onFilterReset={onFilterReset}
             search={search}
+            exportFilename="audit-logs"
             className="mb-4"
           />
         </DataTable>

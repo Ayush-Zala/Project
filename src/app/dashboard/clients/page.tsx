@@ -195,6 +195,7 @@ export default function ClientsPage() {
             onSearchChange={onSearchChange}
             onFilterReset={onFilterReset}
             search={search}
+            exportFilename="clients"
             className="mb-4"
           />
         </DataTable>
