@@ -12,18 +12,37 @@ const companyContactSchema = z.object({
   isPrimary: z.boolean().default(false),
 });
 
+const clientContactSchema = z.object({
+  type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  value: z.string().min(1, "Client contact value is required"),
+  isPrimary: z.boolean().default(false),
+});
+
+const clientSocialSchema = z.object({
+  platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  url: z.string().url("Valid client social URL is required"),
+});
+
+const clientSchema = z.object({
+  fullName: z.string().min(2, "Client full name is required"),
+  designation: z.string().min(1, "Client designation is required"),
+  contacts: z.array(clientContactSchema).min(1, "At least one client contact is required"),
+  socials: z.array(clientSocialSchema).min(1, "At least one social profile is required"),
+});
+
 const companySchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
-  website: z.string().url().optional().or(z.literal("")),
+  website: z.string().url("Valid website URL is required"),
   industryId: z.number().positive("Industry is required"),
-  source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]),
-  addressLine1: z.string().optional().nullable(),
-  addressLine2: z.string().optional().nullable(),
-  city: z.string().optional().nullable(),
-  state: z.string().optional().nullable(),
-  country: z.string().optional().nullable(),
-  postalCode: z.string().optional().nullable(),
-  contacts: z.array(companyContactSchema).min(1, "At least one contact is required"),
+  source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]).optional(),
+  addressLine1: z.string().min(1, "Address Line 1 is required"),
+  addressLine2: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  country: z.string().min(1, "Country is required"),
+  postalCode: z.string().min(1, "Postal Code is required"),
+  contacts: z.array(companyContactSchema).min(1, "At least one company contact is required"),
+  clients: z.array(clientSchema).min(1, "At least one client is required"),
 });
 
 /**
@@ -43,6 +62,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         industry: true,
         contacts: {
           where: { isActive: true }
+        },
+        clients: {
+          where: { isActive: true },
+          include: {
+            contacts: { where: { isActive: true } },
+            socials: { where: { isActive: true } },
+          }
         }
       }
     });
@@ -82,9 +108,12 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const body = await req.json();
     const result = companySchema.safeParse(body);
-    if (!result.success) return NextResponse.json({ error: result.error.issues[0].message }, { status: 400 });
+    if (!result.success) {
+      const errors = result.error.issues.map(i => `${i.path.join(".")}: ${i.message}`).join(" | ");
+      return NextResponse.json({ error: `Validation Failed: ${errors}` }, { status: 400 });
+    }
 
-    const { contacts, ...companyData } = result.data;
+    const { contacts, clients: clientsData, ...companyData } = result.data;
     const epochNow = BigInt(Date.now());
 
     // Atomic update using transaction
@@ -99,8 +128,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         }
       });
 
-      // 2. Sync contacts: Delete old ones and create new ones
-      // In a real high-perf scenario, you'd find diffs, but for rest UI this is cleaner
+      // 2. Sync Company Contacts: Delete existing and re-create
       await tx.companyContact.deleteMany({
         where: { companyId: Number(companyId) }
       });
@@ -117,9 +145,58 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         }))
       });
 
+      // 3. Sync Clients: Sync by Replacement (Delete all and re-create for total fidelity)
+      // This ensures removed clients are gone and order is preserved.
+      await tx.companyClient.deleteMany({
+        where: { companyId: Number(companyId) }
+      });
+
+      for (const client of clientsData) {
+        const { contacts: clientContacts, socials: clientSocials, ...clientBase } = client;
+        await tx.companyClient.create({
+          data: {
+            ...clientBase,
+            companyId: Number(companyId),
+            isActive: true,
+            createdBy: userId,
+            updatedBy: userId,
+            createdAt: epochNow,
+            updatedAt: epochNow,
+            contacts: {
+              create: clientContacts.map(cc => ({
+                ...cc,
+                isActive: true,
+                createdBy: userId,
+                updatedBy: userId,
+                createdAt: epochNow,
+                updatedAt: epochNow,
+              }))
+            },
+            socials: {
+              create: clientSocials.map(cs => ({
+                ...cs,
+                isActive: true,
+                createdBy: userId,
+                updatedBy: userId,
+                createdAt: epochNow,
+                updatedAt: epochNow,
+              }))
+            }
+          }
+        });
+      }
+
       return await tx.company.findUnique({
         where: { id: Number(companyId) },
-        include: { contacts: true }
+        include: { 
+          contacts: true,
+          clients: {
+            include: {
+              contacts: true,
+              socials: true
+            }
+          }
+        }
       });
     });
 

@@ -175,34 +175,32 @@ export function CompanyForm({
   // Dynamic schema refinement based on mode
   const refinedSchema = React.useMemo(() => {
     return companyFormSchema.superRefine((data, ctx) => {
-      // ONLY enforce stakeholder details if NOT in edit mode
-      if (!isEdit) {
-        data.clients.forEach((client, index) => {
-          if (!client.fullName || client.fullName.length < 2) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Client name is required",
-              path: ["clients", index, "fullName"],
-            });
-          }
-          if (!client.designation || client.designation.length < 1) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Client designation is required",
-              path: ["clients", index, "designation"],
-            });
-          }
-          // Contacts validation for Add mode
-          const hasContact = client.contacts?.some(c => c.value && c.value.length > 0);
-          if (!hasContact) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: "Primary contact method required",
-              path: ["clients", index, "contacts"],
-            });
-          }
-        });
-      }
+      // Enforce client details validation (Add & Edit modes)
+      data.clients.forEach((client, index) => {
+        if (!client.fullName || client.fullName.length < 2) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Client name is required",
+            path: ["clients", index, "fullName"],
+          });
+        }
+        if (!client.designation || client.designation.length < 1) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Client designation is required",
+            path: ["clients", index, "designation"],
+          });
+        }
+        // Contacts validation for Stakeholders
+        const hasContact = client.contacts?.some(c => c.value && c.value.length > 0);
+        if (!hasContact) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: "Primary contact method required",
+            path: ["clients", index, "contacts"],
+          });
+        }
+      });
     });
   }, [isEdit]);
 
@@ -648,8 +646,7 @@ export function CompanyForm({
           </div>
 
           {/* 🛡️ Multi-Client Details Loop */}
-          {!isEdit && (
-            <div className="space-y-12">
+          <div className="space-y-12">
               <div className="flex items-center justify-between border-b-2 border-primary/10 pb-4 mb-8">
                 <div className="flex items-center gap-3">
                   <div className="size-10 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10">
@@ -684,9 +681,8 @@ export function CompanyForm({
                     isOnly={clientFields.length === 1}
                   />
                 ))}
-              </div>
             </div>
-          )}
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-end gap-4 pt-10 border-t border-border/10">
             <Button
