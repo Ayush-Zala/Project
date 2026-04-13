@@ -100,7 +100,7 @@ const clientSocialSchema = z.object({
 
 export const companyFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
-  website: z.string().url("Valid URL starting with https:// is required").optional().or(z.literal("")),
+  website: z.string().url("Valid URL starting with https:// is required"),
   industryId: z.string().min(1, "Industry selection is required"),
   source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]),
   addressLine1: z.string().min(1, "Physical address is required"),
@@ -111,9 +111,9 @@ export const companyFormSchema = z.object({
   postalCode: z.string().min(1, "Postal code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one contact channel is required"),
   clients: z.array(z.object({
-    fullName: z.string().optional().or(z.literal("")),
-    designation: z.string().optional().or(z.literal("")),
-    contacts: z.array(clientContactSchema).default([]),
+    fullName: z.string().min(2, "Client name is required"),
+    designation: z.string().min(1, "Client designation is required"),
+    contacts: z.array(clientContactSchema).min(1, "At least one contact method is required"),
     socials: z.array(clientSocialSchema).default([]),
   })).default([{
     fullName: "",
@@ -175,28 +175,13 @@ export function CompanyForm({
   // Dynamic schema refinement based on mode
   const refinedSchema = React.useMemo(() => {
     return companyFormSchema.superRefine((data, ctx) => {
-      // Enforce client details validation (Add & Edit modes)
+      // Deep validation for client contacts (ensuring variety if needed)
       data.clients.forEach((client, index) => {
-        if (!client.fullName || client.fullName.length < 2) {
+        const hasPrimary = client.contacts?.some(c => c.isPrimary);
+        if (!hasPrimary && client.contacts?.length > 0) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: "Client name is required",
-            path: ["clients", index, "fullName"],
-          });
-        }
-        if (!client.designation || client.designation.length < 1) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Client designation is required",
-            path: ["clients", index, "designation"],
-          });
-        }
-        // Contacts validation for Stakeholders
-        const hasContact = client.contacts?.some(c => c.value && c.value.length > 0);
-        if (!hasContact) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Primary contact method required",
+            message: "One contact must be marked as primary",
             path: ["clients", index, "contacts"],
           });
         }
@@ -647,40 +632,53 @@ export function CompanyForm({
 
           {/* 🛡️ Multi-Client Details Loop */}
           <div className="space-y-12">
-              <div className="flex items-center justify-between border-b-2 border-primary/10 pb-4 mb-8">
-                <div className="flex items-center gap-3">
-                  <div className="size-10 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10">
-                    <UserPlus className="size-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold tracking-tight text-foreground">Client Details</h2>
-                  </div>
+            <div className="flex items-center justify-between border-b-2 border-primary/10 pb-4 mb-8">
+              <div className="flex items-center gap-3">
+                <div className="size-10 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10">
+                  <UserPlus className="size-5 text-primary" />
                 </div>
-                <Button
-                  type="button"
-                  onClick={() => appendClient({
-                    fullName: "",
-                    designation: "",
-                    contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
-                    socials: [{ platform: "LINKEDIN", url: "" }],
-                  })}
-                  className="h-9 px-4 bg-primary/5 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-[10px] uppercase tracking-widest rounded-xl border border-primary/20 transition-all active:scale-[0.98]"
-                >
-                  <Plus className="size-3.5 mr-2" />
-                  Add Client
-                </Button>
+                <div>
+                  <h2 className="text-sm font-bold tracking-tight text-foreground">Client Details</h2>
+                </div>
               </div>
+              <Button
+                type="button"
+                onClick={() => appendClient({
+                  fullName: "",
+                  designation: "",
+                  contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+                  socials: [{ platform: "LINKEDIN", url: "" }],
+                })}
+                className="h-9 px-4 bg-primary text-primary-foreground font-bold text-[10px] uppercase tracking-widest rounded-xl border border-primary/20 transition-all active:scale-[0.98]"
+              >
+                <Plus className="size-3.5 mr-2" />
+                Add Client
+              </Button>
+            </div>
 
-              <div className="space-y-16">
-                {clientFields.map((field, index) => (
+            <div className="space-y-6">
+              {clientFields.map((field, index) => (
+                <div key={field.id} className="space-y-6">
+                  {index > 0 && (
+                    <div className="relative py-2">
+                      <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                        <div className="w-full border-t border-border/60 border-dashed"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-background px-4 text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
+                          Next Client
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <ClientSection
-                    key={field.id}
                     index={index}
                     form={form}
                     removeClient={() => removeClient(index)}
                     isOnly={clientFields.length === 1}
                   />
-                ))}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -739,10 +737,10 @@ function ClientSection({ index, form, removeClient, isOnly }: { index: number, f
             variant="ghost"
             size="sm"
             onClick={removeClient}
-            className="h-7 text-[9px] font-bold uppercase tracking-tighter text-destructive hover:bg-destructive/10 rounded-lg px-2 flex items-center gap-1.5 transition-all"
+            className="flex items-center justify-center gap-1.5 h-7 px-2 text-[9px] font-bold uppercase tracking-tighter text-destructive hover:bg-destructive/10 rounded-lg transition-all"
           >
-            <Trash2 className="size-3" />
-            Remove Client
+            <Trash2 className="size-3 shrink-0" />
+            <span className="leading-none">Remove</span>
           </Button>
         )}
       </div>
