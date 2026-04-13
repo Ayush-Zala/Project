@@ -513,7 +513,7 @@ export function CompanyForm({
                   variant="ghost"
                   size="sm"
                   onClick={() => appendCompanyContact({ type: "MOBILE", value: "", isPrimary: companyContacts.length === 0 })}
-                  className="h-9 px-4 text-[11px] font-semibold tracking-tight bg-primary/5 hover:bg-primary/10 text-primary rounded-xl transition-all border border-primary/10"
+                  className="h-9 px-4 text-[11px] font-semibold tracking-tight bg-primary/5 hover:bg-primary text-primary rounded-xl hover:text-primary-foreground transition-all border border-primary/10"
                 >
                   + Add Contact
                 </Button>
@@ -601,7 +601,7 @@ export function CompanyForm({
                     <UserPlus className="size-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold tracking-tight text-foreground">Primary Contact Details</h2>
+                    <h2 className="text-sm font-bold tracking-tight text-foreground">Client Details</h2>
                   </div>
                 </div>
               </div>
@@ -612,7 +612,7 @@ export function CompanyForm({
                   name="client.fullName"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Contact Name *</FormLabel>
+                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Client Name *</FormLabel>
                       <FormControl>
                         <Input placeholder="Executive Lead" {...field} className="h-12 text-sm font-medium tracking-tight border-primary/20 bg-background rounded-2xl focus:border-primary shadow-sm" />
                       </FormControl>
@@ -729,7 +729,7 @@ export function CompanyForm({
                     variant="ghost"
                     size="sm"
                     onClick={() => appendClientSocial({ platform: "LINKEDIN", url: "" })}
-                    className="h-9 w-full sm:w-auto px-6 text-[11px] font-semibold tracking-tight bg-primary/5 hover:bg-primary/10 text-primary rounded-xl transition-all border border-primary/10"
+                    className="h-9 w-full sm:w-auto px-6 text-[11px] font-semibold tracking-tight bg-primary/5 hover:bg-primary hover:text-primary-foreground text-primary rounded-xl transition-all border border-primary/10"
                   >
                     + Add Social Profile
                   </Button>
