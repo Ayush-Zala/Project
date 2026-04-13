@@ -10,19 +10,31 @@ import { type ExtendedColumnFilter } from "@/types/data-table";
 
 const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().min(1, "Company contact value is required"),
   isPrimary: z.boolean().default(false),
+}).refine(data => data.type !== "OTHER" || (data.otherType && data.otherType.length > 0), {
+  message: "Specific contact type is required for 'OTHER'",
+  path: ["otherType"]
 });
 
 const clientContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().min(1, "Client contact value is required"),
   isPrimary: z.boolean().default(false),
+}).refine(data => data.type !== "OTHER" || (data.otherType && data.otherType.length > 0), {
+  message: "Specific contact type is required for 'OTHER'",
+  path: ["otherType"]
 });
 
 const clientSocialSchema = z.object({
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  otherPlatform: z.string().optional(),
   url: z.string().url("Valid client social URL is required"),
+}).refine(data => data.platform !== "OTHER" || (data.otherPlatform && data.otherPlatform.length > 0), {
+  message: "Specific platform name is required for 'OTHER'",
+  path: ["otherPlatform"]
 });
 
 const clientSchema = z.object({
@@ -37,6 +49,7 @@ const companySchema = z.object({
   website: z.string().url("Valid website URL is required"),
   industryId: z.number().positive("Industry is required"),
   source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]).optional(),
+  otherSource: z.string().optional(),
   addressLine1: z.string().min(1, "Address Line 1 is required"),
   addressLine2: z.string().optional(),
   city: z.string().min(1, "City is required"),
@@ -45,6 +58,9 @@ const companySchema = z.object({
   postalCode: z.string().min(1, "Postal Code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one company contact is required"),
   clients: z.array(clientSchema).min(1, "At least one stakeholder is required"),
+}).refine(data => data.source !== "OTHER" || (data.otherSource && data.otherSource.length > 0), {
+  message: "Specific source description is required for 'OTHER'",
+  path: ["otherSource"]
 });
 
 /**

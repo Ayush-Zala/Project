@@ -37,13 +37,21 @@ import { Separator } from "@/components/ui/separator"
 
 const clientContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().min(1, "Value is required"),
   isPrimary: z.boolean(),
+}).refine(data => data.type !== "OTHER" || (data.otherType && data.otherType.trim().length > 0), {
+  message: "Specific type is required",
+  path: ["otherType"],
 })
 
 const clientSocialSchema = z.object({
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  otherPlatform: z.string().optional(),
   url: z.string().url("Valid URL is required"),
+}).refine(data => data.platform !== "OTHER" || (data.otherPlatform && data.otherPlatform.trim().length > 0), {
+  message: "Platform name is required",
+  path: ["otherPlatform"],
 })
 
 const clientFormSchema = z.object({
@@ -89,8 +97,8 @@ export function ClientDialog({
       fullName: "",
       designation: "",
       companyId: "",
-      contacts: [{ type: "MOBILE", value: "", isPrimary: true }],
-      socials: [{ platform: "LINKEDIN", url: "" }],
+      contacts: [{ type: "MOBILE", otherType: "", value: "", isPrimary: true }],
+      socials: [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
     },
   })
 
@@ -129,19 +137,19 @@ export function ClientDialog({
         designation: client.designation || "",
         companyId: String(client.companyId),
         contacts: client.contacts?.length > 0
-          ? client.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
-          : [{ type: "MOBILE", value: "", isPrimary: true }],
+          ? client.contacts.map((c: any) => ({ type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
+          : [{ type: "MOBILE", otherType: "", value: "", isPrimary: true }],
         socials: client.socials?.length > 0
-          ? client.socials.map((s: any) => ({ platform: s.platform, url: s.url }))
-          : [{ platform: "LINKEDIN", url: "" }],
+          ? client.socials.map((s: any) => ({ platform: s.platform, otherPlatform: s.otherPlatform || "", url: s.url }))
+          : [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
       })
     } else if (!client && open) {
       form.reset({
         fullName: "",
         designation: "",
         companyId: defaultCompanyId || "",
-        contacts: [{ type: "MOBILE", value: "", isPrimary: true }],
-        socials: [{ platform: "LINKEDIN", url: "" }],
+        contacts: [{ type: "MOBILE", otherType: "", value: "", isPrimary: true }],
+        socials: [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
       })
     }
   }, [client, open, form, defaultCompanyId])
@@ -271,21 +279,41 @@ export function ClientDialog({
                         control={form.control}
                         name={`contacts.${index}.type` as const}
                         render={({ field }) => (
-                          <FormItem className="flex-1 max-w-[100px] space-y-0">
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-8 text-[10px] font-bold uppercase">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {CONTACT_TYPES.map((t) => (
-                                  <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">
-                                    {t.replace("_", " ")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                          <FormItem className="flex-1 max-w-[100px] space-y-0 text-[10px]">
+                            <div className="space-y-1.5">
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-[10px] font-bold uppercase">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {CONTACT_TYPES.map((t) => (
+                                    <SelectItem key={t} value={t} className="text-[10px] font-bold uppercase">
+                                      {t.replace("_", " ")}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {field.value === "OTHER" && (
+                                <FormField
+                                  control={form.control}
+                                  name={`contacts.${index}.otherType` as const}
+                                  render={({ field: otherField }) => (
+                                    <FormItem className="animate-in slide-in-from-top-1 duration-200">
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Contact Type..."
+                                          {...otherField}
+                                          className="h-6 text-[9px] border-primary/20 bg-background/5 rounded-md"
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </div>
                           </FormItem>
                         )}
                       />
@@ -356,20 +384,40 @@ export function ClientDialog({
                         name={`socials.${index}.platform` as const}
                         render={({ field }) => (
                           <FormItem className="flex-1 max-w-[120px] space-y-0">
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-tight">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {SOCIAL_PLATFORMS.map((p) => (
-                                  <SelectItem key={p} value={p} className="text-[10px] font-bold uppercase">
-                                    {p.replace("_", " ")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <div className="space-y-1.5">
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="h-8 text-[10px] font-bold uppercase tracking-tight">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {SOCIAL_PLATFORMS.map((p) => (
+                                    <SelectItem key={p} value={p} className="text-[10px] font-bold uppercase">
+                                      {p.replace("_", " ")}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              {field.value === "OTHER" && (
+                                <FormField
+                                  control={form.control}
+                                  name={`socials.${index}.otherPlatform` as const}
+                                  render={({ field: otherField }) => (
+                                    <FormItem className="animate-in slide-in-from-top-1 duration-200">
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Social Platform..."
+                                          {...otherField}
+                                          className="h-6 text-[9px] border-primary/20 bg-background/5 rounded-md"
+                                        />
+                                      </FormControl>
+                                    </FormItem>
+                                  )}
+                                />
+                              )}
+                            </div>
                           </FormItem>
                         )}
                       />

@@ -530,6 +530,7 @@ model Company {
   name            String
   website         String?
   source          CompanySource @default(OTHER)
+  otherSource     String?
   addressLine1    String?
   addressLine2    String?
   city            String?
@@ -554,6 +555,7 @@ model CompanyContact {
   id        Int         @id @default(autoincrement())
   companyId Int
   type      ContactType @default(MOBILE)
+  otherType String?
   value     String
   isPrimary Boolean     @default(false)
   isActive  Boolean     @default(true)
@@ -589,6 +591,7 @@ model CompanyClientContact {
   id        Int         @id @default(autoincrement())
   clientId  Int
   type      ContactType @default(MOBILE)
+  otherType String?
   value     String
   isPrimary Boolean     @default(false)
   isActive  Boolean     @default(true)
@@ -606,6 +609,7 @@ model CompanyClientSocialProfile {
   id        Int            @id @default(autoincrement())
   clientId  Int
   platform  SocialPlatform @default(LINKEDIN)
+  otherPlatform String?
   url       String
   isActive  Boolean        @default(true)
   createdBy Int?

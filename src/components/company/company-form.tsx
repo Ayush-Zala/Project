@@ -34,75 +34,110 @@ import { cn } from "@/lib/utils"
 
 const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().min(1, "Value is required"),
   isPrimary: z.boolean(),
-}).superRefine((data, ctx) => {
-  const { type, value } = data;
-  if (!value) return;
-
-  // 📧 Email Validation
-  if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Invalid email format",
-      path: ["value"],
-    });
-  }
-
-  // 📞 Numeric Validation for Phones
-  if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Numeric value required",
-      path: ["value"],
-    });
-  }
 })
+  .superRefine((data, ctx) => {
+    const { type, value, otherType } = data;
+
+    // 🚩 Conditional Validation for OTHER
+    if (type === "OTHER" && (!otherType || otherType.trim().length === 0)) {
+       ctx.addIssue({
+         code: z.ZodIssueCode.custom,
+         message: "Specific contact type is required",
+         path: ["otherType"],
+       });
+    }
+
+    if (!value) return;
+
+    // 📧 Email Validation
+    if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid email format",
+        path: ["value"],
+      });
+    }
+
+    // 📞 Numeric Validation for Phones
+    if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Numeric value required",
+        path: ["value"],
+      });
+    }
+  })
 
 const clientContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().optional().or(z.literal("")),
   isPrimary: z.boolean(),
-}).superRefine((data, ctx) => {
-  const { type, value } = data;
-  if (!value) return;
-
-  if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Invalid email format",
-      path: ["value"],
-    });
-  }
-
-  if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Numeric value required",
-      path: ["value"],
-    });
-  }
 })
+  .superRefine((data, ctx) => {
+    const { type, value, otherType } = data;
+
+    if (type === "OTHER" && (!otherType || otherType.trim().length === 0)) {
+       ctx.addIssue({
+         code: z.ZodIssueCode.custom,
+         message: "Specific contact type is required",
+         path: ["otherType"],
+       });
+    }
+
+    if (!value) return;
+
+    if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid email format",
+        path: ["value"],
+      });
+    }
+
+    if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Numeric value required",
+        path: ["value"],
+      });
+    }
+  })
 
 const clientSocialSchema = z.object({
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  otherPlatform: z.string().optional(),
   url: z.string().optional().or(z.literal("")),
-}).superRefine((data, ctx) => {
-  const { url } = data;
-  if (url && !url.startsWith("http") && !url.includes(".")) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: "Invalid URL format",
-      path: ["url"],
-    });
-  }
 })
+  .superRefine((data, ctx) => {
+    const { platform, otherPlatform, url } = data;
+
+    if (platform === "OTHER" && (!otherPlatform || otherPlatform.trim().length === 0)) {
+       ctx.addIssue({
+         code: z.ZodIssueCode.custom,
+         message: "Specific platform is required",
+         path: ["otherPlatform"],
+       });
+    }
+
+    if (url && !url.startsWith("http") && !url.includes(".")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Invalid URL format",
+        path: ["url"],
+      });
+    }
+  })
 
 export const companyFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters."),
   website: z.string().url("Valid URL starting with https:// is required"),
   industryId: z.string().min(1, "Industry selection is required"),
   source: z.enum(["REFERRAL", "COLD_CALL", "COLD_EMAIL", "LINKEDIN", "WEBSITE", "CONFERENCE", "PAID_AD", "CONTENT_MARKETING", "PARTNER", "OTHER"]),
+  otherSource: z.string().optional(),
   addressLine1: z.string().min(1, "Physical address is required"),
   addressLine2: z.string().optional().or(z.literal("")),
   city: z.string().min(1, "City is required"),
@@ -121,6 +156,9 @@ export const companyFormSchema = z.object({
     contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
     socials: [{ platform: "LINKEDIN", url: "" }],
   }])
+}).refine(data => data.source !== "OTHER" || (data.otherSource && data.otherSource.trim().length > 0), {
+  message: "Specific source description is required",
+  path: ["otherSource"],
 })
 
 export type CompanyFormValues = {
@@ -128,18 +166,19 @@ export type CompanyFormValues = {
   website?: string;
   industryId: string;
   source: "REFERRAL" | "COLD_CALL" | "COLD_EMAIL" | "LINKEDIN" | "WEBSITE" | "CONFERENCE" | "PAID_AD" | "CONTENT_MARKETING" | "PARTNER" | "OTHER" | "";
+  otherSource?: string;
   addressLine1: string;
   addressLine2?: string;
   city: string;
   state: string;
   country: string;
   postalCode: string;
-  contacts: { type: any; value: string; isPrimary: boolean }[];
+  contacts: { type: any; otherType?: string; value: string; isPrimary: boolean }[];
   clients: {
     fullName: string;
     designation: string;
-    contacts: { type: any; value: string; isPrimary: boolean }[];
-    socials: { platform: any; url: string }[];
+    contacts: { type: any; otherType?: string; value: string; isPrimary: boolean }[];
+    socials: { platform: any; otherPlatform?: string; url: string }[];
   }[];
 }
 
@@ -197,6 +236,7 @@ export function CompanyForm({
         website: initialData?.website || "",
         industryId: initialData?.industryId ? String(initialData.industryId) : "",
         source: initialData?.source || "",
+        otherSource: initialData?.otherSource || "",
         addressLine1: initialData?.addressLine1 || "",
         addressLine2: initialData?.addressLine2 || "",
         city: initialData?.city || "",
@@ -204,24 +244,24 @@ export function CompanyForm({
         country: initialData?.country || "",
         postalCode: initialData?.postalCode || "",
         contacts: initialData?.contacts?.length > 0
-          ? initialData.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
-          : [{ type: "MOBILE", value: "", isPrimary: true }],
+          ? initialData.contacts.map((c: any) => ({ type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
+          : [{ type: "MOBILE", otherType: "", value: "", isPrimary: true }],
         clients: initialData?.clients?.length > 0
           ? initialData.clients.map((client: any) => ({
             fullName: client.fullName,
             designation: client.designation,
             contacts: client.contacts?.length > 0
-              ? client.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
-              : [{ type: "EMAIL", value: "", isPrimary: true }],
+              ? client.contacts.map((c: any) => ({ type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
+              : [{ type: "EMAIL", otherType: "", value: "", isPrimary: true }],
             socials: client.socials?.length > 0
-              ? client.socials.map((s: any) => ({ platform: s.platform, url: s.url }))
-              : [{ platform: "LINKEDIN", url: "" }],
+              ? client.socials.map((s: any) => ({ platform: s.platform, otherPlatform: s.otherPlatform || "", url: s.url }))
+              : [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
           }))
           : [{
             fullName: "",
             designation: "",
-            contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
-            socials: [{ platform: "LINKEDIN", url: "" }],
+            contacts: [{ type: "EMAIL", otherType: "", value: "", isPrimary: true }],
+            socials: [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
           }]
       }
       return baseValues
@@ -431,20 +471,41 @@ export function CompanyForm({
                 render={({ field }) => (
                   <FormItem className="space-y-2">
                     <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Lead Source *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 w-full text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl">
-                          <SelectValue placeholder="Choose source..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent className="max-h-[300px]">
-                        {SOURCES.map((source) => (
-                          <SelectItem key={source} value={source} className="text-xs font-medium">
-                            {source.replace(/_/g, " ")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-3">
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 w-full text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl">
+                            <SelectValue placeholder="Choose source..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-[300px]">
+                          {SOURCES.map((source) => (
+                            <SelectItem key={source} value={source} className="text-xs font-medium">
+                              {source.replace(/_/g, " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {field.value === "OTHER" && (
+                        <FormField
+                          control={form.control}
+                          name="otherSource"
+                          render={({ field: otherField }) => (
+                            <FormItem className="animate-in slide-in-from-top-2 duration-300">
+                              <FormControl>
+                                <Input
+                                  placeholder="Specify other source..."
+                                  {...otherField}
+                                  className="h-9 text-xs border-primary/20 bg-background/5 focus:bg-background transition-all rounded-xl"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[9px]" />
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
                     <FormMessage className="text-[10px] font-medium" />
                   </FormItem>
                 )}
@@ -563,20 +624,40 @@ export function CompanyForm({
                       name={`contacts.${index}.type` as const}
                       render={({ field }) => (
                         <FormItem className="sm:col-span-2 space-y-1.5">
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger className="h-11 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl">
-                                <SelectValue />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {CONTACT_TYPES.map((t) => (
-                                <SelectItem key={t} value={t} className="text-[10px] font-medium text-primary">
-                                  {t.replace("_", " ")}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="h-11 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl">
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {CONTACT_TYPES.map((t) => (
+                                  <SelectItem key={t} value={t} className="text-[10px] font-medium text-primary">
+                                    {t.replace("_", " ")}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {field.value === "OTHER" && (
+                              <FormField
+                                control={form.control}
+                                name={`contacts.${index}.otherType` as const}
+                                render={({ field: otherField }) => (
+                                  <FormItem className="animate-in slide-in-from-top-1 duration-200">
+                                    <FormControl>
+                                      <Input
+                                        placeholder="Contact Type..."
+                                        {...otherField}
+                                        className="h-7 text-[9px] border-primary/20 bg-background/5 rounded-lg"
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                            )}
+                          </div>
                         </FormItem>
                       )}
                     />
@@ -798,20 +879,40 @@ function ClientSection({ index, form, removeClient, isOnly }: { index: number, f
                 name={`clients.${index}.contacts.${contactIndex}.type` as any}
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2 space-y-1.5">
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {CONTACT_TYPES.map((t) => (
-                          <SelectItem key={t} value={t} className="text-[11px] font-medium">
-                            {t.replace("_", " ")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {CONTACT_TYPES.map((t) => (
+                            <SelectItem key={t} value={t} className="text-[11px] font-medium">
+                              {t.replace("_", " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {field.value === "OTHER" && (
+                        <FormField
+                          control={form.control}
+                          name={`clients.${index}.contacts.${contactIndex}.otherType` as any}
+                          render={({ field: otherField }) => (
+                            <FormItem className="animate-in slide-in-from-top-1 duration-200">
+                              <FormControl>
+                                <Input
+                                  placeholder="Contact Type..."
+                                  {...otherField}
+                                  className="h-7 text-[9px] border-primary/20 bg-background/5 rounded-lg"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
                   </FormItem>
                 )}
               />
@@ -894,20 +995,40 @@ function ClientSection({ index, form, removeClient, isOnly }: { index: number, f
                 name={`clients.${index}.socials.${socialIndex}.platform` as any}
                 render={({ field }) => (
                   <FormItem className="sm:col-span-2 space-y-1.5">
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {SOCIAL_PLATFORMS.map((p) => (
-                          <SelectItem key={p} value={p} className="text-[11px] font-medium">
-                            {p.replace("_", " ")}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="space-y-2">
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {SOCIAL_PLATFORMS.map((p) => (
+                            <SelectItem key={p} value={p} className="text-[11px] font-medium">
+                              {p.replace("_", " ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      {field.value === "OTHER" && (
+                        <FormField
+                          control={form.control}
+                          name={`clients.${index}.socials.${socialIndex}.otherPlatform` as any}
+                          render={({ field: otherField }) => (
+                            <FormItem className="animate-in slide-in-from-top-1 duration-200">
+                              <FormControl>
+                                <Input
+                                  placeholder="Social Platform..."
+                                  {...otherField}
+                                  className="h-7 text-[9px] border-primary/20 bg-background/5 rounded-lg"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      )}
+                    </div>
                   </FormItem>
                 )}
               />

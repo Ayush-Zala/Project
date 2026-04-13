@@ -8,13 +8,21 @@ import { hasPermission } from "@/lib/rbac";
 
 const clientContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
+  otherType: z.string().optional(),
   value: z.string().min(1, "Contact value is required"),
   isPrimary: z.boolean().default(false),
+}).refine(data => data.type !== "OTHER" || (data.otherType && data.otherType.length > 0), {
+  message: "Specific contact type is required for 'OTHER'",
+  path: ["otherType"]
 });
 
 const clientSocialSchema = z.object({
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
+  otherPlatform: z.string().optional(),
   url: z.string().url("Valid URL is required"),
+}).refine(data => data.platform !== "OTHER" || (data.otherPlatform && data.otherPlatform.length > 0), {
+  message: "Specific platform name is required for 'OTHER'",
+  path: ["otherPlatform"]
 });
 
 const clientSchema = z.object({

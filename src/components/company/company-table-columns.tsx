@@ -119,10 +119,15 @@ export function getCompanyColumns({
         <DataTableColumnHeader column={column} title="Source" />
       ),
       cell: ({ row }) => {
-        const source = row.getValue("source") as string
+        const company = row.original
+        const source = company.source as string
+        const displaySource = source === "OTHER" && company.otherSource 
+          ? company.otherSource 
+          : source.replace("_", " ")
+
         return (
-          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-            {source.replace("_", " ")}
+          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate max-w-[120px]" title={displaySource}>
+            {displaySource}
           </span>
         )
       },
@@ -139,11 +144,13 @@ export function getCompanyColumns({
 
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-black text-foreground/80 tracking-tighter">
+            <span className="text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1">
               {primaryContact.value}
             </span>
             <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-              {primaryContact.type}
+              {primaryContact.type === "OTHER" && primaryContact.otherType 
+                ? primaryContact.otherType 
+                : primaryContact.type.replace("_", " ")}
             </span>
           </div>
         )

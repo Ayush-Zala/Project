@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+import { format } from "date-fns"
 
 interface CompanyViewProps {
   data: any
@@ -62,7 +63,11 @@ export function CompanyView({ data }: CompanyViewProps) {
             </div>
             <div className="px-5 py-2 bg-muted/40 border border-border/50 rounded-xl min-w-[120px]">
               <p className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-0.5">Source</p>
-              <p className="text-sm font-bold text-foreground capitalize">{data.source?.toLowerCase().replace("_", " ") || "Other"}</p>
+              <p className="text-sm font-bold text-foreground capitalize truncate max-w-[150px]" title={data.source === "OTHER" ? data.otherSource : data.source}>
+                {data.source === "OTHER" && data.otherSource 
+                  ? data.otherSource 
+                  : data.source?.toLowerCase().replace("_", " ") || "Other"}
+              </p>
             </div>
           </div>
         </div>
@@ -99,8 +104,10 @@ export function CompanyView({ data }: CompanyViewProps) {
                   </div>
                   <div className="flex flex-col justify-center min-w-0">
                     <p className="text-sm font-bold truncate text-foreground leading-none">{contact.value}</p>
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter mt-1 opacity-60">
-                      {contact.type.replace("_", " ")} {contact.isPrimary && "(PRIMARY)"}
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter mt-1 opacity-60 line-clamp-1">
+                      {contact.type === "OTHER" && contact.otherType 
+                        ? contact.otherType 
+                        : contact.type.replace("_", " ")} {contact.isPrimary && "(PRIMARY)"}
                     </p>
                   </div>
                 </div>
@@ -131,7 +138,7 @@ export function CompanyView({ data }: CompanyViewProps) {
               <div className="flex flex-col">
                 <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mb-1.5">Date Added</p>
                 <div className="flex items-center h-6">
-                  <p className="text-sm font-bold text-foreground leading-none">{new Date(Number(data.createdAt)).toLocaleDateString()}</p>
+                  <p className="text-sm font-bold text-foreground leading-none">{format(new Date(Number(data.createdAt)), "dd-MM-yyyy")}</p>
                 </div>
               </div>
             </div>
@@ -200,8 +207,10 @@ function ClientDetailCard({ client }: { client: any }) {
                 </div>
                 <div className="flex flex-col justify-center min-w-0">
                   <p className="text-[13px] font-bold text-foreground truncate leading-none">{contact.value}</p>
-                  <p className="text-[9px] font-medium text-muted-foreground uppercase tracking-tighter mt-1 opacity-70">
-                    {contact.type} {contact.isPrimary && "(PRIMARY)"}
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-tighter mt-1 opacity-70 line-clamp-1">
+                    {contact.type === "OTHER" && contact.otherType 
+                      ? contact.otherType 
+                      : contact.type.replace("_", " ")} {contact.isPrimary && "(PRIMARY)"}
                   </p>
                 </div>
               </div>
@@ -224,8 +233,10 @@ function ClientDetailCard({ client }: { client: any }) {
                 className="flex items-center gap-2 px-3 py-1.5 bg-muted/30 hover:bg-primary/5 border border-border/60 hover:border-primary/20 rounded-xl transition-all"
               >
                 {getSocialIcon(social.platform)}
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                  {social.platform.toLowerCase().replace("_", " ")}
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight line-clamp-1">
+                  {social.platform === "OTHER" && social.otherPlatform 
+                    ? social.otherPlatform 
+                    : social.platform.toLowerCase().replace("_", " ")}
                 </span>
                 <ExternalLink className="size-2.5 opacity-40" />
               </a>

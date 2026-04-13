@@ -122,11 +122,13 @@ export function getClientColumns({
         
         return (
           <div className="flex flex-col gap-0.5">
-             <span className="text-[11px] font-semibold text-foreground/80 tracking-tighter">
+             <span className="text-[11px] font-semibold text-foreground/80 tracking-tighter line-clamp-1">
                 {primaryContact.value}
              </span>
              <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-                {primaryContact.type.replace("_", " ")}
+                {primaryContact.type === "OTHER" && primaryContact.otherType 
+                  ? primaryContact.otherType 
+                  : primaryContact.type.replace("_", " ")}
              </span>
           </div>
         )
@@ -167,7 +169,9 @@ export function getClientColumns({
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="p-1.5 rounded-md hover:bg-primary/5 text-muted-foreground/40 hover:text-primary transition-all active:scale-95"
-                  title={s.platform.replace("_", " ")}
+                  title={s.platform === "OTHER" && s.otherPlatform 
+                    ? s.otherPlatform 
+                    : s.platform.replace("_", " ")}
                 >
                   <Icon className="size-3.5" />
                 </a>
