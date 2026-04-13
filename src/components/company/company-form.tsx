@@ -36,17 +36,66 @@ const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   value: z.string().min(1, "Value is required"),
   isPrimary: z.boolean(),
+}).superRefine((data, ctx) => {
+  const { type, value } = data;
+  if (!value) return;
+
+  // 📧 Email Validation
+  if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid email format",
+      path: ["value"],
+    });
+  }
+
+  // 📞 Numeric Validation for Phones
+  if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Numeric value required",
+      path: ["value"],
+    });
+  }
 })
 
 const clientContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   value: z.string().optional().or(z.literal("")),
   isPrimary: z.boolean(),
+}).superRefine((data, ctx) => {
+  const { type, value } = data;
+  if (!value) return;
+
+  if ((type === "EMAIL" || type === "WORK_EMAIL" || value.includes("@")) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid email format",
+      path: ["value"],
+    });
+  }
+
+  if (["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "WHATSAPP"].includes(type) && !/^[0-9+\s-()]+$/.test(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Numeric value required",
+      path: ["value"],
+    });
+  }
 })
 
 const clientSocialSchema = z.object({
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
   url: z.string().optional().or(z.literal("")),
+}).superRefine((data, ctx) => {
+  const { url } = data;
+  if (url && !url.startsWith("http") && !url.includes(".")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Invalid URL format",
+      path: ["url"],
+    });
+  }
 })
 
 export const companyFormSchema = z.object({
@@ -61,17 +110,17 @@ export const companyFormSchema = z.object({
   country: z.string().min(1, "Country selection is required"),
   postalCode: z.string().min(1, "Postal code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one contact channel is required"),
-  client: z.object({
+  clients: z.array(z.object({
     fullName: z.string().optional().or(z.literal("")),
     designation: z.string().optional().or(z.literal("")),
     contacts: z.array(clientContactSchema).default([]),
     socials: z.array(clientSocialSchema).default([]),
-  }).default({
+  })).default([{
     fullName: "",
     designation: "",
     contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
     socials: [{ platform: "LINKEDIN", url: "" }],
-  })
+  }])
 })
 
 export type CompanyFormValues = {
@@ -86,12 +135,12 @@ export type CompanyFormValues = {
   country: string;
   postalCode: string;
   contacts: { type: any; value: string; isPrimary: boolean }[];
-  client: {
+  clients: {
     fullName: string;
     designation: string;
     contacts: { type: any; value: string; isPrimary: boolean }[];
     socials: { platform: any; url: string }[];
-  };
+  }[];
 }
 
 interface CompanyFormProps {
@@ -128,29 +177,31 @@ export function CompanyForm({
     return companyFormSchema.superRefine((data, ctx) => {
       // ONLY enforce stakeholder details if NOT in edit mode
       if (!isEdit) {
-        if (!data.client?.fullName || data.client.fullName.length < 2) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Stakeholder name is required",
-            path: ["client", "fullName"],
-          });
-        }
-        if (!data.client?.designation || data.client.designation.length < 1) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Stakeholder designation is required",
-            path: ["client", "designation"],
-          });
-        }
-        // Contacts validation for Add mode
-        const hasContact = data.client?.contacts?.some(c => c.value && c.value.length > 0);
-        if (!hasContact) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: "Primary contact method required",
-            path: ["client", "contacts"],
-          });
-        }
+        data.clients.forEach((client, index) => {
+          if (!client.fullName || client.fullName.length < 2) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Client name is required",
+              path: ["clients", index, "fullName"],
+            });
+          }
+          if (!client.designation || client.designation.length < 1) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Client designation is required",
+              path: ["clients", index, "designation"],
+            });
+          }
+          // Contacts validation for Add mode
+          const hasContact = client.contacts?.some(c => c.value && c.value.length > 0);
+          if (!hasContact) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: "Primary contact method required",
+              path: ["clients", index, "contacts"],
+            });
+          }
+        });
       }
     });
   }, [isEdit]);
@@ -172,12 +223,23 @@ export function CompanyForm({
         contacts: initialData?.contacts?.length > 0
           ? initialData.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
           : [{ type: "MOBILE", value: "", isPrimary: true }],
-        client: {
-          fullName: "",
-          designation: "",
-          contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
-          socials: [{ platform: "LINKEDIN", url: "" }],
-        }
+        clients: initialData?.clients?.length > 0
+          ? initialData.clients.map((client: any) => ({
+            fullName: client.fullName,
+            designation: client.designation,
+            contacts: client.contacts?.length > 0
+              ? client.contacts.map((c: any) => ({ type: c.type, value: c.value, isPrimary: c.isPrimary }))
+              : [{ type: "EMAIL", value: "", isPrimary: true }],
+            socials: client.socials?.length > 0
+              ? client.socials.map((s: any) => ({ platform: s.platform, url: s.url }))
+              : [{ platform: "LINKEDIN", url: "" }],
+          }))
+          : [{
+            fullName: "",
+            designation: "",
+            contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+            socials: [{ platform: "LINKEDIN", url: "" }],
+          }]
       }
       return baseValues
     }, [initialData]),
@@ -189,16 +251,10 @@ export function CompanyForm({
     name: "contacts",
   })
 
-  // Client Contacts
-  const { fields: clientContacts, append: appendClientContact, remove: removeClientContact } = useFieldArray({
+  // Clients (Multi-Stakeholder)
+  const { fields: clientFields, append: appendClient, remove: removeClient } = useFieldArray({
     control: form.control,
-    name: "client.contacts" as any,
-  })
-
-  // Client Socials
-  const { fields: clientSocials, append: appendClientSocial, remove: removeClientSocial } = useFieldArray({
-    control: form.control,
-    name: "client.socials" as any,
+    name: "clients",
   })
 
   // 🛡️ Verbose Feedback System
@@ -215,11 +271,6 @@ export function CompanyForm({
       })));
       console.dir(errors);
       console.groupEnd();
-
-      toast.error(`Industrial Ledger Constraint: ${errorPaths.length} fields require correction`, {
-        description: "Consistency check failed. View browser console (F12) for granular field diagnostics.",
-        duration: 5000,
-      });
     }
   }, []);
 
@@ -418,10 +469,6 @@ export function CompanyForm({
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mt-4 mb-1">
-                <MapPin className="size-4 text-primary" />
-                <h3 className="text-xs font-semibold tracking-tight text-foreground">Office Address</h3>
-              </div>
 
               <div className="grid grid-cols-1 gap-6">
                 <FormField
@@ -433,6 +480,7 @@ export function CompanyForm({
                       <FormControl>
                         <Input placeholder="123 Industrial Way" {...field} className="h-11 text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -441,10 +489,11 @@ export function CompanyForm({
                   name="addressLine2"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Address Line 2 (Optional)</FormLabel>
+                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Address Line 2</FormLabel>
                       <FormControl>
                         <Input placeholder="Suite, Unit, Building, etc." {...field} className="h-11 text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -460,6 +509,7 @@ export function CompanyForm({
                       <FormControl>
                         <Input placeholder="City" {...field} className="h-10 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -472,6 +522,7 @@ export function CompanyForm({
                       <FormControl>
                         <Input placeholder="State" {...field} className="h-10 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -484,6 +535,7 @@ export function CompanyForm({
                       <FormControl>
                         <Input placeholder="Country" {...field} className="h-10 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -496,6 +548,7 @@ export function CompanyForm({
                       <FormControl>
                         <Input placeholder="Zip" {...field} className="h-10 text-xs font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                       </FormControl>
+                      <FormMessage className="text-[10px] font-medium" />
                     </FormItem>
                   )}
                 />
@@ -552,6 +605,7 @@ export function CompanyForm({
                           <FormControl>
                             <Input placeholder="Contact Detail" {...field} className="h-11 text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl" />
                           </FormControl>
+                          <FormMessage className="text-[10px] font-medium" />
                         </FormItem>
                       )}
                     />
@@ -593,193 +647,43 @@ export function CompanyForm({
             </div>
           </div>
 
+          {/* 🛡️ Multi-Client Details Loop */}
           {!isEdit && (
-            <div className="pt-8 border-t-4 border-primary/20 -mx-6 sm:-mx-8 lg:-mx-10 xl:-mx-12 px-6 sm:px-8 lg:px-10 xl:px-12 pb-8 space-y-6 bg-primary/[0.02]">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="space-y-12">
+              <div className="flex items-center justify-between border-b-2 border-primary/10 pb-4 mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="size-10 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
+                  <div className="size-10 bg-primary/5 rounded-2xl flex items-center justify-center border border-primary/10">
                     <UserPlus className="size-5 text-primary" />
                   </div>
                   <div>
                     <h2 className="text-sm font-bold tracking-tight text-foreground">Client Details</h2>
                   </div>
                 </div>
+                <Button
+                  type="button"
+                  onClick={() => appendClient({
+                    fullName: "",
+                    designation: "",
+                    contacts: [{ type: "EMAIL", value: "", isPrimary: true }],
+                    socials: [{ platform: "LINKEDIN", url: "" }],
+                  })}
+                  className="h-9 px-4 bg-primary/5 hover:bg-primary text-primary hover:text-primary-foreground font-bold text-[10px] uppercase tracking-widest rounded-xl border border-primary/20 transition-all active:scale-[0.98]"
+                >
+                  <Plus className="size-3.5 mr-2" />
+                  Add Client
+                </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
-                <FormField
-                  control={form.control}
-                  name="client.fullName"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Client Name *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Executive Lead" {...field} className="h-12 text-sm font-medium tracking-tight border-primary/20 bg-background rounded-2xl focus:border-primary shadow-sm" />
-                      </FormControl>
-                      <FormMessage className="font-sans text-[10px] font-medium" />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="client.designation"
-                  render={({ field }) => (
-                    <FormItem className="space-y-2">
-                      <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Designation *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Managing Director" {...field} className="h-12 text-sm font-medium tracking-tight border-primary/20 bg-background rounded-2xl focus:border-primary shadow-sm" />
-                      </FormControl>
-                      <FormMessage className="font-sans text-[10px] font-medium" />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-primary/10 pb-4 gap-4">
-                  <h3 className="text-xs font-semibold tracking-tight text-muted-foreground flex items-center gap-2">
-                    <Mail className="size-4 text-primary/60" /> Client Contacts *
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => appendClientContact({ type: "EMAIL", value: "", isPrimary: clientContacts.length === 0 })}
-                    className="h-9 w-full sm:w-auto px-6 text-[11px] font-semibold tracking-tight bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl transition-all border border-primary/20"
-                  >
-                    + Add Contact
-                  </Button>
-                </div>
-
-                <div className="space-y-4">
-                  {clientContacts.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-border/5 pb-4 sm:border-0 sm:pb-0 items-end animate-in zoom-in-95 duration-200">
-                      <FormField
-                        control={form.control}
-                        name={`client.contacts.${index}.type` as any}
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-2 space-y-1.5">
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {CONTACT_TYPES.map((t) => (
-                                  <SelectItem key={t} value={t} className="text-[11px] font-medium">
-                                    {t.replace("_", " ")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`client.contacts.${index}.value` as any}
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-7 space-y-1.5">
-                            <FormControl>
-                              <Input placeholder="address@domain.com" {...field} className="h-11 text-sm font-medium tracking-tight bg-background border-primary/10 rounded-xl" />
-                            </FormControl>
-                            <FormMessage className="text-[10px]" />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="sm:col-span-3 flex items-center justify-between sm:justify-end gap-3 h-11 pb-1">
-                        <FormField
-                          control={form.control}
-                          name={`client.contacts.${index}.isPrimary` as any}
-                          render={({ field }) => (
-                            <FormItem className="flex items-center gap-2.5 group/check cursor-pointer h-full">
-                              <FormControl>
-                                <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      form.setValue('client.contacts' as any, (form.getValues('client.contacts' as any) as any[]).map((c, i) => ({ ...c, isPrimary: i === index })))
-                                    }
-                                  }}
-                                />
-                              </FormControl>
-                              <span className="text-[11px] font-semibold tracking-tight text-foreground/70 group-hover/check:text-primary transition-colors">Primary</span>
-                            </FormItem>
-                          )}
-                        />
-                        {clientContacts.length > 1 && (
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeClientContact(index)} className="h-11 w-11 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all">
-                            <Trash2 className="size-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-8">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-primary/10 pb-4 gap-4">
-                  <h3 className="text-xs font-semibold tracking-tight text-muted-foreground flex items-center gap-2">
-                    <Globe className="size-4 text-primary/60" /> Client Social Profiles *
-                  </h3>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => appendClientSocial({ platform: "LINKEDIN", url: "" })}
-                    className="h-9 w-full sm:w-auto px-6 text-[11px] font-semibold tracking-tight bg-primary/5 hover:bg-primary hover:text-primary-foreground text-primary rounded-xl transition-all border border-primary/10"
-                  >
-                    + Add Social Profile
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6">
-                  {clientSocials.map((field, index) => (
-                    <div key={field.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 border-b border-border/5 pb-4 sm:border-0 sm:pb-0 items-end animate-in fade-in duration-300">
-                      <FormField
-                        control={form.control}
-                        name={`client.socials.${index}.platform` as any}
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-2 space-y-1.5">
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
-                                  <SelectValue />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {SOCIAL_PLATFORMS.map((p) => (
-                                  <SelectItem key={p} value={p} className="text-[11px] font-medium">
-                                    {p.replace("_", " ")}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name={`client.socials.${index}.url` as any}
-                        render={({ field }) => (
-                          <FormItem className="sm:col-span-9 space-y-1.5">
-                            <FormControl>
-                              <Input placeholder="linkedin.com/in/stakeholder" {...field} className="h-11 text-sm font-medium tracking-tight bg-background border-primary/10 rounded-xl" />
-                            </FormControl>
-                            <FormMessage className="text-[10px]" />
-                          </FormItem>
-                        )}
-                      />
-                      <div className="sm:col-span-1 flex justify-end pb-1">
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeClientSocial(index)} className="h-11 w-11 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all">
-                          <Trash2 className="size-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="space-y-16">
+                {clientFields.map((field, index) => (
+                  <ClientSection
+                    key={field.id}
+                    index={index}
+                    form={form}
+                    removeClient={() => removeClient(index)}
+                    isOnly={clientFields.length === 1}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -808,6 +712,237 @@ export function CompanyForm({
           </div>
         </form>
       </Form>
+    </div>
+  )
+}
+
+/**
+ * 🏭 ClientSection: Modular Stakeholder Unit
+ * Manages nested field arrays for a single client within a multi-stakeholder form.
+ */
+function ClientSection({ index, form, removeClient, isOnly }: { index: number, form: any, removeClient: () => void, isOnly: boolean }) {
+  const { fields: contactFields, append: appendContact, remove: removeContact } = useFieldArray({
+    control: form.control,
+    name: `clients.${index}.contacts` as any,
+  })
+
+  const { fields: socialFields, append: appendSocial, remove: removeSocial } = useFieldArray({
+    control: form.control,
+    name: `clients.${index}.socials` as any,
+  })
+
+  return (
+    <div className="relative pt-8 border-primary/5 space-y-6 bg-primary/[0.01] -mx-4 px-4 py-8 rounded-3xl animate-in zoom-in-[0.98] duration-300">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-[10px] font-black uppercase tracking-widest text-primary/30 flex items-center gap-2 italic">
+          Client Details #{index + 1}
+        </h3>
+        {!isOnly && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={removeClient}
+            className="h-7 text-[9px] font-bold uppercase tracking-tighter text-destructive hover:bg-destructive/10 rounded-lg px-2 flex items-center gap-1.5 transition-all"
+          >
+            <Trash2 className="size-3" />
+            Remove Client
+          </Button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-8">
+        <FormField
+          control={form.control}
+          name={`clients.${index}.fullName` as any}
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Client Name *</FormLabel>
+              <FormControl>
+                <Input placeholder="John Doe" {...field} className="h-12 text-sm font-medium tracking-tight border-primary/10 bg-background rounded-2xl focus:border-primary shadow-sm" />
+              </FormControl>
+              <FormMessage className="font-sans text-[10px] font-medium" />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name={`clients.${index}.designation` as any}
+          render={({ field }) => (
+            <FormItem className="space-y-2">
+              <FormLabel className="text-[10px] font-semibold uppercase tracking-tight text-foreground">Designation *</FormLabel>
+              <FormControl>
+                <Input placeholder="Managing Director" {...field} className="h-12 text-sm font-medium tracking-tight border-primary/10 bg-background rounded-2xl focus:border-primary shadow-sm" />
+              </FormControl>
+              <FormMessage className="font-sans text-[10px] font-medium" />
+            </FormItem>
+          )}
+        />
+      </div>
+
+      <div className="space-y-4 pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between border-b border-primary/5 pb-3 gap-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <Mail className="size-3.5 text-primary/40" /> Contact Details
+          </h4>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => appendContact({ type: "EMAIL", value: "", isPrimary: contactFields.length === 0 })}
+            className="h-8 px-4 text-[10px] font-bold tracking-tight bg-primary/5 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl transition-all border border-primary/10"
+          >
+            + New Contact
+          </Button>
+        </div>
+
+        <div className="space-y-4">
+          {contactFields.map((fieldItem, contactIndex) => (
+            <div key={fieldItem.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 pb-2 items-end animate-in fade-in duration-300">
+              <FormField
+                control={form.control}
+                name={`clients.${index}.contacts.${contactIndex}.type` as any}
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 space-y-1.5">
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CONTACT_TYPES.map((t) => (
+                          <SelectItem key={t} value={t} className="text-[11px] font-medium">
+                            {t.replace("_", " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`clients.${index}.contacts.${contactIndex}.value` as any}
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-7 space-y-1.5">
+                    <FormControl>
+                      <Input
+                        placeholder={form.watch(`clients.${index}.contacts.${contactIndex}.type`)?.includes("EMAIL") ? "address@domain.com" : "Numeric Contact Value"}
+                        type={form.watch(`clients.${index}.contacts.${contactIndex}.type`)?.includes("EMAIL") ? "email" : "text"}
+                        {...field}
+                        onKeyPress={(e) => {
+                          const type = form.getValues(`clients.${index}.contacts.${contactIndex}.type`);
+                          if (["MOBILE", "LANDLINE", "WORK_PHONE", "WHATSAPP"].includes(type) && !/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        className="h-11 text-sm font-medium tracking-tight bg-background border-primary/10 rounded-xl"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <div className="sm:col-span-3 flex items-center justify-between sm:justify-end gap-3 h-11 pb-1">
+                <FormField
+                  control={form.control}
+                  name={`clients.${index}.contacts.${contactIndex}.isPrimary` as any}
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2.5 group/check cursor-pointer h-full">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              const contacts = form.getValues(`clients.${index}.contacts`);
+                              form.setValue(`clients.${index}.contacts` as any, contacts.map((c: any, i: number) => ({ ...c, isPrimary: i === contactIndex })))
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <span className="text-[11px] font-semibold tracking-tight text-foreground/70 group-hover/check:text-primary transition-colors">Primary</span>
+                    </FormItem>
+                  )}
+                />
+                {contactFields.length > 1 && (
+                  <Button type="button" variant="ghost" size="icon" onClick={() => removeContact(contactIndex)} className="h-11 w-11 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all">
+                    <Trash2 className="size-4" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4 pt-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between border-b border-primary/5 pb-3 gap-4">
+          <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+            <Globe className="size-3.5 text-primary/40" /> Social Profiles
+          </h4>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => appendSocial({ platform: "LINKEDIN", url: "" })}
+            className="h-8 px-4 text-[10px] font-bold tracking-tight bg-primary/5 hover:bg-primary text-primary hover:text-primary-foreground rounded-xl transition-all border border-primary/10"
+          >
+            + New Profile
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {socialFields.map((socialField, socialIndex) => (
+            <div key={socialField.id} className="grid grid-cols-1 sm:grid-cols-12 gap-2 pb-2 items-end animate-in fade-in duration-300">
+              <FormField
+                control={form.control}
+                name={`clients.${index}.socials.${socialIndex}.platform` as any}
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2 space-y-1.5">
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="h-11 text-[11px] font-medium tracking-tight bg-background border-primary/10 rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {SOCIAL_PLATFORMS.map((p) => (
+                          <SelectItem key={p} value={p} className="text-[11px] font-medium">
+                            {p.replace("_", " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name={`clients.${index}.socials.${socialIndex}.url` as any}
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-9 space-y-1.5">
+                    <FormControl>
+                      <Input
+                        placeholder="linkedin.com/in/client"
+                        type="url"
+                        {...field}
+                        className="h-11 text-sm font-medium tracking-tight bg-background border-primary/10 rounded-xl"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-[10px]" />
+                  </FormItem>
+                )}
+              />
+              <div className="sm:col-span-1 flex justify-end pb-1">
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeSocial(socialIndex)} className="h-11 w-11 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 rounded-xl transition-all">
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

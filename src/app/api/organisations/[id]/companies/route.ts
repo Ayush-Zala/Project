@@ -44,7 +44,7 @@ const companySchema = z.object({
   country: z.string().min(1, "Country is required"),
   postalCode: z.string().min(1, "Postal Code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one company contact is required"),
-  client: clientSchema, // 🛡️ Now Compulsory
+  clients: z.array(clientSchema).min(1, "At least one stakeholder is required"),
 });
 
 /**
@@ -151,8 +151,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         return NextResponse.json({ error: `Validation Failed: ${errors}` }, { status: 400 });
     }
 
-    const { contacts, client: clientData, ...companyData } = result.data;
-    const { contacts: clientContacts, socials: clientSocials, ...clientBase } = clientData;
+    const { contacts, clients: clientsData, ...companyData } = result.data;
 
     const epochNow = BigInt(Date.now());
 
@@ -177,34 +176,37 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           }))
         },
         clients: {
-          create: [{
-            ...clientBase,
-            isActive: true,
-            createdBy: userId,
-            updatedBy: userId,
-            createdAt: epochNow,
-            updatedAt: epochNow,
-            contacts: {
-              create: clientContacts.map(cc => ({
-                ...cc,
-                isActive: true,
-                createdBy: userId,
-                updatedBy: userId,
-                createdAt: epochNow,
-                updatedAt: epochNow,
-              }))
-            },
-            socials: {
-              create: clientSocials.map(cs => ({
-                ...cs,
-                isActive: true,
-                createdBy: userId,
-                updatedBy: userId,
-                createdAt: epochNow,
-                updatedAt: epochNow,
-              }))
-            }
-          }]
+          create: clientsData.map((client) => {
+            const { contacts: clientContacts, socials: clientSocials, ...clientBase } = client;
+            return {
+              ...clientBase,
+              isActive: true,
+              createdBy: userId,
+              updatedBy: userId,
+              createdAt: epochNow,
+              updatedAt: epochNow,
+              contacts: {
+                create: clientContacts.map(cc => ({
+                  ...cc,
+                  isActive: true,
+                  createdBy: userId,
+                  updatedBy: userId,
+                  createdAt: epochNow,
+                  updatedAt: epochNow,
+                }))
+              },
+              socials: {
+                create: clientSocials.map(cs => ({
+                  ...cs,
+                  isActive: true,
+                  createdBy: userId,
+                  updatedBy: userId,
+                  createdAt: epochNow,
+                  updatedAt: epochNow,
+                }))
+              }
+            };
+          })
         }
       },
       include: {
