@@ -127,7 +127,7 @@ export type CompanyFormValues = {
   name: string;
   website?: string;
   industryId: string;
-  source: "REFERRAL" | "COLD_CALL" | "COLD_EMAIL" | "LINKEDIN" | "WEBSITE" | "CONFERENCE" | "PAID_AD" | "CONTENT_MARKETING" | "PARTNER" | "OTHER";
+  source: "REFERRAL" | "COLD_CALL" | "COLD_EMAIL" | "LINKEDIN" | "WEBSITE" | "CONFERENCE" | "PAID_AD" | "CONTENT_MARKETING" | "PARTNER" | "OTHER" | "";
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -211,7 +211,7 @@ export function CompanyForm({
         name: initialData?.name || "",
         website: initialData?.website || "",
         industryId: initialData?.industryId ? String(initialData.industryId) : "",
-        source: initialData?.source || "OTHER",
+        source: initialData?.source || "",
         addressLine1: initialData?.addressLine1 || "",
         addressLine2: initialData?.addressLine2 || "",
         city: initialData?.city || "",
@@ -449,7 +449,7 @@ export function CompanyForm({
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-11 w-full text-sm font-medium tracking-tight bg-muted/5 border-border/40 rounded-xl">
-                          <SelectValue placeholder="Selection Required" />
+                          <SelectValue placeholder="Choose source..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="max-h-[300px]">
