@@ -94,3 +94,24 @@ export async function validatePermission(userId: number, permissionSlug: string,
   }
   return true;
 }
+
+/**
+ * Checks if a user is the owner of specified organisation.
+ */
+export async function checkIsOrgOwner(userId: number, orgId: number): Promise<boolean> {
+  try {
+    const membership = await (prisma as any).organisationMember.findFirst({
+      where: {
+        userId,
+        organizationId: orgId,
+        role: "owner",
+        isActive: true
+      },
+      select: { id: true }
+    });
+    return !!membership;
+  } catch (error) {
+    console.error("[OWNERSHIP_CHECK_ERROR]", error);
+    return false;
+  }
+}

@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, checkIsOrgOwner } from "@/lib/rbac";
 
 const companyContactSchema = z.object({
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
@@ -93,6 +93,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const canRead = await hasPermission(userId, "company:read", company.organisationId);
     if (!canRead) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const canReadAll = await hasPermission(userId, "company:read_all", company.organisationId);
+    const isOwner = await checkIsOrgOwner(userId, company.organisationId);
+    const isAuthor = company.createdBy === userId;
+
+    if (!canReadAll && !isOwner && !isAuthor) {
+      return NextResponse.json({ error: "Access Denied: You do not have permission to view this record" }, { status: 403 });
+    }
 
     return NextResponse.json(company);
   } catch (error) {

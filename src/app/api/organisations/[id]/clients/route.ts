@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, checkIsOrgOwner } from "@/lib/rbac";
 import { getPrismaWhere, getPrismaOrderBy } from "@/lib/data-table-server";
 import { type ExtendedColumnFilter } from "@/types/data-table";
 
@@ -47,11 +47,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const advancedWhere = getPrismaWhere(filters);
     
+    const canReadAll = await hasPermission(userId, "company_client:read_all", Number(organisationId));
+    const isOwner = await checkIsOrgOwner(userId, Number(organisationId));
+    
     const where = {
       AND: [
         { company: { organisationId: Number(organisationId) } },
         searchWhere,
         advancedWhere,
+        ...(!(canReadAll || isOwner) ? [{ createdBy: userId }] : []),
       ]
     };
 

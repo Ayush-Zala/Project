@@ -27,8 +27,8 @@ const PERMISSIONS_MANIFEST: Record<string, string[]> = {
   organisation_member: ["create", "read", "read_all", "delete", "toggle"],
   organisation_team: ["create", "read", "read_all", "update", "delete", "toggle"],
   organisation_team_member: ["assign", "read", "delete", "toggle"],
-  company: ["create", "read", "update", "delete", "toggle"],
-  company_client: ["create", "read", "update", "delete", "toggle"],
+  company: ["create", "read", "read_all", "update", "delete", "toggle"],
+  company_client: ["create", "read", "read_all", "update", "delete", "toggle"],
 };
 
 const INDUSTRIES = [

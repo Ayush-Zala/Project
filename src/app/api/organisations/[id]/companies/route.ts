@@ -4,7 +4,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { emitEvent } from "@/lib/socket-emit";
 import * as z from "zod";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission, checkIsOrgOwner } from "@/lib/rbac";
 import { getPrismaWhere, getPrismaOrderBy } from "@/lib/data-table-server";
 import { type ExtendedColumnFilter } from "@/types/data-table";
 
@@ -103,11 +103,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
     const advancedWhere = getPrismaWhere(filters);
     
+    const canReadAll = await hasPermission(userId, "company:read_all", Number(organisationId));
+    const isOwner = await checkIsOrgOwner(userId, Number(organisationId));
+    
     const where = {
       AND: [
         { organisationId: Number(organisationId) },
         searchWhere,
         advancedWhere,
+        ...(!(canReadAll || isOwner) ? [{ createdBy: userId }] : []),
       ]
     };
 
