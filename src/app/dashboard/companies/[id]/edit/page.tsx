@@ -37,7 +37,7 @@ export default function EditCompanyPage() {
         breadcrumbs={[
           { label: "Dashboard", href: "/dashboard" },
           { label: "Companies", href: "/dashboard/companies" },
-          { label: company?.name || "Edit Profile" }
+          { label: company?.name || "Edit" }
         ]}
       />
 

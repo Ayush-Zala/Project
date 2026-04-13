@@ -66,6 +66,9 @@ export default function CompaniesPage() {
       onShowClients: (company) => {
         router.push(`/dashboard/companies/${company.id}/clients`)
       },
+      onView: (company) => {
+        router.push(`/dashboard/companies/${company.id}/view`)
+      },
     }), [canUpdate, canDelete, canToggle, router]),
     pageCount,
   })
@@ -205,6 +208,19 @@ export default function CompaniesPage() {
 
               return (
                 <>
+                  {count === 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        router.push(`/dashboard/companies/${first.id}/view`)
+                      }}
+                      className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest">View</span>
+                    </Button>
+                  )}
+
                   {count === 1 && canUpdate && (
                     <Button
                       variant="ghost"

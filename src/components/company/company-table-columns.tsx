@@ -17,6 +17,13 @@ interface GetColumnsProps {
   onDelete: (company: any) => void
   onToggleStatus: (company: any) => void
   onShowClients: (company: any) => void
+  onView: (company: any) => void
+}
+
+interface Action {
+  label: string
+  onClick: () => void
+  variant?: "default" | "destructive"
 }
 
 export function getCompanyColumns({
@@ -25,6 +32,7 @@ export function getCompanyColumns({
   onDelete,
   onToggleStatus,
   onShowClients,
+  onView,
 }: GetColumnsProps): ColumnDef<any>[] {
   const canPerformBulk = capabilities.canToggle || capabilities.canDelete;
 
@@ -189,7 +197,12 @@ export function getCompanyColumns({
       cell: ({ row }) => {
         const company = row.original
 
-        const actions = [];
+        const actions: Action[] = [
+          {
+            label: "View",
+            onClick: () => onView(company)
+          }
+        ];
 
         if (capabilities.canUpdate) {
           actions.push({
