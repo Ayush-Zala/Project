@@ -5,9 +5,8 @@ import { Contact, Plus, RefreshCwIcon } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useSocket } from "@/providers/socket-provider"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { apiClient } from "@/lib/api-client"
-
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PageShell } from "@/components/dashboard/page-shell"
 import { ClientDialog } from "@/components/company/client-dialog"
@@ -25,7 +24,7 @@ import { DataTableFilterField } from "@/types/data-table"
 
 export default function ClientsPage() {
   const router = useRouter()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   // 1. State Hooks
   const [clients, setClients] = React.useState<any[]>([])

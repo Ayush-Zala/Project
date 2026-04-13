@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { Loader2, Plus, Trash2, User, UserPlus, Briefcase, Contact2, Phone, Mail, Globe, Share2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
@@ -89,7 +89,7 @@ export function ClientDialog({
 }: ClientDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [companies, setCompanies] = React.useState<any[]>([])
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   const form = useForm<ClientFormValues>({
     resolver: zodResolver(clientFormSchema),

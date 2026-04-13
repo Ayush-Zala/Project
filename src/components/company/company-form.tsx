@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { Loader2, Plus, Trash2, Building, Globe, MapPin, Mail, UserPlus, ArrowLeft, Search, Check, ChevronDown } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { useRouter } from "next/navigation"
@@ -209,7 +209,7 @@ export function CompanyForm({
   const [industries, setIndustries] = React.useState<any[]>([])
   const [industrySearch, setIndustrySearch] = React.useState("")
   const [isIndustryOpen, setIsIndustryOpen] = React.useState(false)
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   // Dynamic schema refinement based on mode
   const refinedSchema = React.useMemo(() => {

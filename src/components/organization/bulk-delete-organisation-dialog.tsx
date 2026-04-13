@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Loader2Icon, AlertTriangleIcon } from "lucide-react"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 interface BulkDeleteOrganisationDialogProps {
   open: boolean
@@ -21,7 +21,7 @@ interface BulkDeleteOrganisationDialogProps {
 
 export function BulkDeleteOrganisationDialog({ open, onOpenChange, organisations, onSuccess }: BulkDeleteOrganisationDialogProps) {
   const [isDeleting, setIsDeleting] = React.useState(false)
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   async function onDelete() {
     if (!organisations.length) return

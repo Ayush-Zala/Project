@@ -31,7 +31,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { apiClient } from "@/lib/api-client"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { Loader2, Plus, Trash2, Building, Globe, MapPin, Contact2, Phone, Mail, Link as LinkIcon, UserPlus } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 
@@ -117,7 +117,7 @@ export function CompanyDialog({
 }: CompanyDialogProps) {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [industries, setIndustries] = React.useState<any[]>([])
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   const form = useForm<CompanyFormValues>({
     resolver: zodResolver(companyFormSchema),

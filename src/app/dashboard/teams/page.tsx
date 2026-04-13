@@ -21,7 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useHasPermission } from "@/hooks/use-has-permission"
-import { useRouter } from "next/navigation"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DataTable } from "@/components/data-table/data-table"
@@ -32,6 +32,7 @@ import { getTeamsColumns } from "@/components/teams/teams-table-columns"
 import { DataTableFilterField } from "@/types/data-table"
 
 export default function TeamsPage() {
+  const { data: activeOrg } = useWorkspace()
   const [teams, setTeams] = React.useState<any[]>([])
   const [pageCount, setPageCount] = React.useState(0)
   const [totalCount, setTotalCount] = React.useState(0)

@@ -5,9 +5,8 @@ import { Building, Plus, RefreshCwIcon, Search } from "lucide-react"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
 import { useSocket } from "@/providers/socket-provider"
-import { authClient } from "@/lib/auth-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 import { apiClient } from "@/lib/api-client"
-
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DeleteCompanyDialog } from "@/components/company/delete-company-dialog"
@@ -24,7 +23,7 @@ import { DataTableFilterField } from "@/types/data-table"
 
 export default function CompaniesPage() {
   const router = useRouter()
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   // 1. State Hooks
   const [companies, setCompanies] = React.useState<any[]>([])

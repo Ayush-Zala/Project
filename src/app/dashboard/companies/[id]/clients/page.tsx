@@ -5,8 +5,8 @@ import { useParams, useRouter } from "next/navigation"
 import { Building, Contact, Plus, RefreshCwIcon, ArrowLeft } from "lucide-react"
 import { toast } from "sonner"
 import { useSocket } from "@/providers/socket-provider"
-import { authClient } from "@/lib/auth-client"
 import { apiClient } from "@/lib/api-client"
+import { useWorkspace } from "@/hooks/use-workspace"
 
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PageShell } from "@/components/dashboard/page-shell"
@@ -27,7 +27,7 @@ export default function CompanyClientsPage() {
   const params = useParams()
   const router = useRouter()
   const companyId = params.id as string
-  const { data: activeOrg } = authClient.useActiveOrganization()
+  const { data: activeOrg } = useWorkspace()
 
   // 1. State Hooks
   const [company, setCompany] = React.useState<any>(null)
