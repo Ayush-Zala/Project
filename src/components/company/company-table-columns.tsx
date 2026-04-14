@@ -138,34 +138,59 @@ export function getCompanyColumns({
       },
     },
     {
-      id: "contacts",
-      meta: { title: "Contact" },
+      id: "company_phones",
+      meta: { title: "Company Phones" },
       header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Contact" />
+        <DataTableColumnHeader column={column} title="Company Phones" />
       ),
       cell: ({ row }) => {
-        const contacts = [...(row.original.contacts || [])].sort((a: any, b: any) =>
-          (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0)
-        )
+        const contacts = row.original.contacts || []
+        const phones = contacts
+          .filter((c: any) => !c.type?.includes("EMAIL") && !c.value?.includes("@"))
+          .sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
 
-        if (contacts.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Contacts</span>
+        if (phones.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Phones</span>
 
         return (
           <div className="flex flex-col gap-2 py-1">
-            {contacts.map((contact: any, index: number) => (
+            {phones.map((contact: any, index: number) => (
               <div key={contact.id} className="flex flex-col gap-0.5 relative group/contact">
                 <span className={`text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1 ${contact.isPrimary ? 'text-primary/90' : ''}`}>
                   {contact.value}
+                  {contact.isPrimary && <span className="font-medium text-muted-foreground/60 tracking-normal ml-1">(Primary)</span>}
                 </span>
-                <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest flex items-center gap-1.5">
-                  {contact.type === "OTHER" && contact.otherType
-                    ? contact.otherType
-                    : contact.type.replace("_", " ")}
-                  {contact.isPrimary && (
-                    <span className="text-[8px] bg-primary/10 text-primary/70 px-1 rounded-[2px] font-black tracking-tighter shadow-sm border border-primary/10">PRIMARY</span>
-                  )}
+                {index < phones.length - 1 && (
+                  <div className="absolute -bottom-1 left-0 w-4 h-[1px] bg-border/30" />
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
+      id: "company_emails",
+      meta: { title: "Company Emails" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Company Emails" />
+      ),
+      cell: ({ row }) => {
+        const contacts = row.original.contacts || []
+        const emails = contacts
+          .filter((c: any) => c.type?.includes("EMAIL") || c.value?.includes("@"))
+          .sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+
+        if (emails.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Emails</span>
+
+        return (
+          <div className="flex flex-col gap-2 py-1">
+            {emails.map((contact: any, index: number) => (
+              <div key={contact.id} className="flex flex-col gap-0.5 relative group/contact">
+                <span className={`text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1 ${contact.isPrimary ? 'text-primary/90' : ''}`}>
+                  {contact.value}
+                  {contact.isPrimary && <span className="font-medium text-muted-foreground/60 tracking-normal ml-1">(Primary)</span>}
                 </span>
-                {index < contacts.length - 1 && (
+                {index < emails.length - 1 && (
                   <div className="absolute -bottom-1 left-0 w-4 h-[1px] bg-border/30" />
                 )}
               </div>
