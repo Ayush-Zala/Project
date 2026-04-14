@@ -9,7 +9,7 @@ export function PageShell({ children, className, ...props }: PageShellProps) {
   return (
     <div 
       className={cn(
-        "flex flex-col gap-4 p-4 md:p-6 w-full max-w-full",
+        "flex flex-col gap-4 p-4 md:p-6 w-full max-w-full min-w-0",
         className
       )} 
       {...props}

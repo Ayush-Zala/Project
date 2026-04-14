@@ -62,7 +62,7 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   return (
     <div
-      className={cn("w-full space-y-4 overflow-auto", className)}
+      className={cn("w-full min-w-0 space-y-4", className)}
       {...props}
     >
       {children}
