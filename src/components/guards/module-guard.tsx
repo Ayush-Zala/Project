@@ -16,6 +16,7 @@ export function ModuleGuard({ children }: { children: React.ReactNode }) {
     { prefix: "/dashboard/roles", permission: "roles:read", name: "Roles" },
     { prefix: "/dashboard/users", permission: "users:read", name: "Users" },
     { prefix: "/dashboard/permissions", permission: "permissions:read", name: "Permissions Manifest" },
+    { prefix: "/dashboard/calendar", permission: "calendar:view", name: "Calendar" },
   ]
 
   const activeModule = PROTECTED_MODULES.find(m => pathname.startsWith(m.prefix))

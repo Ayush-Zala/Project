@@ -21,6 +21,7 @@ import {
   Building2,
   Building,
   Contact,
+  CalendarDays,
 } from "lucide-react"
 
 const data = {
@@ -59,6 +60,12 @@ const data = {
       url: "/dashboard/organisation",
       icon: <Building2 />,
       permission: "organisation:read",
+    },
+    {
+      title: "Calendar",
+      url: "/dashboard/calendar",
+      icon: <CalendarDays />,
+      permission: "calendar:view",
     },
     {
       title: "Companies",

@@ -29,6 +29,7 @@ const PERMISSIONS_MANIFEST: Record<string, string[]> = {
   organisation_team_member: ["assign", "read", "delete", "toggle"],
   company: ["create", "read", "read_all", "update", "delete", "toggle", "assign"],
   company_client: ["create", "read", "read_all", "update", "delete", "toggle"],
+  calendar: ["view"],
 };
 
 const INDUSTRIES = [
@@ -172,6 +173,7 @@ async function main() {
         organisation_team_member: "Organisation Team Members",
         company: "Companies",
         company_client: "Company Clients",
+        calendar: "Calendar",
       };
 
       const actionLabels: Record<string, string> = {
