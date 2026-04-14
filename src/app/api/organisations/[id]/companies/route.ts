@@ -135,6 +135,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
           contacts: {
             where: { isActive: true }
           },
+          clients: {
+            where: { isActive: true },
+            include: {
+              contacts: {
+                where: { isActive: true }
+              }
+            }
+          },
           assignedMembers: {
             where: { isActive: true },
             take: 1, // Since companyId is @unique, there's always at most 1 active assignment

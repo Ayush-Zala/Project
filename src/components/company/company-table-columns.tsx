@@ -200,6 +200,72 @@ export function getCompanyColumns({
       },
     },
     {
+      id: "client_phones",
+      meta: { title: "Client Phones" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Client Phones" />
+      ),
+      cell: ({ row }) => {
+        const clients = row.original.clients || []
+        const phones = clients.flatMap((client: any) =>
+          (client.contacts || [])
+            .filter((c: any) => !c.type?.includes("EMAIL") && !c.value?.includes("@"))
+            .sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+        )
+
+        if (phones.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Phones</span>
+
+        return (
+          <div className="flex flex-col gap-2 py-1">
+            {phones.map((contact: any, index: number) => (
+              <div key={contact.id || index} className="flex flex-col gap-0.5 relative group/contact">
+                <span className={`text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1 ${contact.isPrimary ? 'text-primary/90' : ''}`}>
+                  {contact.value}
+                  {contact.isPrimary && <span className="font-medium text-muted-foreground/60 tracking-normal ml-1">(Primary)</span>}
+                </span>
+                {index < phones.length - 1 && (
+                  <div className="absolute -bottom-1 left-0 w-4 h-[1px] bg-border/30" />
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
+      id: "client_emails",
+      meta: { title: "Client Emails" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Client Emails" />
+      ),
+      cell: ({ row }) => {
+        const clients = row.original.clients || []
+        const emails = clients.flatMap((client: any) =>
+          (client.contacts || [])
+            .filter((c: any) => c.type?.includes("EMAIL") || c.value?.includes("@"))
+            .sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0))
+        )
+
+        if (emails.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Emails</span>
+
+        return (
+          <div className="flex flex-col gap-2 py-1">
+            {emails.map((contact: any, index: number) => (
+              <div key={contact.id || index} className="flex flex-col gap-0.5 relative group/contact">
+                <span className={`text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1 ${contact.isPrimary ? 'text-primary/90' : ''}`}>
+                  {contact.value}
+                  {contact.isPrimary && <span className="font-medium text-muted-foreground/60 tracking-normal ml-1">(Primary)</span>}
+                </span>
+                {index < emails.length - 1 && (
+                  <div className="absolute -bottom-1 left-0 w-4 h-[1px] bg-border/30" />
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
       id: "assignedTo",
       meta: { title: "Assigned To" },
       header: ({ column }) => (
