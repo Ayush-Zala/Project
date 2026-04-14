@@ -10,7 +10,9 @@ import { apiClient } from "@/lib/api-client"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DeleteCompanyDialog } from "@/components/company/delete-company-dialog"
+import { AssignCompanyMemberDialog } from "@/components/company/assign-company-member-dialog"
 import { Button } from "@/components/ui/button"
+
 import { useHasPermission } from "@/hooks/use-has-permission"
 
 // Data Table Imports
@@ -34,13 +36,17 @@ export default function CompaniesPage() {
 
   // Dialog States
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
   const [selectedCompany, setSelectedCompany] = React.useState<any>(null)
+
 
   // Capability Guards
   const canCreate = useHasPermission("company:create")
   const canUpdate = useHasPermission("company:update")
   const canDelete = useHasPermission("company:delete")
   const canToggle = useHasPermission("company:toggle")
+  const canAssign = useHasPermission("company:assign")
+
 
   // 2. Data Table Hook
   const {
@@ -56,7 +62,7 @@ export default function CompaniesPage() {
   } = useDataTable({
     data: companies,
     columns: React.useMemo(() => getCompanyColumns({
-      capabilities: { canUpdate, canDelete, canToggle },
+      capabilities: { canUpdate, canDelete, canToggle, canAssign },
       onEdit: (company) => {
         router.push(`/dashboard/companies/${company.id}/edit`)
       },
@@ -68,7 +74,12 @@ export default function CompaniesPage() {
       onView: (company) => {
         router.push(`/dashboard/companies/${company.id}/view`)
       },
-    }), [canUpdate, canDelete, canToggle, router]),
+      onAssignMembers: (company) => {
+        setSelectedCompany(company)
+        setIsAssignDialogOpen(true)
+      },
+    }), [canUpdate, canDelete, canToggle, canAssign, router]),
+
     pageCount,
   })
 
@@ -276,7 +287,17 @@ export default function CompaniesPage() {
           company={selectedCompany}
           onSuccess={fetchCompanies}
         />
+
+        <AssignCompanyMemberDialog
+          open={isAssignDialogOpen}
+          onOpenChange={setIsAssignDialogOpen}
+          organizationId={activeOrg?.id?.toString() || ""}
+          companyId={selectedCompany?.id}
+          companyName={selectedCompany?.name || ""}
+          onSuccess={fetchCompanies}
+        />
       </PageShell>
+
     </>
   )
 }

@@ -111,7 +111,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         { organisationId: Number(organisationId) },
         searchWhere,
         advancedWhere,
-        ...(!(canReadAll || isOwner) ? [{ createdBy: userId }] : []),
+        ...(!(canReadAll || isOwner) ? [{ 
+          OR: [
+            { createdBy: userId },
+            { assignedMembers: { some: { member: { userId: userId, isActive: true }, isActive: true } } }
+          ]
+        }] : []),
+
       ]
     };
 

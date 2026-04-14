@@ -394,7 +394,9 @@ model OrganisationMember {
 
   @@unique([userId, organizationId])
   @@map("organisation_member")
+  companyAssignments CompanyMember[]
 }
+
 
 model OrganisationInvitation {
   id             Int      @id @default(autoincrement())
@@ -549,7 +551,26 @@ model Company {
   clients         CompanyClient[]
 
   @@map("company")
+  assignedMembers CompanyMember[]
 }
+
+model CompanyMember {
+  id             Int      @id @default(autoincrement())
+  companyId      Int
+  organizationMemberId Int
+  isActive       Boolean  @default(true)
+  createdBy      Int?
+  updatedBy      Int?
+  createdAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+  updatedAt      BigInt   @default(dbgenerated("(extract(epoch from now()) * 1000)::bigint"))
+
+  company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  member         OrganisationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, organizationMemberId])
+  @@map("company_member")
+}
+
 
 model CompanyContact {
   id        Int         @id @default(autoincrement())

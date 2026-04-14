@@ -12,12 +12,15 @@ interface GetColumnsProps {
     canUpdate: boolean
     canDelete: boolean
     canToggle: boolean
+    canAssign: boolean
   }
   onEdit: (company: any) => void
   onDelete: (company: any) => void
   onToggleStatus: (company: any) => void
   onShowClients: (company: any) => void
   onView: (company: any) => void
+  onAssignMembers: (company: any) => void
+
 }
 
 interface Action {
@@ -33,6 +36,8 @@ export function getCompanyColumns({
   onToggleStatus,
   onShowClients,
   onView,
+  onAssignMembers,
+
 }: GetColumnsProps): ColumnDef<any>[] {
   const canPerformBulk = capabilities.canToggle || capabilities.canDelete;
 
@@ -229,6 +234,15 @@ export function getCompanyColumns({
             onClick: () => onToggleStatus(company)
           });
         }
+
+        if (capabilities.canAssign) {
+          actions.push({
+            label: "Assign",
+            onClick: () => onAssignMembers(company)
+          });
+        }
+
+
 
         if (capabilities.canDelete) {
           actions.push({
