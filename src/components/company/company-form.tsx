@@ -33,6 +33,7 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 const companyContactSchema = z.object({
+  id: z.number().optional(),
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   otherType: z.string().optional(),
   value: z.string().min(1, "Value is required"),
@@ -72,6 +73,7 @@ const companyContactSchema = z.object({
   })
 
 const clientContactSchema = z.object({
+  id: z.number().optional(),
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   otherType: z.string().optional(),
   value: z.string().optional().or(z.literal("")),
@@ -108,6 +110,7 @@ const clientContactSchema = z.object({
   })
 
 const clientSocialSchema = z.object({
+  id: z.number().optional(),
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
   otherPlatform: z.string().optional(),
   url: z.string().optional().or(z.literal("")),
@@ -146,6 +149,7 @@ export const companyFormSchema = z.object({
   postalCode: z.string().min(1, "Postal code is required"),
   contacts: z.array(companyContactSchema).min(1, "At least one contact channel is required"),
   clients: z.array(z.object({
+    id: z.number().optional(),
     fullName: z.string().min(2, "Client name is required"),
     designation: z.string().min(1, "Client designation is required"),
     contacts: z.array(clientContactSchema).min(1, "At least one contact method is required"),
@@ -244,17 +248,18 @@ export function CompanyForm({
         country: initialData?.country || "",
         postalCode: initialData?.postalCode || "",
         contacts: initialData?.contacts?.length > 0
-          ? initialData.contacts.map((c: any) => ({ type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
+          ? initialData.contacts.map((c: any) => ({ id: c.id, type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
           : [{ type: "MOBILE", otherType: "", value: "", isPrimary: true }],
         clients: initialData?.clients?.length > 0
           ? initialData.clients.map((client: any) => ({
+            id: client.id,
             fullName: client.fullName,
             designation: client.designation,
             contacts: client.contacts?.length > 0
-              ? client.contacts.map((c: any) => ({ type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
+              ? client.contacts.map((c: any) => ({ id: c.id, type: c.type, otherType: c.otherType || "", value: c.value, isPrimary: c.isPrimary }))
               : [{ type: "EMAIL", otherType: "", value: "", isPrimary: true }],
             socials: client.socials?.length > 0
-              ? client.socials.map((s: any) => ({ platform: s.platform, otherPlatform: s.otherPlatform || "", url: s.url }))
+              ? client.socials.map((s: any) => ({ id: s.id, platform: s.platform, otherPlatform: s.otherPlatform || "", url: s.url }))
               : [{ platform: "LINKEDIN", otherPlatform: "", url: "" }],
           }))
           : [{

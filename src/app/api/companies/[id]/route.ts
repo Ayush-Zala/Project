@@ -7,6 +7,7 @@ import * as z from "zod";
 import { hasPermission, checkIsOrgOwner } from "@/lib/rbac";
 
 const companyContactSchema = z.object({
+  id: z.number().optional(),
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   otherType: z.string().optional(),
   value: z.string().min(1, "Contact value is required"),
@@ -17,6 +18,7 @@ const companyContactSchema = z.object({
 });
 
 const clientContactSchema = z.object({
+  id: z.number().optional(),
   type: z.enum(["MOBILE", "LANDLINE", "WORK_PHONE", "FAX", "EMAIL", "WORK_EMAIL", "WHATSAPP", "TELEGRAM", "SIGNAL", "SKYPE", "ZOOM", "OTHER"]),
   otherType: z.string().optional(),
   value: z.string().min(1, "Client contact value is required"),
@@ -27,6 +29,7 @@ const clientContactSchema = z.object({
 });
 
 const clientSocialSchema = z.object({
+  id: z.number().optional(),
   platform: z.enum(["LINKEDIN", "TWITTER_X", "FACEBOOK", "INSTAGRAM", "YOUTUBE", "TIKTOK", "GITHUB", "GITLAB", "WEBSITE", "BLOG", "OTHER"]),
   otherPlatform: z.string().optional(),
   url: z.string().url("Valid client social URL is required"),
@@ -36,11 +39,13 @@ const clientSocialSchema = z.object({
 });
 
 const clientSchema = z.object({
+  id: z.number().optional(),
   fullName: z.string().min(2, "Client full name is required"),
   designation: z.string().min(1, "Client designation is required"),
   contacts: z.array(clientContactSchema).min(1, "At least one client contact is required"),
   socials: z.array(clientSocialSchema).min(1, "At least one social profile is required"),
 });
+
 
 const companySchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -120,9 +125,18 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const userId = Number(session.user.id);
 
   try {
+    // 1. Fetch Full State for Deep Diffing
     const existingCompany = await (prisma as any).company.findUnique({
       where: { id: Number(companyId) },
-      select: { organisationId: true }
+      include: {
+        contacts: true,
+        clients: {
+          include: {
+            contacts: true,
+            socials: true
+          }
+        }
+      }
     });
 
     if (!existingCompany) return NextResponse.json({ error: "Company not found" }, { status: 404 });
@@ -140,74 +154,157 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { contacts, clients: clientsData, ...companyData } = result.data;
     const epochNow = BigInt(Date.now());
 
+    // 🛡️ Deep Comparison Helper
+    const isSame = (oldObj: any, newObj: any, fields: string[]) => {
+      if (!oldObj) return false;
+      return fields.every(f => oldObj[f] === newObj[f]);
+    };
+
     // Atomic update using transaction
     const updatedCompany = await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Update basic info
-      const company = await tx.company.update({
-        where: { id: Number(companyId) },
-        data: {
-          ...companyData,
-          updatedBy: userId,
-          updatedAt: epochNow,
-        }
-      });
-
-      // 2. Sync Company Contacts: Delete existing and re-create
-      await tx.companyContact.deleteMany({
-        where: { companyId: Number(companyId) }
-      });
-
-      await tx.companyContact.createMany({
-        data: contacts.map(c => ({
-          ...c,
-          companyId: Number(companyId),
-          isActive: true,
-          createdBy: userId,
-          updatedBy: userId,
-          createdAt: epochNow,
-          updatedAt: epochNow,
-        }))
-      });
-
-      // 3. Sync Clients: Sync by Replacement (Delete all and re-create for total fidelity)
-      // This ensures removed clients are gone and order is preserved.
-      await tx.companyClient.deleteMany({
-        where: { companyId: Number(companyId) }
-      });
-
-      for (const client of clientsData) {
-        const { contacts: clientContacts, socials: clientSocials, ...clientBase } = client;
-        await tx.companyClient.create({
+      // 1. Update basic info ONLY if changed
+      if (!isSame(existingCompany, companyData, ["name", "website", "industryId", "source", "otherSource", "addressLine1", "addressLine2", "city", "state", "country", "postalCode"])) {
+        await tx.company.update({
+          where: { id: Number(companyId) },
           data: {
-            ...clientBase,
+            ...companyData,
+            updatedBy: userId,
+            updatedAt: epochNow,
+          }
+        });
+      }
+
+      // 2. Smart Sync Company Contacts
+      const incomingContactIds = contacts.map(c => c.id).filter(Boolean) as number[];
+      const existingContactIds = existingCompany.contacts.map((c: any) => c.id);
+      
+      // Targeted delete ONLY if needed
+      const contactsToDelete = existingContactIds.filter((id: number) => !incomingContactIds.includes(id));
+      if (contactsToDelete.length > 0) {
+        await tx.companyContact.deleteMany({
+          where: { id: { in: contactsToDelete } }
+        });
+      }
+
+      // Upsert existing/new contacts
+      for (const contact of contacts) {
+        const { id, ...cData } = contact;
+        const existing = existingCompany.contacts.find((c: any) => c.id === id);
+        
+        // Skip if identical
+        if (existing && isSame(existing, cData, ["type", "otherType", "value", "isPrimary"])) continue;
+
+        await tx.companyContact.upsert({
+          where: { id: id || -1 },
+          update: { ...cData, updatedBy: userId, updatedAt: epochNow },
+          create: {
+            ...cData,
             companyId: Number(companyId),
             isActive: true,
             createdBy: userId,
             updatedBy: userId,
             createdAt: epochNow,
             updatedAt: epochNow,
-            contacts: {
-              create: clientContacts.map(cc => ({
-                ...cc,
-                isActive: true,
-                createdBy: userId,
-                updatedBy: userId,
-                createdAt: epochNow,
-                updatedAt: epochNow,
-              }))
-            },
-            socials: {
-              create: clientSocials.map(cs => ({
-                ...cs,
-                isActive: true,
-                createdBy: userId,
-                updatedBy: userId,
-                createdAt: epochNow,
-                updatedAt: epochNow,
-              }))
-            }
           }
         });
+      }
+
+      // 3. Smart Sync Clients
+      const incomingClientIds = clientsData.map(c => c.id).filter(Boolean) as number[];
+      const existingClientIds = existingCompany.clients.map((c: any) => c.id);
+
+      // Targeted delete for removed clients
+      const clientsToDelete = existingClientIds.filter((id: number) => !incomingClientIds.includes(id));
+      if (clientsToDelete.length > 0) {
+        await tx.companyClient.deleteMany({
+          where: { id: { in: clientsToDelete } }
+        });
+      }
+
+      for (const client of clientsData) {
+        const { id, contacts: clientContacts, socials: clientSocials, ...clientBase } = client;
+        const existingClientRecord = existingCompany.clients.find((c: any) => c.id === id);
+        
+        // Update Client ONLY if base details changed
+        let clientId = id;
+        if (!existingClientRecord || !isSame(existingClientRecord, clientBase, ["fullName", "designation"])) {
+          const upsertedClient = await tx.companyClient.upsert({
+            where: { id: id || -1 },
+            update: { ...clientBase, updatedBy: userId, updatedAt: epochNow },
+            create: {
+              ...clientBase,
+              companyId: Number(companyId),
+              isActive: true,
+              createdBy: userId,
+              updatedBy: userId,
+              createdAt: epochNow,
+              updatedAt: epochNow,
+            }
+          });
+          clientId = upsertedClient.id;
+        }
+
+        // --- DEEP SYNC: Client Contacts ---
+        const incomingCCIds = clientContacts.map(cc => cc.id).filter(Boolean) as number[];
+        const existingCCIds = existingClientRecord?.contacts.map((cc: any) => cc.id) || [];
+        
+        const ccToDelete = existingCCIds.filter((ccid: number) => !incomingCCIds.includes(ccid));
+        if (ccToDelete.length > 0) {
+          await tx.companyClientContact.deleteMany({
+            where: { id: { in: ccToDelete } }
+          });
+        }
+
+        for (const cc of clientContacts) {
+          const { id: ccId, ...ccData } = cc;
+          const existingCC = existingClientRecord?.contacts.find((ecc: any) => ecc.id === ccId);
+          if (existingCC && isSame(existingCC, ccData, ["type", "otherType", "value", "isPrimary"])) continue;
+
+          await tx.companyClientContact.upsert({
+            where: { id: ccId || -1 },
+            update: { ...ccData, updatedBy: userId, updatedAt: epochNow },
+            create: {
+              ...ccData,
+              clientId: clientId!,
+              isActive: true,
+              createdBy: userId,
+              updatedBy: userId,
+              createdAt: epochNow,
+              updatedAt: epochNow,
+            }
+          });
+        }
+
+        // --- DEEP SYNC: Client Socials ---
+        const incomingCSIds = clientSocials.map(cs => cs.id).filter(Boolean) as number[];
+        const existingCSIds = existingClientRecord?.socials.map((cs: any) => cs.id) || [];
+
+        const csToDelete = existingCSIds.filter((csid: number) => !incomingCSIds.includes(csid));
+        if (csToDelete.length > 0) {
+          await tx.companyClientSocialProfile.deleteMany({
+            where: { id: { in: csToDelete } }
+          });
+        }
+
+        for (const cs of clientSocials) {
+          const { id: csId, ...csData } = cs;
+          const existingCS = existingClientRecord?.socials.find((ecs: any) => ecs.id === csId);
+          if (existingCS && isSame(existingCS, csData, ["platform", "otherPlatform", "url"])) continue;
+
+          await tx.companyClientSocialProfile.upsert({
+            where: { id: csId || -1 },
+            update: { ...csData, updatedBy: userId, updatedAt: epochNow },
+            create: {
+              ...csData,
+              clientId: clientId!,
+              isActive: true,
+              createdBy: userId,
+              updatedBy: userId,
+              createdAt: epochNow,
+              updatedAt: epochNow,
+            }
+          });
+        }
       }
 
       return await tx.company.findUnique({

@@ -101,44 +101,86 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { contacts, socials, ...clientData } = result.data;
     const epochNow = BigInt(Date.now());
 
+    // 🛡️ Deep Comparison Helper
+    const isSame = (oldObj: any, newObj: any, fields: string[]) => {
+      if (!oldObj) return false;
+      return fields.every(f => oldObj[f] === newObj[f]);
+    };
+
     const updatedClient = await (prisma as any).$transaction(async (tx: any) => {
-      // 1. Update basic info
-      await tx.companyClient.update({
-        where: { id: Number(clientId) },
-        data: {
-          ...clientData,
-          updatedBy: userId,
-          updatedAt: epochNow,
-        }
-      });
+      // 1. Update basic info ONLY if changed
+      if (!isSame(existingClient, clientData, ["fullName", "designation"])) {
+        await tx.companyClient.update({
+          where: { id: Number(clientId) },
+          data: {
+            ...clientData,
+            updatedBy: userId,
+            updatedAt: epochNow,
+          }
+        });
+      }
 
-      // 2. Sync contacts: Delete and Re-create
-      await tx.companyClientContact.deleteMany({ where: { clientId: Number(clientId) } });
-      await tx.companyClientContact.createMany({
-        data: contacts.map(c => ({
-          ...c,
-          clientId: Number(clientId),
-          isActive: true,
-          createdBy: userId,
-          updatedBy: userId,
-          createdAt: epochNow,
-          updatedAt: epochNow,
-        }))
-      });
+      // 2. Smart Sync Contacts
+      const incomingContactIds = contacts.map((c: any) => c.id).filter(Boolean) as number[];
+      const existingContactIds = existingClient.contacts.map((c: any) => c.id);
 
-      // 3. Sync socials: Delete and Re-create
-      await tx.companyClientSocialProfile.deleteMany({ where: { clientId: Number(clientId) } });
-      await tx.companyClientSocialProfile.createMany({
-        data: socials.map(s => ({
-          ...s,
-          clientId: Number(clientId),
-          isActive: true,
-          createdBy: userId,
-          updatedBy: userId,
-          createdAt: epochNow,
-          updatedAt: epochNow,
-        }))
-      });
+      const contactsToDelete = existingContactIds.filter((id: number) => !incomingContactIds.includes(id));
+      if (contactsToDelete.length > 0) {
+        await tx.companyClientContact.deleteMany({
+          where: { id: { in: contactsToDelete } }
+        });
+      }
+
+      for (const contact of contacts as any[]) {
+        const { id, ...cData } = contact;
+        const existing = existingClient.contacts.find((c: any) => c.id === id);
+        if (existing && isSame(existing, cData, ["type", "otherType", "value", "isPrimary"])) continue;
+
+        await tx.companyClientContact.upsert({
+          where: { id: id || -1 },
+          update: { ...cData, updatedBy: userId, updatedAt: epochNow },
+          create: {
+            ...cData,
+            clientId: Number(clientId),
+            isActive: true,
+            createdBy: userId,
+            updatedBy: userId,
+            createdAt: epochNow,
+            updatedAt: epochNow,
+          }
+        });
+      }
+
+      // 3. Smart Sync Socials
+      const incomingSocialIds = socials.map((s: any) => s.id).filter(Boolean) as number[];
+      const existingSocialIds = existingClient.socials.map((s: any) => s.id);
+
+      const socialsToDelete = existingSocialIds.filter((id: number) => !incomingSocialIds.includes(id));
+      if (socialsToDelete.length > 0) {
+        await tx.companyClientSocialProfile.deleteMany({
+          where: { id: { in: socialsToDelete } }
+        });
+      }
+
+      for (const social of socials as any[]) {
+        const { id, ...sData } = social;
+        const existing = existingClient.socials.find((s: any) => s.id === id);
+        if (existing && isSame(existing, sData, ["platform", "otherPlatform", "url"])) continue;
+
+        await tx.companyClientSocialProfile.upsert({
+          where: { id: id || -1 },
+          update: { ...sData, updatedBy: userId, updatedAt: epochNow },
+          create: {
+            ...sData,
+            clientId: Number(clientId),
+            isActive: true,
+            createdBy: userId,
+            updatedBy: userId,
+            createdAt: epochNow,
+            updatedAt: epochNow,
+          }
+        });
+      }
 
       return await tx.companyClient.findUnique({
         where: { id: Number(clientId) },
