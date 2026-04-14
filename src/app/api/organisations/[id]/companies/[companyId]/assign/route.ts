@@ -87,40 +87,45 @@ export async function POST(
         id: { in: memberIds },
         organizationId: Number(orgId)
       },
-      select: { id: true }
+      select: { id: true, userId: true }
     });
 
     const validIds = validMembers.map((m: any) => m.id);
     
-    // 2. Transactional Synchronization
-    await (prisma as any).$transaction([
-        // Remove those not in the new list
-        (prisma as any).companyMember.deleteMany({
+    // 2. Transactional Solo-Company Assignment
+    // We execute in sequence to ensure each member is assigned to the target company.
+    // Because organizationMemberId is UNIQUE, upserting will automatically "steal" the member from any old company.
+    await (prisma as any).$transaction(async (tx: any) => {
+        // Step A: Remove anyone currently in THIS company who is NOT in the new list
+        await tx.companyMember.deleteMany({
             where: {
                 companyId: Number(companyId),
                 organizationMemberId: { notIn: validIds }
             }
-        }),
-        // Add or Reactivate those in the new list
-        ...validIds.map((mId: number) => (prisma as any).companyMember.upsert({
-            where: {
-                companyId_organizationMemberId: {
+        });
+
+        // Step B: Upsert new assignments
+        for (const mId of validIds) {
+            await tx.companyMember.upsert({
+                where: { organizationMemberId: mId },
+                update: { 
+                   companyId: Number(companyId), // Re-assign to THIS company if assigned elsewhere
+                   isActive: true, 
+                   updatedBy: userId, 
+                   updatedAt: epochNow 
+                },
+                create: {
                     companyId: Number(companyId),
-                    organizationMemberId: mId
+                    organizationMemberId: mId,
+                    isActive: true,
+                    createdBy: userId,
+                    updatedBy: userId,
+                    createdAt: epochNow,
+                    updatedAt: epochNow
                 }
-            },
-            update: { isActive: true, updatedBy: userId, updatedAt: epochNow },
-            create: {
-                companyId: Number(companyId),
-                organizationMemberId: mId,
-                isActive: true,
-                createdBy: userId,
-                updatedBy: userId,
-                createdAt: epochNow,
-                updatedAt: epochNow
-            }
-        }))
-    ]);
+            });
+        }
+    });
 
     await emitEvent("COMPANIES_CHANGED", { action: "assignments_synced", organisationId: orgId, companyId });
 

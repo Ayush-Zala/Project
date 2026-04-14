@@ -447,18 +447,32 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                         else if (finalAction === "DELETE") auditDescription = `Custom role ${rName} deleted from Organisation ${oName}`;
                         else auditDescription = `Custom role ${rName} updated in Organisation ${oName}`;
                      } else if (safeModel === "companymember") {
-                        let uName = "Unknown User", cName = "Unknown Company";
+                        let uName = "Unknown User", cName = "Unknown Company", oldCName = null;
                         try {
                            const omId = payload.organizationMemberId;
                            const compId = payload.companyId;
-                           if (omId && compId) {
-                              const om = await (client as any).organisationMember.findUnique({ where: { id: omId }, include: { user: { select: { name: true, email: true } } } });
-                              const comp = await (client as any).company.findUnique({ where: { id: compId }, select: { name: true } });
-                              uName = om?.user?.name || om?.user?.email || uName;
-                              cName = comp?.name || cName;
+                           
+                           // Fetch current names
+                           const om = await (client as any).organisationMember.findUnique({ where: { id: omId }, include: { user: { select: { name: true, email: true } } } });
+                           const comp = await (client as any).company.findUnique({ where: { id: compId }, select: { name: true } });
+                           
+                           uName = om?.user?.name || om?.user?.email || uName;
+                           cName = comp?.name || cName;
+
+                           // For UPDATES (re-assignments), find the old company
+                           if (finalAction === "UPDATE" && metaData?.before?.companyId) {
+                               const oldComp = await (client as any).company.findUnique({ where: { id: Number(metaData.before.companyId) }, select: { name: true } });
+                               if (oldComp) oldCName = oldComp.name;
                            }
                         } catch (e) { }
-                        auditDescription = baseAction === "DELETE" ? `Access for company ${cName} revoked from user ${uName}` : `Access for company ${cName} granted to user ${uName}`;
+
+                        if (baseAction === "DELETE") {
+                           auditDescription = `Access for company ${cName} revoked from user ${uName}`;
+                        } else if (finalAction === "UPDATE" && oldCName) {
+                           auditDescription = `Access for user ${uName} moved from ${oldCName} to ${cName}`;
+                        } else {
+                           auditDescription = `Access for company ${cName} granted to user ${uName}`;
+                        }
                      } else if (safeModel === "companyclient") {
                         const clientName = payload.fullName || "Unknown Client";
                         const compName = await resolveName("company", payload);

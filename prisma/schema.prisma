@@ -557,7 +557,7 @@ model Company {
 model CompanyMember {
   id             Int      @id @default(autoincrement())
   companyId      Int
-  organizationMemberId Int
+  organizationMemberId Int @unique
   isActive       Boolean  @default(true)
   createdBy      Int?
   updatedBy      Int?
@@ -567,7 +567,6 @@ model CompanyMember {
   company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   member         OrganisationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
 
-  @@unique([companyId, organizationMemberId])
   @@map("company_member")
 }
 
