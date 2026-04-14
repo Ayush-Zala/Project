@@ -188,7 +188,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                   // 🛡️ Human-Readable Identifier Resolver
                   async function resolveName(m: string, data: any): Promise<string> {
                      if (!data) return "Unknown";
-                     
+
                      // 🛡️ Handle Primitive Input (e.g., if just an ID is passed)
                      if (typeof data === "number" || typeof data === "string") {
                         const sData = String(data);
@@ -254,28 +254,28 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                         }
                         if (m === "companymember") {
                            const cmId = data.id;
-                           const cm = await (client as any).companyMember.findUnique({ 
-                              where: { id: cmId }, 
-                              include: { 
+                           const cm = await (client as any).companyMember.findUnique({
+                              where: { id: cmId },
+                              include: {
                                  member: { include: { user: { select: { name: true } } } },
                                  company: { select: { name: true } }
-                              } 
+                              }
                            });
                            return cm ? `${cm.member.user.name} @ ${cm.company.name}` : String(cmId);
                         }
                         if (m === "companycontact" || m === "companyclientcontact") {
                            const contact = data.type && data.value ? data : await (client as any)[m].findUnique({ where: { id: data.id || data.contactId } });
                            if (contact) {
-                               const typeLabel = contact.type === "OTHER" ? (contact.otherType || "Other") : contact.type;
-                               return `${typeLabel}: ${contact.value}`;
+                              const typeLabel = contact.type === "OTHER" ? (contact.otherType || "Other") : contact.type;
+                              return `${typeLabel}: ${contact.value}`;
                            }
                         }
                         if (m === "companyclientsocialprofile") {
                            const sId = data.id || data.socialId || id;
                            const social = data.platform && data.url ? data : (sId ? await (client as any).companyClientSocialProfile.findUnique({ where: { id: Number(sId) } }) : null);
                            if (social) {
-                               const platformLabel = social.platform === "OTHER" ? (social.otherPlatform || "Other") : social.platform;
-                               return `${platformLabel}: ${social.url}`;
+                              const platformLabel = social.platform === "OTHER" ? (social.otherPlatform || "Other") : social.platform;
+                              return `${platformLabel}: ${social.url}`;
                            }
                         }
                      } catch (e) { }
@@ -284,7 +284,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                      // 🛡️ Clean Fallback: Handle Object/BigInt strings and specific placeholders
                      const safeId = (typeof id === "object" && id !== null) ? JSON.stringify(id) : String(id || "");
                      if (safeId === "-1" || safeId === "") return "New Item";
-                     
+
                      // If we are here, we couldn't resolve a name, so we return the ID with a label
                      return safeId ? `Record #${safeId}` : "Unknown";
                   }
@@ -313,18 +313,18 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                   let targetUserId: number | null = null;
                   if (["user", "userpermission", "userrole", "teammember", "teammemberrole", "organisationmember", "organisationteammember", "companymember"].includes(safeModel)) {
                      const tid = result?.userId || oldData?.userId || args?.data?.userId || (safeModel === "user" ? (result?.id || oldData?.id || args?.where?.id) : null);
-                     
+
                      // For companymember, we can resolve the target user from the organisationMember
                      if (safeModel === "companymember" && !tid) {
-                         const omId = result?.organizationMemberId || oldData?.organizationMemberId || args?.data?.organizationMemberId;
-                         if (omId) {
-                             try {
-                                 const om = await (client as any).organisationMember.findUnique({ where: { id: omId }, select: { userId: true } });
-                                 if (om) targetUserId = Number(om.userId);
-                             } catch(e) {}
-                         }
+                        const omId = result?.organizationMemberId || oldData?.organizationMemberId || args?.data?.organizationMemberId;
+                        if (omId) {
+                           try {
+                              const om = await (client as any).organisationMember.findUnique({ where: { id: omId }, select: { userId: true } });
+                              if (om) targetUserId = Number(om.userId);
+                           } catch (e) { }
+                        }
                      } else if (tid) {
-                         targetUserId = Number(tid);
+                        targetUserId = Number(tid);
                      }
                   } else if (["session", "account"].includes(safeModel)) {
 
@@ -334,14 +334,14 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
 
                   // 🚫 DUPLICATE PROTECTION: Only skip technical cleanup for internal mapping/sync operations.
                   const isJunctionCleanup = [
-                      "rolepermission", "userpermission", "userrole", 
-                      "companycontact", "companyclient", "companyclientcontact", "companyclientsocialprofile"
+                     "rolepermission", "userpermission", "userrole",
+                     "companycontact", "companyclient", "companyclientcontact", "companyclientsocialprofile"
                   ].includes(safeModel) && operation === "deleteMany";
 
 
                   // 🛡️ SUPPRESSION: Ignore bulk operations that touched zero records
                   if (["deleteMany", "updateMany"].includes(operation) && (!result || result.count === 0)) {
-                      return;
+                     return;
                   }
 
                   if (!isJunctionCleanup && (operationError || finalAction !== "UPDATE" || metaData)) {
@@ -357,7 +357,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                      if (operation === "deleteMany" || operation === "updateMany") {
                         const count = result?.count || 0;
                         let contextName = "Unknown";
-                        
+
                         // Try to find a parent context (e.g., Company) from the filter
                         if (payload.companyId) {
                            contextName = await resolveName("company", { id: payload.companyId });
@@ -378,7 +378,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                      else if (finalAction === "Toggle" || finalAction === "TOGGLE") {
                         const newStatus = (result?.isActive === false || payload.isActive === false) ? "inactive" : "active";
                         auditDescription = `${modelLabel} ${objName} marked as ${newStatus}`;
-                     } 
+                     }
                      // Model-specific overrides for complex descriptions
                      else if (safeModel === "userrole") {
                         const rName = await resolveName("role", payload);
@@ -414,7 +414,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                      } else if (safeModel === "organisationmember") {
                         const oName = await resolveName("organisation", payload);
                         const uName = await resolveName("user", payload);
-                        
+
                         if (baseAction === "DELETE") {
                            auditDescription = `Organisation Member ${uName} removed from Organisation ${oName}`;
                         } else if (finalAction === "Toggle" || finalAction === "TOGGLE") {
@@ -458,7 +458,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                               cName = comp?.name || cName;
                            }
                         } catch (e) { }
-                        auditDescription = baseAction === "DELETE" ? `Access for user ${uName} revoked from company ${cName}` : `Access for user ${uName} granted to company ${cName}`;
+                        auditDescription = baseAction === "DELETE" ? `Access for company ${cName} revoked from user ${uName}` : `Access for company ${cName} granted to user ${uName}`;
                      } else if (safeModel === "companyclient") {
                         const clientName = payload.fullName || "Unknown Client";
                         const compName = await resolveName("company", payload);
@@ -493,7 +493,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
 
                      let errorReason = null;
                      if (operationError) errorReason = operationError instanceof Error ? operationError.message : String(operationError);
-                     
+
                      if (context?.skipAudit) return;
 
                      const finalTargetUserId = (targetUserId && !isNaN(targetUserId) && targetUserId > 0) ? targetUserId : null;
