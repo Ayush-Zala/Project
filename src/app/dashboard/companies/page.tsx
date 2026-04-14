@@ -37,7 +37,7 @@ export default function CompaniesPage() {
   // Dialog States
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [isAssignDialogOpen, setIsAssignDialogOpen] = React.useState(false)
-  const [selectedCompany, setSelectedCompany] = React.useState<any>(null)
+  const [selectedCompanies, setSelectedCompanies] = React.useState<any[]>([])
 
 
   // Capability Guards
@@ -75,7 +75,7 @@ export default function CompaniesPage() {
         router.push(`/dashboard/companies/${company.id}/view`)
       },
       onAssignMembers: (company) => {
-        setSelectedCompany(company)
+        setSelectedCompanies([company])
         setIsAssignDialogOpen(true)
       },
     }), [canUpdate, canDelete, canToggle, canAssign, router]),
@@ -121,7 +121,7 @@ export default function CompaniesPage() {
   }
 
   const handleDelete = (company: any) => {
-    setSelectedCompany(company)
+    setSelectedCompanies([company])
     setIsDeleteDialogOpen(true)
   }
 
@@ -258,6 +258,20 @@ export default function CompaniesPage() {
                     </Button>
                   )}
 
+                  {count >= 1 && canAssign && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCompanies(count === 1 ? [first] : selectedRows.map(r => r.original))
+                        setIsAssignDialogOpen(true)
+                      }}
+                      className="h-8 px-4 hover:bg-primary/10 text-primary rounded-full transition-all border border-border/20"
+                    >
+                      <span className="text-[10px] font-black uppercase tracking-widest">Assign</span>
+                    </Button>
+                  )}
+
                   {canDelete && (
                     <Button
                       variant="ghost"
@@ -284,7 +298,7 @@ export default function CompaniesPage() {
         <DeleteCompanyDialog
           open={isDeleteDialogOpen}
           onOpenChange={setIsDeleteDialogOpen}
-          company={selectedCompany}
+          company={selectedCompanies[0]}
           onSuccess={fetchCompanies}
         />
 
@@ -292,8 +306,8 @@ export default function CompaniesPage() {
           open={isAssignDialogOpen}
           onOpenChange={setIsAssignDialogOpen}
           organizationId={activeOrg?.id?.toString() || ""}
-          companyId={selectedCompany?.id}
-          companyName={selectedCompany?.name || ""}
+          companyIds={selectedCompanies.map(c => c.id)}
+          companyNames={selectedCompanies.map(c => c.name)}
           onSuccess={fetchCompanies}
         />
       </PageShell>

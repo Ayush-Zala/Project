@@ -27,8 +27,8 @@ interface AssignCompanyMemberDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   organizationId: string
-  companyId: number
-  companyName: string
+  companyIds: number[]
+  companyNames?: string[]
   onSuccess: () => void
 }
 
@@ -36,64 +36,72 @@ export function AssignCompanyMemberDialog({
   open,
   onOpenChange,
   organizationId,
-  companyId,
-  companyName,
+  companyIds = [],
+  companyNames = [],
   onSuccess
 }: AssignCompanyMemberDialogProps) {
   const [isLoading, setIsLoading] = React.useState(false)
   const [isSaving, setIsSaving] = React.useState(false)
   const [members, setMembers] = React.useState<any[]>([])
   const [search, setSearch] = React.useState("")
-  const [selectedMemberIds, setSelectedMemberIds] = React.useState<Set<number>>(new Set())
+  const [selectedMemberId, setSelectedMemberId] = React.useState<number | null>(null)
+
+  const isBulk = companyIds.length > 1
+  const displayTitle = isBulk ? `Assign ${companyIds.length} Companies` : `Assign Member`
+  const displayDescription = isBulk 
+    ? `Select one member to manage ${companyIds.length} selected records` 
+    : `Select one member for ${companyNames[0] || "this company"}`
 
   const fetchData = React.useCallback(async () => {
     setIsLoading(true)
     try {
-      const [membersData, assignedData] = await Promise.all([
-        apiClient(`/api/organisations/${organizationId}/members?per_page=1000`),
-        apiClient(`/api/organisations/${organizationId}/companies/${companyId}/assign`)
-      ])
-      
+      // Fetch members for selection
+      const membersData = await apiClient(`/api/organisations/${organizationId}/members?per_page=1000`)
       setMembers(membersData.members || [])
-      const assignedIds = (assignedData.assignments || []).map((a: any) => a.organizationMemberId)
-      setSelectedMemberIds(new Set(assignedIds))
+
+      // If single company, fetch its current owner
+      if (companyIds.length === 1) {
+        const assignedData = await apiClient(`/api/organisations/${organizationId}/companies/assign?companyId=${companyIds[0]}`)
+        const assignments = assignedData.assignments || []
+        if (assignments.length > 0) {
+          setSelectedMemberId(assignments[0].organizationMemberId)
+        } else {
+          setSelectedMemberId(null)
+        }
+      } else {
+        setSelectedMemberId(null) // Reset for bulk
+      }
     } catch (error: any) {
       // apiClient handled toast
     } finally {
       setIsLoading(false)
     }
-  }, [organizationId, companyId])
+  }, [organizationId, companyIds])
 
   React.useEffect(() => {
-    if (open && companyId) {
+    if (open && companyIds.length > 0) {
       fetchData()
       setSearch("")
     }
-  }, [open, companyId, fetchData])
+  }, [open, companyIds, fetchData])
 
   const filteredMembers = members.filter(m => 
-    m.user.name.toLowerCase().includes(search.toLowerCase()) || 
-    m.user.email.toLowerCase().includes(search.toLowerCase())
+    m.user?.name?.toLowerCase().includes(search.toLowerCase()) || 
+    m.user?.email?.toLowerCase().includes(search.toLowerCase())
   )
 
-  const toggleMember = (memberId: number) => {
-    const next = new Set(selectedMemberIds)
-    if (next.has(memberId)) {
-      next.delete(memberId)
-    } else {
-      next.add(memberId)
-    }
-    setSelectedMemberIds(next)
-  }
-
   const handleSave = async () => {
+    if (!selectedMemberId) return
     setIsSaving(true)
     try {
-      await apiClient(`/api/organisations/${organizationId}/companies/${companyId}/assign`, {
+      await apiClient(`/api/organisations/${organizationId}/companies/assign`, {
         method: "POST",
-        body: JSON.stringify({ memberIds: Array.from(selectedMemberIds) })
+        body: JSON.stringify({ 
+            companyIds: companyIds,
+            memberId: selectedMemberId 
+        })
       })
-      toast.success(`Access updated for ${companyName}`)
+      toast.success(isBulk ? `Ownership updated for ${companyIds.length} companies` : `Access updated for ${companyNames[0]}`)
       onSuccess()
       onOpenChange(false)
     } catch (error: any) {
@@ -110,18 +118,19 @@ export function AssignCompanyMemberDialog({
         <div className="p-6 pb-0">
           <DialogHeader className="mb-4">
             <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
-              Assign Members
+              {displayTitle}
             </DialogTitle>
             <DialogDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-none mt-1">
-              Add members to {companyName}
+              {displayDescription}
             </DialogDescription>
           </DialogHeader>
+...
 
           <div className="space-y-4 py-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground/50" />
               <Input
-                placeholder="Search organisation members..."
+                placeholder="Search staff members..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-10 bg-muted/20 border-border/50 rounded-lg font-bold text-xs transition-all focus:border-primary/50"
@@ -133,8 +142,8 @@ export function AssignCompanyMemberDialog({
                 {isLoading ? (
                   <div className="p-2 space-y-3">
                     {[...Array(6)].map((_, i) => (
-                      <div key={i} className="flex items-center gap-3 p-2.5 rounded-md border border-transparent">
-                        <Skeleton className="size-4 rounded" />
+                      <div key={i} className="flex items-center gap-3 p-2.5 rounded-md">
+                        <Skeleton className="size-4 rounded-full" />
                         <div className="flex flex-col gap-2 flex-1">
                           <Skeleton className="h-3 w-24" />
                           <Skeleton className="h-2 w-32" />
@@ -143,11 +152,10 @@ export function AssignCompanyMemberDialog({
                     ))}
                   </div>
                 ) : filteredMembers.length === 0 ? (
-
                   <div className="flex flex-col items-center justify-center h-[280px] text-muted-foreground/30 p-8 text-center">
                     <Users2 className="size-10 mb-4 opacity-20" />
                     <p className="text-[11px] font-bold uppercase tracking-widest leading-tight">
-                      {search ? "No matching records" : "No members available"}
+                      {search ? "No matches" : "No members found"}
                     </p>
                   </div>
                 ) : (
@@ -155,17 +163,18 @@ export function AssignCompanyMemberDialog({
                     {filteredMembers.map((m) => (
                       <div
                         key={m.id}
-                        onClick={() => toggleMember(m.id)}
+                        onClick={() => setSelectedMemberId(m.id)}
                         className={`flex items-center gap-3 p-2.5 rounded-md cursor-pointer transition-all ${
-                          selectedMemberIds.has(m.id) 
-                            ? 'bg-primary/10 border-primary/20' 
-                            : 'hover:bg-muted/50 border-transparent'
+                          selectedMemberId === m.id 
+                            ? 'bg-primary/10 border-primary/20 shadow-sm' 
+                            : 'hover:bg-muted/50 border-transparent hover:border-border/30'
                         } border`}
                       >
-                        <Checkbox 
-                          checked={selectedMemberIds.has(m.id)}
-                          className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                        />
+                        <div className={`size-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                          selectedMemberId === m.id ? 'border-primary' : 'border-muted-foreground/30'
+                        }`}>
+                          {selectedMemberId === m.id && <div className="size-2 rounded-full bg-primary" />}
+                        </div>
                         <div className="flex flex-col flex-1 min-w-0">
                           <span className="text-xs font-black text-foreground uppercase tracking-tight truncate">{m.user.name}</span>
                           <span className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-widest truncate">{m.user.email}</span>
@@ -189,14 +198,14 @@ export function AssignCompanyMemberDialog({
             Cancel
           </Button>
           <Button
-            disabled={selectedMemberIds.size === 0 || isSaving}
+            disabled={!selectedMemberId || isSaving}
             onClick={handleSave}
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest text-[11px] px-8 h-10 shadow-lg shadow-primary/20 active:scale-95 transition-all"
           >
             {isSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Assign"
+              "Assign Member"
             )}
           </Button>
         </DialogFooter>

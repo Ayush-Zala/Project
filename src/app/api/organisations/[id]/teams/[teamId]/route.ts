@@ -41,10 +41,9 @@ export async function PATCH(
 
   if (team && !team.isActive) {
     const isCreator = team.createdBy === userId;
-    const isSuperAdmin = session.user.role === "super-admin" || 
-      (await (prisma as any).userRole.findFirst({
+    const isSuperAdmin = await (prisma as any).userRole.findFirst({
         where: { userId, role: { slug: "super-admin" }, isActive: true }
-      }));
+      });
 
     if (!isCreator && !isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });
@@ -112,10 +111,9 @@ export async function DELETE(
 
   if (team && !team.isActive) {
     const isCreator = team.createdBy === userId;
-    const isSuperAdmin = session.user.role === "super-admin" || 
-      (await (prisma as any).userRole.findFirst({
+    const isSuperAdmin = await (prisma as any).userRole.findFirst({
         where: { userId, role: { slug: "super-admin" }, isActive: true }
-      }));
+      });
 
     if (!isCreator && !isSuperAdmin) {
       return NextResponse.json({ error: "Forbidden: Team is inactive" }, { status: 403 });

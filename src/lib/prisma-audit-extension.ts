@@ -447,7 +447,7 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                         else if (finalAction === "DELETE") auditDescription = `Custom role ${rName} deleted from Organisation ${oName}`;
                         else auditDescription = `Custom role ${rName} updated in Organisation ${oName}`;
                      } else if (safeModel === "companymember") {
-                        let uName = "Unknown User", cName = "Unknown Company", oldCName = null;
+                        let uName = "Unknown User", cName = "Unknown Company", oldUName = null;
                         try {
                            const omId = payload.organizationMemberId;
                            const compId = payload.companyId;
@@ -459,17 +459,20 @@ export const prismaAuditExtension = Prisma.defineExtension((client) => {
                            uName = om?.user?.name || om?.user?.email || uName;
                            cName = comp?.name || cName;
 
-                           // For UPDATES (re-assignments), find the old company
-                           if (finalAction === "UPDATE" && metaData?.before?.companyId) {
-                               const oldComp = await (client as any).company.findUnique({ where: { id: Number(metaData.before.companyId) }, select: { name: true } });
-                               if (oldComp) oldCName = oldComp.name;
+                           // For UPDATES (user swaps), find the old member name
+                           if (finalAction === "UPDATE" && metaData?.before?.organizationMemberId) {
+                               const oldOm = await (client as any).organisationMember.findUnique({ 
+                                 where: { id: Number(metaData.before.organizationMemberId) }, 
+                                 include: { user: { select: { name: true, email: true } } } 
+                               });
+                               if (oldOm) oldUName = oldOm.user.name || oldOm.user.email;
                            }
                         } catch (e) { }
 
                         if (baseAction === "DELETE") {
                            auditDescription = `Access for company ${cName} revoked from user ${uName}`;
-                        } else if (finalAction === "UPDATE" && oldCName) {
-                           auditDescription = `Access for user ${uName} moved from ${oldCName} to ${cName}`;
+                        } else if (finalAction === "UPDATE" && oldUName) {
+                           auditDescription = `Access for ${cName} transferred from ${oldUName} to ${uName}`;
                         } else {
                            auditDescription = `Access for company ${cName} granted to user ${uName}`;
                         }

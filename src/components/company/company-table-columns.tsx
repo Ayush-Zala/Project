@@ -126,8 +126,8 @@ export function getCompanyColumns({
       cell: ({ row }) => {
         const company = row.original
         const source = company.source as string
-        const displaySource = source === "OTHER" && company.otherSource 
-          ? company.otherSource 
+        const displaySource = source === "OTHER" && company.otherSource
+          ? company.otherSource
           : source.replace("_", " ")
 
         return (
@@ -144,18 +144,75 @@ export function getCompanyColumns({
         <DataTableColumnHeader column={column} title="Contact" />
       ),
       cell: ({ row }) => {
-        const primaryContact = row.original.contacts?.find((c: any) => c.isPrimary) || row.original.contacts?.[0]
-        if (!primaryContact) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Contact</span>
+        const contacts = [...(row.original.contacts || [])].sort((a: any, b: any) =>
+          (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0)
+        )
+
+        if (contacts.length === 0) return <span className="text-[10px] text-muted-foreground/30 italic uppercase">No Contacts</span>
+
+        return (
+          <div className="flex flex-col gap-2 py-1">
+            {contacts.map((contact: any, index: number) => (
+              <div key={contact.id} className="flex flex-col gap-0.5 relative group/contact">
+                <span className={`text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1 ${contact.isPrimary ? 'text-primary/90' : ''}`}>
+                  {contact.value}
+                </span>
+                <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest flex items-center gap-1.5">
+                  {contact.type === "OTHER" && contact.otherType
+                    ? contact.otherType
+                    : contact.type.replace("_", " ")}
+                  {contact.isPrimary && (
+                    <span className="text-[8px] bg-primary/10 text-primary/70 px-1 rounded-[2px] font-black tracking-tighter shadow-sm border border-primary/10">PRIMARY</span>
+                  )}
+                </span>
+                {index < contacts.length - 1 && (
+                  <div className="absolute -bottom-1 left-0 w-4 h-[1px] bg-border/30" />
+                )}
+              </div>
+            ))}
+          </div>
+        )
+      },
+    },
+    {
+      id: "assignedTo",
+      meta: { title: "Assigned To" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Assigned To" />
+      ),
+      cell: ({ row }) => {
+        const assignment = row.original.assignedMembers?.[0]
+        if (!assignment) return <span className="text-[10px] text-muted-foreground/30 italic uppercase tracking-widest">Unassigned</span>
 
         return (
           <div className="flex flex-col gap-0.5">
-            <span className="text-[11px] font-black text-foreground/80 tracking-tighter line-clamp-1">
-              {primaryContact.value}
+            <span className="text-[11px] font-black text-foreground tracking-tighter uppercase line-clamp-1">
+              {assignment.member?.user?.name}
             </span>
-            <span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-widest">
-              {primaryContact.type === "OTHER" && primaryContact.otherType 
-                ? primaryContact.otherType 
-                : primaryContact.type.replace("_", " ")}
+            <span className="text-[9px] font-bold text-muted-foreground/50 lowercase tracking-tight">
+              {assignment.member?.user?.email}
+            </span>
+          </div>
+        )
+      },
+    },
+    {
+      id: "assignedBy",
+      meta: { title: "Assigned By" },
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Assigned By" />
+      ),
+      cell: ({ row }) => {
+        const assignment = row.original.assignedMembers?.[0]
+        if (!assignment) return <span className="text-[10px] text-muted-foreground/30 italic uppercase tracking-widest">-</span>
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[11px] font-black text-foreground/80 tracking-tighter uppercase line-clamp-1">
+              {assignment.createdByUser?.name}
+            </span>
+            <span className="text-[9px] font-bold text-muted-foreground/50 lowercase tracking-tight">
+              {assignment.createdByUser?.email}
             </span>
           </div>
         )

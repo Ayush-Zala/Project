@@ -67,6 +67,10 @@ model User {
   organisationMembers    OrganisationMember[]
   organisationTeamMembers OrganisationTeamMember[]
 
+  // Company Assignments Audit
+  createdCompanyMembers CompanyMember[] @relation("CompanyMemberCreatedBy")
+  updatedCompanyMembers CompanyMember[] @relation("CompanyMemberUpdatedBy")
+
   @@map("user")
 }
 
@@ -556,8 +560,8 @@ model Company {
 
 model CompanyMember {
   id             Int      @id @default(autoincrement())
-  companyId      Int
-  organizationMemberId Int @unique
+  companyId      Int      @unique
+  organizationMemberId Int
   isActive       Boolean  @default(true)
   createdBy      Int?
   updatedBy      Int?
@@ -566,6 +570,8 @@ model CompanyMember {
 
   company        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   member         OrganisationMember @relation(fields: [organizationMemberId], references: [id], onDelete: Cascade)
+  createdByUser  User?              @relation("CompanyMemberCreatedBy", fields: [createdBy], references: [id])
+  updatedByUser  User?              @relation("CompanyMemberUpdatedBy", fields: [updatedBy], references: [id])
 
   @@map("company_member")
 }

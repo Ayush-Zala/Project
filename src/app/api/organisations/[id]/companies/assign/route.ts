@@ -7,20 +7,25 @@ import * as z from "zod";
 import { hasPermission } from "@/lib/rbac";
 
 const assignSchema = z.object({
+  companyIds: z.array(z.number()),
   memberId: z.number(),
 });
 
 /**
- * GET: List assigned member for a company (max 1)
+ * GET: List assigned member for a single company
  */
 export async function GET(
   req: Request,
-  { params }: { params: Promise<{ id: string; companyId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { searchParams } = new URL(req.url);
+  const companyId = searchParams.get("companyId");
+  if (!companyId) return NextResponse.json({ error: "Missing companyId" }, { status: 400 });
+
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: orgId, companyId } = await params;
+  const { id: orgId } = await params;
   const userId = Number(session.user.id);
 
   const canRead = await hasPermission(userId, "company:read", Number(orgId));
@@ -53,16 +58,17 @@ export async function GET(
 }
 
 /**
- * POST: Assign a single member to a company
+ * POST: Assign/Bulk Assign a member to one or more companies
+ * Includes SWAP logic: If a company is already assigned, its owner entry is updated.
  */
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string; companyId: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { id: orgId, companyId } = await params;
+  const { id: orgId } = await params;
   const userId = Number(session.user.id);
 
   const allowed = await hasPermission(userId, "company:assign", Number(orgId));
@@ -71,9 +77,9 @@ export async function POST(
   try {
     const body = await req.json();
     const result = assignSchema.safeParse(body);
-    if (!result.success) return NextResponse.json({ error: "Invalid member ID" }, { status: 400 });
+    if (!result.success) return NextResponse.json({ error: "Invalid data provided" }, { status: 400 });
 
-    const { memberId } = result.data;
+    const { companyIds, memberId } = result.data;
     const epochNow = BigInt(Date.now());
 
     // 1. Verify member belongs to the organization
@@ -86,34 +92,37 @@ export async function POST(
 
     if (!member) return NextResponse.json({ error: "Member not found in organization" }, { status: 404 });
     
-    // 2. Solo-Company Ownership (Swap Logic)
-    // Because companyId is UNIQUE, upserting will automatically "swap" 
-    // the owner of the company if it was already assigned to someone else.
-    await (prisma as any).companyMember.upsert({
-        where: { companyId: Number(companyId) },
-        update: { 
-           organizationMemberId: memberId, // SWAP: Update the existing slot to the new user
-           isActive: true, 
-           updatedBy: userId, 
-           updatedAt: epochNow 
-        },
-        create: {
-            companyId: Number(companyId),
-            organizationMemberId: memberId,
-            isActive: true,
-            createdBy: userId,
-            updatedBy: userId,
-            createdAt: epochNow,
-            updatedAt: epochNow
+    // 2. Transact assignments with Swap Logic
+    await (prisma as any).$transaction(async (tx: any) => {
+        for (const cId of companyIds) {
+            await tx.companyMember.upsert({
+                where: { companyId: cId },
+                update: { 
+                   organizationMemberId: memberId, // SWAP: Update existing company owner
+                   isActive: true, 
+                   updatedBy: userId, 
+                   updatedAt: epochNow 
+                },
+                create: {
+                    companyId: cId,
+                    organizationMemberId: memberId,
+                    isActive: true,
+                    createdBy: userId,
+                    updatedBy: userId,
+                    createdAt: epochNow,
+                    updatedAt: epochNow
+                }
+            });
         }
     });
 
-    await emitEvent("COMPANIES_CHANGED", { action: "assignments_synced", organisationId: orgId, companyId });
+    for (const cId of companyIds) {
+        await emitEvent("COMPANIES_CHANGED", { action: "assignments_synced", organisationId: orgId, companyId: cId });
+    }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, count: companyIds.length });
   } catch (error) {
     console.error("[COMPANY_ASSIGN_POST]", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
-

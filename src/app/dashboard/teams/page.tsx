@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useHasPermission } from "@/hooks/use-has-permission"
 import { useWorkspace } from "@/hooks/use-workspace"
+import { useRouter } from "next/navigation"
 
 import { PageShell } from "@/components/dashboard/page-shell"
 import { DataTable } from "@/components/data-table/data-table"
